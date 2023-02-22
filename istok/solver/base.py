@@ -67,8 +67,9 @@ class Solver(Status):
 #   - output types
 class SolverFactory(ABC):
 
-    # Create solver
-    # POST: `Solver` inputs and outputs have no values
+    # QUERIES
+
+    # Create solver with empty inputs and outputs
     @abstractmethod
     def create(self) -> Solver:
         assert False
