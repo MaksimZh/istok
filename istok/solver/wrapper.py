@@ -145,8 +145,7 @@ class Wrapper(SolverFactory):
         super().__init__()
         self.__spec = FuncSpec(func, output_ids)
 
-    # Create solver
-    # POST: `Solver` inputs and outputs have no values
+    # Create solver with empty inputs and outputs
     def create(self) -> Solver:
         return WrapperSolver(self.__spec)
 

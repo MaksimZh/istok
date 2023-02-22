@@ -1,10 +1,10 @@
 import unittest
 
-from istok.solver import Calculator, Input, Output
+from istok.solver import CalculatorSolver, Calculator, Input, Output
 from istok.tools import status
 
 
-class Calc(Calculator):
+class Calc(CalculatorSolver):
         
     __a: Input[int]
     __b: Input[str]
@@ -30,13 +30,18 @@ class Calc(Calculator):
 
 class Test_Calculator(unittest.TestCase):
 
+    def test_spec(self):
+        C = Calculator(Calc)
+        self.assertEqual(C.get_input_spec(), {"a": int, "b": str})
+        self.assertEqual(C.get_output_spec(), {"c": int, "d": str})
+
     def test_create(self):
-        s = Calc()
+        s = Calculator(Calc).create()
         self.assertEqual(s.get_input_spec(), {"a": int, "b": str})
         self.assertEqual(s.get_output_spec(), {"c": int, "d": str})
 
     def test_put(self):
-        s = Calc()
+        s = Calculator(Calc).create()
         self.assertTrue(s.is_status("put", "NIL"))
         s.put("foo", 5)
         self.assertTrue(s.is_status("put", "INVALID_ID"))
@@ -50,7 +55,7 @@ class Test_Calculator(unittest.TestCase):
         self.assertTrue(s.is_status("put", "OK"))
 
     def test_run(self):
-        s = Calc()
+        s = Calculator(Calc).create()
         self.assertTrue(s.is_status("run", "NIL"))
         s.run()
         self.assertTrue(s.is_status("run", "INVALID_INPUT"))
@@ -71,7 +76,7 @@ class Test_Calculator(unittest.TestCase):
         self.assertTrue(s.is_status("run", "OK"))
 
     def test_has_value(self):
-        s = Calc()
+        s = Calculator(Calc).create()
         self.assertTrue(s.is_status("has_value", "NIL"))
         s.has_value("foo")
         self.assertTrue(s.is_status("has_value", "INVALID_ID"))
@@ -112,7 +117,7 @@ class Test_Calculator(unittest.TestCase):
         self.assertTrue(s.is_status("has_value", "OK"))
 
     def test_get(self):
-        s = Calc()
+        s = Calculator(Calc).create()
         self.assertTrue(s.is_status("get", "NIL"))
         s.get("foo")
         self.assertTrue(s.is_status("get", "INVALID_ID"))

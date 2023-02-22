@@ -2,7 +2,7 @@ from abc import abstractmethod
 from typing import Any, TypeVar, Type, Generic, get_origin, get_args
 
 from istok.tools import Status, status, StatusMeta
-from istok.solver.base import Solver, is_subtype
+from istok.solver.base import Solver, SolverFactory, is_subtype
 
 
 T = TypeVar("T")
@@ -123,7 +123,7 @@ class Slot(DataSource, DataDest):
         return self.__value
 
 
-class CalculatorMeta(StatusMeta):
+class CalculatorSolverMeta(StatusMeta):
     
     def __new__(cls, class_name: str, bases: tuple[type, ...],
             namespace: dict[str, Any], **kwargs: Any) -> type:
@@ -158,7 +158,7 @@ class CalculatorMeta(StatusMeta):
         return fields
 
 
-class Calculator(Solver, metaclass=CalculatorMeta):
+class CalculatorSolver(Solver, metaclass=CalculatorSolverMeta):
 
     # CONSTRUCTOR
     # POST: all `Input` and `Output` fields contain slots of specified types
@@ -276,3 +276,25 @@ class Calculator(Solver, metaclass=CalculatorMeta):
             return None
         self._set_status("get", "OK")
         return slot.get()
+
+
+class Calculator(SolverFactory):
+
+    __calc: Type[CalculatorSolver]
+
+    # CONSTRUCTOR
+    def __init__(self, calc: Type[CalculatorSolver]) -> None:
+        super().__init__()
+        self.__calc = calc
+
+    # Create solver with empty inputs and outputs
+    def create(self) -> Solver:
+        return self.__calc()
+
+    # Get solver input value ids and types
+    def get_input_spec(self) -> dict[str, type]:
+        return getattr(self.__calc, "__input_types")
+
+    # Get solver output value ids and types
+    def get_output_spec(self) -> dict[str, type]:
+        return getattr(self.__calc, "__output_types")
