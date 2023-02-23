@@ -93,3 +93,60 @@ def is_subtype(t: type, required: type) -> bool:
     if required is float:
         return t is int
     return False
+
+
+# Container for arbitrary data
+# CONTAINS:
+#   - data
+#   - data type
+#   - data state (has data or not)
+class DataContainer(Status):
+    
+    __type: type
+    __value: Any
+    __has_data: bool
+    
+    
+    # CONSTRUCTOR
+    # POST: data type is `data_type`
+    # POST: no data
+    def __init__(self, data_type: type) -> None:
+        super().__init__()
+        self.__type = data_type
+        self.__has_data = False
+
+    
+    # COMMANDS
+
+    # Set data
+    # PRE: `value` type fits data type
+    # POST: data is `value`
+    @status("OK", "INVALID_VALUE")
+    def put(self, value: Any) -> None:
+        if not is_subtype(type(value), self.__type):
+            self._set_status("put", "INVALID_VALUE")
+            return
+        self._set_status("put", "OK")
+        self.__has_data = True
+        self.__value = value
+
+
+    # QUERIES
+    
+    # Get data type
+    def get_type(self) -> type:
+        return self.__type
+
+    # Get data state
+    def has_value(self) -> bool:
+        return self.__has_data
+
+    # Get data
+    # PRE: has data
+    @status("OK", "NO_DATA")
+    def get(self) -> Any:
+        if not self.__has_data:
+            self._set_status("get", "NO_DATA")
+            return None
+        self._set_status("get", "OK")
+        return self.__value

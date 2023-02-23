@@ -2,7 +2,7 @@ from abc import abstractmethod
 from typing import Any, TypeVar, Type, Generic, get_origin, get_args
 
 from istok.tools import Status, status, StatusMeta
-from istok.solver.base import Solver, SolverFactory, is_subtype
+from istok.solver.base import Solver, SolverFactory, DataContainer
 
 
 T = TypeVar("T")
@@ -62,67 +62,6 @@ class Output(Generic[T], Status):
         assert False
 
 
-DataSource = Input[Any]
-DataDest = Output[Any]
-
-
-# Slot containing data
-# CONTAINS:
-#   - data
-#   - data type
-#   - data state (has data or not)
-class Slot(DataSource, DataDest):
-    
-    __type: type
-    __value: Any
-    __has_data: bool
-    
-    
-    # CONSTRUCTOR
-    # POST: data type is `data_type`
-    # POST: no data
-    def __init__(self, data_type: type) -> None:
-        super().__init__()
-        self.__type = data_type
-        self.__has_data = False
-
-    
-    # COMMANDS
-
-    # Set data
-    # PRE: `value` type fits data type
-    # POST: data is `value`
-    @status("OK", "INVALID_VALUE")
-    def put(self, value: Any) -> None:
-        if not is_subtype(type(value), self.__type):
-            self._set_status("put", "INVALID_VALUE")
-            return
-        self._set_status("put", "OK")
-        self.__has_data = True
-        self.__value = value
-
-
-    # QUERIES
-    
-    # Get data type
-    def get_type(self) -> Type[Any]:
-        return self.__type
-
-    # Get data state
-    def has_value(self) -> bool:
-        return self.__has_data
-
-    # Get data
-    # PRE: has data
-    @status("OK", "NO_DATA")
-    def get(self) -> Any:
-        if not self.__has_data:
-            self._set_status("get", "NO_DATA")
-            return None
-        self._set_status("get", "OK")
-        return self.__value
-
-
 class CalculatorSolverMeta(StatusMeta):
     
     def __new__(cls, class_name: str, bases: tuple[type, ...],
@@ -174,7 +113,7 @@ class CalculatorSolver(Solver, metaclass=CalculatorSolverMeta):
     def __make_slots(self, fields: dict[str, str], types: dict[str, type]):
         assert fields.keys() == types.keys()
         for id in fields.keys():
-            setattr(self, fields[id], Slot(types[id]))
+            setattr(self, fields[id], DataContainer(types[id]))
 
 
     # COMMANDS
@@ -189,7 +128,7 @@ class CalculatorSolver(Solver, metaclass=CalculatorSolverMeta):
         if id not in input_fields:
             self._set_status("put", "INVALID_ID")
             return
-        input: Slot = getattr(self, input_fields[id])
+        input: DataContainer = getattr(self, input_fields[id])
         input.put(value)
         if not input.is_status("put", "OK"):
             self._set_status("put", "INVALID_VALUE")
@@ -205,7 +144,7 @@ class CalculatorSolver(Solver, metaclass=CalculatorSolverMeta):
     @status("OK", "INVALID_INPUT", "INTERNAL_ERROR")
     def run(self) -> None:
         for field_name in getattr(self, "__input_fields").values():
-            slot: Slot = getattr(self, field_name)
+            slot: DataContainer = getattr(self, field_name)
             if not slot.has_value():
                 self._set_status("run", "INVALID_INPUT")
                 return
@@ -214,7 +153,7 @@ class CalculatorSolver(Solver, metaclass=CalculatorSolverMeta):
             self._set_status("run", "INTERNAL_ERROR")
             return
         for field_name in getattr(self, "__output_fields").values():
-            slot: Slot = getattr(self, field_name)
+            slot: DataContainer = getattr(self, field_name)
             if not slot.has_value():
                 self._set_status("run", "INTERNAL_ERROR")
                 return
@@ -270,7 +209,7 @@ class CalculatorSolver(Solver, metaclass=CalculatorSolverMeta):
         self._set_status("get", "INVALID_ID")
         return None
     
-    def __get_value(self, slot: Slot) -> Any:
+    def __get_value(self, slot: DataContainer) -> Any:
         if not slot.has_value():
             self._set_status("get", "NO_VALUE")
             return None
