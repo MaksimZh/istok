@@ -18,7 +18,3 @@ class Test_Single(unittest.TestCase):
             inputs=["aa", "bb"], outputs=["cc", "dd"])
         self.assertEqual(B.get_input_spec(), {"aa": int, "bb": str})
         self.assertEqual(B.get_output_spec(), {"cc": int, "dd": str})
-
-
-if __name__ == "__main__":
-    unittest.main()

@@ -136,7 +136,3 @@ class Test_Calculator(unittest.TestCase):
         self.assertTrue(s.is_status("get", "OK"))
         self.assertEqual(s.get("d"), "foofoo")
         self.assertTrue(s.is_status("get", "OK"))
-
-
-if __name__ == "__main__":
-    unittest.main()

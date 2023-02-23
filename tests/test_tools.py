@@ -200,7 +200,3 @@ class Test_Status(unittest.TestCase):
             self.assertTrue(foo.is_status("alt", "OK2"))
             foo.stat2("ERR2")
             self.assertTrue(foo.is_status("alt", "ERR2"))
-
-
-if __name__ == "__main__":
-    unittest.main()

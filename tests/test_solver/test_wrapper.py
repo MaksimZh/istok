@@ -111,7 +111,3 @@ class Test_Wrapper(unittest.TestCase):
         self.assertTrue(w.is_status("get", "OK"))
         self.assertEqual(w.get("d"), "foofoo")
         self.assertTrue(w.is_status("get", "OK"))
-
-
-if __name__ == "__main__":
-    unittest.main()
