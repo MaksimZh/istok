@@ -212,7 +212,19 @@ class BlockSolver(Solver):
     # PRE: there is value at `id`
     @status("OK", "INVALID_ID", "NO_VALUE")
     def get(self, id: str) -> Any:
-        assert False
+        if id in self.__inputs:
+            return self.__get_value(self.__inputs[id].get_item())
+        if id in self.__outputs:
+            return self.__get_value(self.__outputs[id].get_item())
+        self._set_status("get", "INVALID_ID")
+        return False
+    
+    def __get_value(self, slot: DataContainer) -> Any:
+        if not slot.has_value():
+            self._set_status("get", "NO_VALUE")
+            return None
+        self._set_status("get", "OK")
+        return slot.get()
 
 
 class Block(SolverFactory):

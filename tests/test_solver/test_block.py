@@ -99,6 +99,28 @@ class Test_Single(unittest.TestCase):
         self.assertTrue(s.has_value("dd"))
         self.assertTrue(s.is_status("has_value", "OK"))
 
+    def test_get(self):
+        s = Block([(W, {"a": "aa", "b": "bb"}, {"c": "cc", "d": "dd"})],
+            inputs=["aa", "bb"], outputs=["cc", "dd"]).create()
+        self.assertTrue(s.is_status("get", "NIL"))
+        s.get("foo")
+        self.assertTrue(s.is_status("get", "INVALID_ID"))
+        s.get("aa")
+        self.assertTrue(s.is_status("get", "NO_VALUE"))
+        s.get("cc")
+        self.assertTrue(s.is_status("get", "NO_VALUE"))
+        s.put("aa", 5)
+        s.put("bb", "foo")
+        self.assertEqual(s.get("aa"), 5)
+        self.assertTrue(s.is_status("get", "OK"))
+        self.assertEqual(s.get("bb"), "foo")
+        self.assertTrue(s.is_status("get", "OK"))
+        s.run()
+        self.assertEqual(s.get("cc"), 10)
+        self.assertTrue(s.is_status("get", "OK"))
+        self.assertEqual(s.get("dd"), "foofoo")
+        self.assertTrue(s.is_status("get", "OK"))
+
 
 class Test_Node(unittest.TestCase):
 
