@@ -41,6 +41,22 @@ class Test_Single(unittest.TestCase):
         s.put("bb", "boo")
         self.assertTrue(s.is_status("put", "OK"))
 
+    def test_run(self):
+        s = Block([(W, {"a": "aa", "b": "bb"}, {"c": "cc", "d": "dd"})],
+            inputs=["aa", "bb"], outputs=["cc", "dd"]).create()
+        self.assertTrue(s.is_status("run", "NIL"))
+        s.run()
+        self.assertTrue(s.is_status("run", "INVALID_INPUT"))
+        s.put("aa", 5)
+        s.run()
+        self.assertTrue(s.is_status("run", "INVALID_INPUT"))
+        s.put("bb", "error")
+        s.run()
+        self.assertTrue(s.is_status("run", "INTERNAL_ERROR"))
+        s.put("bb", "foo")
+        s.run()
+        self.assertTrue(s.is_status("run", "OK"))
+
 
 class Test_Node(unittest.TestCase):
 

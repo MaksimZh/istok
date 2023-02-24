@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Callable
 
 from istok.tools import Status, status
 from istok.solver.base import Solver, SolverFactory, DataContainer
@@ -65,24 +65,68 @@ class Node(Status):
     # Get node outputs
     def get_outputs(self) -> set["Node"]:
         return self.__outputs
+    
+
+def _process_graph_iter(func: Callable[[Any], Any], node: Node,
+        mapping: dict[Node, Node]) -> None:
+    if node in mapping:
+        return
+    new_node = Node(func(node.get_item()))
+    mapping[node] = new_node
+    for input in node.get_inputs():
+        if input in mapping:
+            new_input = mapping[input]
+            new_node.add_input(new_input)
+            new_input.add_output(new_node)
+    for output in node.get_outputs():
+        if output in mapping:
+            new_output = mapping[output]
+            new_node.add_output(new_output)
+            new_output.add_input(new_node)
+    for input in node.get_inputs():
+        _process_graph_iter(func, input, mapping)
+    for output in node.get_outputs():
+        _process_graph_iter(func, output, mapping)
+
+def _process_graph(func: Callable[[Any], Any],
+        anchors: set[Node]) -> dict[Node, Node]:
+    mapping: dict[Node, Node] = dict()
+    for node in anchors:
+        _process_graph_iter(func, node, mapping)
+    anchor_mapping = dict[Node, Node]()
+    for key in anchors:
+        anchor_mapping[key] = mapping[key]
+    return anchor_mapping
+
+
+def _create_node_item(item: Any) -> Any:
+    if type(item) is type:
+        return DataContainer(item)
+    if type(item) is str:
+        return item
+    if isinstance(item, SolverFactory):
+        return item.create()
 
 
 class BlockSolver(Solver):
 
-    __output_spec: dict[str, type]
     __inputs: dict[str, Node]
+    __outputs: dict[str, Node]
 
 
     # CONSTRUCTOR
     def __init__(self,
-            solver_patterns: set[Node],
             input_patterns: dict[str, Node],
             output_patterns: dict[str, Node]) -> None:
         super().__init__()
+        anchors = set(input_patterns.values()) | set(output_patterns.values())
+        mapping = _process_graph(_create_node_item, anchors)
         self.__inputs = dict()
-        self.__output_spec = dict([(id, n.get_item()) for id, n in output_patterns.items()])
-        for id, pattern in input_patterns.items():
-            self.__inputs[id] = Node(DataContainer(pattern.get_item()))
+        self.__outputs = dict()
+        for id, node in input_patterns.items():
+            self.__inputs[id] = mapping[node]
+        for id, node in output_patterns.items():
+            self.__outputs[id] = mapping[node]
 
     
     # COMMANDS
@@ -111,7 +155,25 @@ class BlockSolver(Solver):
     # POST: output values are set
     @status("OK", "INVALID_INPUT", "INTERNAL_ERROR")
     def run(self) -> None:
-        assert False
+        for node in self.__inputs.values():
+            if not node.get_item().has_value():
+                self._set_status("run", "INVALID_INPUT")
+                return
+        any_input = next(iter(self.__inputs.values()))
+        any_slot = next(iter(any_input.get_outputs()))
+        solver_node = next(iter(any_slot.get_outputs()))
+        solver: Solver = solver_node.get_item()
+        for slot_node in solver_node.get_inputs():
+            id: str = slot_node.get_item()
+            input_node = next(iter(slot_node.get_inputs()))
+            input: DataContainer = input_node.get_item()
+            value = input.get()
+            solver.put(id, value) 
+        solver.run()
+        if not solver.is_status("run", "OK"):
+            self._set_status("run", "INTERNAL_ERROR")
+            return
+        self._set_status("run", "OK")
 
 
     # QUERIES
@@ -123,7 +185,8 @@ class BlockSolver(Solver):
 
     # Get output value ids and types
     def get_output_spec(self) -> dict[str, type]:
-        return self.__output_spec
+        return dict([(id, n.get_item().get_type()) \
+            for id, n in self.__outputs.items()])
 
     # Check if input or output value is set
     # PRE: `id` is valid input or output name
@@ -180,7 +243,7 @@ class Block(SolverFactory):
     
     # Create solver with empty inputs and outputs
     def create(self) -> Solver:
-        return BlockSolver(self.__solvers, self.__inputs, self.__outputs)
+        return BlockSolver(self.__inputs, self.__outputs)
 
     # Get solver input value ids and types
     def get_input_spec(self) -> dict[str, type]:
