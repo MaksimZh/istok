@@ -173,6 +173,12 @@ class BlockSolver(Solver):
         if not solver.is_status("run", "OK"):
             self._set_status("run", "INTERNAL_ERROR")
             return
+        for slot_node in solver_node.get_outputs():
+            id: str = slot_node.get_item()
+            output_node = next(iter(slot_node.get_outputs()))
+            output: DataContainer = output_node.get_item()
+            value = solver.get(id)
+            output.put(value) 
         self._set_status("run", "OK")
 
 
@@ -192,7 +198,14 @@ class BlockSolver(Solver):
     # PRE: `id` is valid input or output name
     @status("OK", "INVALID_ID")
     def has_value(self, id: str) -> bool:
-        assert False
+        if id in self.__inputs:
+            self._set_status("has_value", "OK")
+            return self.__inputs[id].get_item().has_value()
+        if id in self.__outputs:
+            self._set_status("has_value", "OK")
+            return self.__outputs[id].get_item().has_value()
+        self._set_status("has_value", "INVALID_ID")
+        return False
     
     # Get input or output value
     # PRE: `id` is valid input or output name
