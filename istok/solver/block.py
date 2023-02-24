@@ -1,7 +1,7 @@
 from typing import Any
 
 from istok.tools import Status, status
-from istok.solver.base import Solver, SolverFactory
+from istok.solver.base import Solver, SolverFactory, DataContainer
 
 
 SolverNodeDescription = tuple[SolverFactory, dict[str, str], dict[str, str]]
@@ -69,17 +69,20 @@ class Node(Status):
 
 class BlockSolver(Solver):
 
-    __input_spec: dict[str, type]
     __output_spec: dict[str, type]
+    __inputs: dict[str, Node]
 
 
     # CONSTRUCTOR
     def __init__(self,
-            input_spec: dict[str, type],
-            output_spec: dict[str, type]) -> None:
+            solver_patterns: set[Node],
+            input_patterns: dict[str, Node],
+            output_patterns: dict[str, Node]) -> None:
         super().__init__()
-        self.__input_spec = input_spec
-        self.__output_spec = output_spec
+        self.__inputs = dict()
+        self.__output_spec = dict([(id, n.get_item()) for id, n in output_patterns.items()])
+        for id, pattern in input_patterns.items():
+            self.__inputs[id] = Node(DataContainer(pattern.get_item()))
 
     
     # COMMANDS
@@ -90,7 +93,17 @@ class BlockSolver(Solver):
     # POST: input `id` is equal to `value`
     @status("OK", "INVALID_ID", "INVALID_VALUE")
     def put(self, id: str, value: Any) -> None:
-        assert False
+        if not id in self.__inputs:
+            self._set_status("put", "INVALID_ID")
+            return
+        data_container: DataContainer = self.__inputs[id].get_item()
+        data_container.put(value)
+        if data_container.is_status("put", "INVALID_VALUE"):
+            self._set_status("put", "INVALID_VALUE")
+            return
+        assert(data_container.is_status("put", "OK"))
+        self._set_status("put", "OK")
+
 
     # Run solver
     # PRE: input values are set and acceptable
@@ -105,7 +118,8 @@ class BlockSolver(Solver):
     
     # Get input value ids and types
     def get_input_spec(self) -> dict[str, type]:
-        return self.__input_spec
+        return dict([(id, n.get_item().get_type()) \
+            for id, n in self.__inputs.items()])
 
     # Get output value ids and types
     def get_output_spec(self) -> dict[str, type]:
@@ -127,35 +141,51 @@ class BlockSolver(Solver):
 
 class Block(SolverFactory):
 
-    __input_spec: dict[str, type]
-    __output_spec: dict[str, type]
+    __solvers: set[Node]
+    __inputs: dict[str, Node]
+    __outputs: dict[str, Node]
 
     
     # CONSTRUCTOR
     def __init__(self, description: list[SolverNodeDescription],
             inputs: list[str], outputs: list[str]) -> None:
         super().__init__()
-        self.__input_spec = dict()
-        self.__output_spec = dict()
+        self.__solvers = set()
+        self.__inputs = dict()
+        self.__outputs = dict()
         for solver, solver_inputs, solver_outputs in description:
+            solver_node = Node(solver)
+            self.__solvers.add(solver_node)
             solver_input_spec = solver.get_input_spec()
             solver_output_spec = solver.get_output_spec()
             for id, link in solver_inputs.items():
-                self.__input_spec[link] = solver_input_spec[id]
+                input_node = Node(solver_input_spec[id])
+                slot_node = Node(id)
+                self.__inputs[link] = input_node
+                input_node.add_output(slot_node)
+                slot_node.add_input(input_node)
+                slot_node.add_output(solver_node)
+                solver_node.add_input(slot_node)
             for id, link in solver_outputs.items():
-                self.__output_spec[link] = solver_output_spec[id]
+                output_node = Node(solver_output_spec[id])
+                slot_node = Node(id)
+                self.__outputs[link] = output_node
+                solver_node.add_output(slot_node)
+                slot_node.add_input(solver_node)
+                slot_node.add_output(output_node)
+                output_node.add_input(slot_node)
 
     
     # QUERIES
     
     # Create solver with empty inputs and outputs
     def create(self) -> Solver:
-        return BlockSolver(self.__input_spec, self.__output_spec)
+        return BlockSolver(self.__solvers, self.__inputs, self.__outputs)
 
     # Get solver input value ids and types
     def get_input_spec(self) -> dict[str, type]:
-        return self.__input_spec
+        return dict([(id, n.get_item()) for id, n in self.__inputs.items()])
 
     # Get solver output value ids and types
     def get_output_spec(self) -> dict[str, type]:
-        return self.__output_spec
+        return dict([(id, n.get_item()) for id, n in self.__outputs.items()])

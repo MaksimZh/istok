@@ -26,7 +26,6 @@ class Test_Single(unittest.TestCase):
         self.assertEqual(s.get_input_spec(), {"aa": int, "bb": str})
         self.assertEqual(s.get_output_spec(), {"cc": int, "dd": str})
 
-    @unittest.skip("")
     def test_put(self):
         s = Block([(W, {"a": "aa", "b": "bb"}, {"c": "cc", "d": "dd"})],
             inputs=["aa", "bb"], outputs=["cc", "dd"]).create()
