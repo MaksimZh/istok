@@ -8,13 +8,15 @@ from istok.solver.graph import Node, process_graph
 SolverNodeDescription = tuple[SolverFactory, dict[str, str], dict[str, str]]
 
 
-def _create_node_item(item: Any) -> Any:
+def _convert_node(node: Node) -> Node:
+    item = node.get_item()
     if type(item) is type:
-        return DataContainer(item)
+        return Node(DataContainer(item))
     if type(item) is str:
-        return item
+        return Node(item)
     if isinstance(item, SolverFactory):
-        return item.create()
+        return Node(item.create())
+    assert False
 
 
 class BlockSolver(Solver):
@@ -29,7 +31,7 @@ class BlockSolver(Solver):
             output_patterns: dict[str, Node]) -> None:
         super().__init__()
         anchors = set(input_patterns.values()) | set(output_patterns.values())
-        mapping = process_graph(_create_node_item, anchors)
+        mapping = process_graph(_convert_node, anchors)
         self.__inputs = dict()
         self.__outputs = dict()
         for id, node in input_patterns.items():
