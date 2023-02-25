@@ -1,6 +1,7 @@
 from istok.solver import Wrapper
 from .base_test import Test_Solver
 
+
 def func(a: int, b: str) -> tuple[int, str]:
     if b == "error":
         raise ValueError()

@@ -1,7 +1,6 @@
-import unittest
-
 from istok.solver import CalculatorSolver, Calculator, Input, Output
 from istok.tools import status
+from .base_test import Test_Solver
 
 
 class Calc(CalculatorSolver):
@@ -28,111 +27,18 @@ class Calc(CalculatorSolver):
         self._set_status("calculate", "OK")
 
 
-class Test_Calculator(unittest.TestCase):
+class Test_Calculator(Test_Solver):
 
-    def test_spec(self):
-        C = Calculator(Calc)
-        self.assertEqual(C.get_input_spec(), {"a": int, "b": str})
-        self.assertEqual(C.get_output_spec(), {"c": int, "d": str})
-
-    def test_create(self):
-        s = Calculator(Calc).create()
-        self.assertEqual(s.get_input_spec(), {"a": int, "b": str})
-        self.assertEqual(s.get_output_spec(), {"c": int, "d": str})
-
-    def test_put(self):
-        s = Calculator(Calc).create()
-        self.assertTrue(s.is_status("put", "NIL"))
-        s.put("foo", 5)
-        self.assertTrue(s.is_status("put", "INVALID_ID"))
-        s.put("c", 5)
-        self.assertTrue(s.is_status("put", "INVALID_ID"))
-        s.put("a", "foo")
-        self.assertTrue(s.is_status("put", "INVALID_VALUE"))
-        s.put("a", 5)
-        self.assertTrue(s.is_status("put", "OK"))
-        s.put("b", "boo")
-        self.assertTrue(s.is_status("put", "OK"))
-
-    def test_run(self):
-        s = Calculator(Calc).create()
-        self.assertTrue(s.is_status("run", "NIL"))
-        s.run()
-        self.assertTrue(s.is_status("run", "INVALID_INPUT"))
-        s.put("a", 5)
-        s.run()
-        self.assertTrue(s.is_status("run", "INVALID_INPUT"))
-        s.put("b", "exit")
-        s.run()
-        self.assertTrue(s.is_status("run", "INTERNAL_ERROR"))
-        s.put("b", "no output")
-        s.run()
-        self.assertTrue(s.is_status("run", "INTERNAL_ERROR"))
-        s.put("b", "error")
-        s.run()
-        self.assertTrue(s.is_status("run", "INTERNAL_ERROR"))
-        s.put("b", "foo")
-        s.run()
-        self.assertTrue(s.is_status("run", "OK"))
-
-    def test_has_value(self):
-        s = Calculator(Calc).create()
-        self.assertTrue(s.is_status("has_value", "NIL"))
-        s.has_value("foo")
-        self.assertTrue(s.is_status("has_value", "INVALID_ID"))
-        self.assertFalse(s.has_value("a"))
-        self.assertTrue(s.is_status("has_value", "OK"))
-        self.assertFalse(s.has_value("b"))
-        self.assertTrue(s.is_status("has_value", "OK"))
-        self.assertFalse(s.has_value("c"))
-        self.assertTrue(s.is_status("has_value", "OK"))
-        self.assertFalse(s.has_value("d"))
-        self.assertTrue(s.is_status("has_value", "OK"))
-        s.put("a", 1)
-        self.assertTrue(s.has_value("a"))
-        self.assertTrue(s.is_status("has_value", "OK"))
-        self.assertFalse(s.has_value("b"))
-        self.assertTrue(s.is_status("has_value", "OK"))
-        self.assertFalse(s.has_value("c"))
-        self.assertTrue(s.is_status("has_value", "OK"))
-        self.assertFalse(s.has_value("d"))
-        self.assertTrue(s.is_status("has_value", "OK"))
-        s.put("b", "foo")
-        self.assertTrue(s.has_value("a"))
-        self.assertTrue(s.is_status("has_value", "OK"))
-        self.assertTrue(s.has_value("b"))
-        self.assertTrue(s.is_status("has_value", "OK"))
-        self.assertFalse(s.has_value("c"))
-        self.assertTrue(s.is_status("has_value", "OK"))
-        self.assertFalse(s.has_value("d"))
-        self.assertTrue(s.is_status("has_value", "OK"))
-        s.run()
-        self.assertTrue(s.has_value("a"))
-        self.assertTrue(s.is_status("has_value", "OK"))
-        self.assertTrue(s.has_value("b"))
-        self.assertTrue(s.is_status("has_value", "OK"))
-        self.assertTrue(s.has_value("c"))
-        self.assertTrue(s.is_status("has_value", "OK"))
-        self.assertTrue(s.has_value("d"))
-        self.assertTrue(s.is_status("has_value", "OK"))
-
-    def test_get(self):
-        s = Calculator(Calc).create()
-        self.assertTrue(s.is_status("get", "NIL"))
-        s.get("foo")
-        self.assertTrue(s.is_status("get", "INVALID_ID"))
-        s.get("a")
-        self.assertTrue(s.is_status("get", "NO_VALUE"))
-        s.get("c")
-        self.assertTrue(s.is_status("get", "NO_VALUE"))
-        s.put("a", 5)
-        s.put("b", "foo")
-        self.assertEqual(s.get("a"), 5)
-        self.assertTrue(s.is_status("get", "OK"))
-        self.assertEqual(s.get("b"), "foo")
-        self.assertTrue(s.is_status("get", "OK"))
-        s.run()
-        self.assertEqual(s.get("c"), 10)
-        self.assertTrue(s.is_status("get", "OK"))
-        self.assertEqual(s.get("d"), "foofoo")
-        self.assertTrue(s.is_status("get", "OK"))
+    def setUp(self) -> None:
+        self.factory = Calculator(Calc)
+        self.input_spec = {"a": int, "b": str}
+        self.output_spec = {"c": int, "d": str}
+        self.invalid_id = "foo"
+        self.invalid_put = ("a", "foo")
+        self.valid_input = {"a": 5, "b": "foo"}
+        self.valid_output = {"c": 10, "d": "foofoo"}
+        self.error_inputs = [
+            {"a": 5, "b": "exit"},
+            {"a": 5, "b": "no output"},
+            {"a": 5, "b": "error"},
+            ]
