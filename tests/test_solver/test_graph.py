@@ -53,88 +53,131 @@ class Test_process(unittest.TestCase):
         a.add_output(b)
         b.add_input(a)
 
-    def assert_links(self, inputs: set[Node], node: Node, outputs: set[Node]) -> None:
-        self.assertEqual(node.get_inputs(), inputs)
-        self.assertEqual(node.get_outputs(), outputs)
+    @staticmethod
+    def build(pattern: dict[str, set[str]]) -> dict[str, Node]:
+        nodes = dict([(key, Node(key)) for key in pattern])
+        for key, targets in pattern.items():
+            for target in targets:
+                Test_process.link(nodes[key], nodes[target])
+        return nodes
+    
+    @staticmethod
+    def collect(node: Node, acc: dict[str, Node]) -> None:
+        key = node.get_item()
+        if key in acc:
+            return
+        acc[key] = node
+        for input in node.get_inputs():
+            Test_process.collect(input, acc)
+        for output in node.get_outputs():
+            Test_process.collect(output, acc)
+    
+    def assert_fits(self, anchors: set[Node], pattern: dict[str, set[str]]) -> None:
+        nodes = dict[str, Node]()
+        for node in anchors:
+            self.collect(node, nodes)
+        self.assertEqual(len(nodes), len(pattern))
+        link_count = 0
+        for key, node in nodes.items():
+            self.assertIn(key, pattern)
+            for input in node.get_inputs():
+                self.assertIn(key, pattern[input.get_item()])
+                link_count += 1
+            for output in node.get_outputs():
+                self.assertIn(output.get_item(), pattern[key])
+                link_count += 1
+        self.assertEqual(link_count, sum(len(v) for v in pattern.values()) * 2)
 
     def test_single(self):
-        a = Node("a")
-        m = process_graph(self.func, {a})
-        self.assertEqual(m.keys(), {a})
-        self.assertEqual(m[a].get_item(), "aa")
-        self.assert_links(set(), m[a], set())
+        n = self.build({"a": set()})
+        m = process_graph(self.func, set(n.values()))
+        self.assertEqual(set(m.keys()), set(n.values()))
+        self.assert_fits(set(m.values()), {"aa": set()})
 
     def test_pair(self):
-        a = Node("a")
-        b = Node("b")
-        self.link(a, b)
-        m = process_graph(self.func, {a, b})
-        self.assertEqual(m.keys(), {a, b})
-        self.assertEqual(m[a].get_item(), "aa")
-        self.assertEqual(m[b].get_item(), "bb")
-        self.assert_links(set(), m[a], {m[b]})
-        self.assert_links({m[a]}, m[b], set())
+        n = self.build({"a": {"b"}, "b": set()})
+        m = process_graph(self.func, set(n.values()))
+        self.assertEqual(set(m.keys()), set(n.values()))
+        self.assert_fits(set(m.values()), {"aa": {"bb"}, "bb": set()})
 
     def test_chain(self):
-        a = Node("a")
-        b = Node("b")
-        c = Node("c")
-        d = Node("d")
-        a.add_output(b)
-        b.add_input(a)
-        b.add_output(c)
-        c.add_input(b)
-        c.add_output(d)
-        d.add_input(c)
-        m = process_graph(self.func, {a, b, c, d})
-        self.assertEqual(m.keys(), {a, b, c, d})
-        self.assertEqual(m[a].get_item(), "aa")
-        self.assertEqual(m[b].get_item(), "bb")
-        self.assertEqual(m[c].get_item(), "cc")
-        self.assertEqual(m[d].get_item(), "dd")
-        self.assert_links(set(), m[a], {m[b]})
-        self.assert_links({m[a]}, m[b], {m[c]})
-        self.assert_links({m[b]}, m[c], {m[d]})
-        self.assert_links({m[c]}, m[d], set())
+        n = self.build({
+            "a": {"b"},
+            "b": {"c"},
+            "c": {"d"},
+            "d": set()})
+        m = process_graph(self.func, set(n.values()))
+        self.assertEqual(set(m.keys()), set(n.values()))
+        self.assert_fits(set(m.values()), {
+            "aa": {"bb"},
+            "bb": {"cc"},
+            "cc": {"dd"},
+            "dd": set()})
 
     def test_part_chain(self):
-        a = Node("a")
-        b = Node("b")
-        c = Node("c")
-        d = Node("d")
-        a.add_output(b)
-        b.add_input(a)
-        b.add_output(c)
-        c.add_input(b)
-        c.add_output(d)
-        d.add_input(c)
-        m = process_graph(self.func, {a})
-        self.assertEqual(m.keys(), {a})
-        aa = m[a]
-        bb = next(iter(aa.get_outputs()))
-        cc = next(iter(bb.get_outputs()))
-        dd = next(iter(cc.get_outputs()))
-        self.assertEqual(aa.get_item(), "aa")
-        self.assertEqual(bb.get_item(), "bb")
-        self.assertEqual(cc.get_item(), "cc")
-        self.assertEqual(dd.get_item(), "dd")
-        self.assert_links(set(), aa, {bb})
-        self.assert_links({aa}, bb, {cc})
-        self.assert_links({bb}, cc, {dd})
-        self.assert_links({cc}, dd, set())
+        n = self.build({
+            "a": {"b"},
+            "b": {"c"},
+            "c": {"d"},
+            "d": set()})
+        m = process_graph(self.func, {n["b"]})
+        self.assertEqual(set(m.keys()), {n["b"]})
+        self.assert_fits(set(m.values()), {
+            "aa": {"bb"},
+            "bb": {"cc"},
+            "cc": {"dd"},
+            "dd": set()})
 
-    def test_complex(self):
-        s = ["a", "b", "c", "d", "e", "f", "g", "h", "i"]
-        n = dict([(i, Node(i)) for i in s])
-        self.link(n["a"], n["b"])
-        self.link(n["b"], n["e"])
-        self.link(n["c"], n["d"])
-        self.link(n["d"], n["e"])
-        self.link(n["e"], n["f"])
-        self.link(n["f"], n["g"])
-        self.link(n["e"], n["h"])
-        self.link(n["h"], n["i"])
-        m = process_graph(self.func, {n["e"]})
-        self.assertEqual(m.keys(), set(n["e"]))
-        nn = {"ee": m[n["e"]]}
-        
+    def test_cross(self):
+        n = self.build({
+            "a": {"b"},
+            "b": {"e"},
+            "c": {"d"},
+            "d": {"e"},
+            "e": {"f", "h"},
+            "f": {"g"},
+            "g": set(),
+            "h": {"i"},
+            "i": set(),
+            })
+        t = {
+            "aa": {"bb"},
+            "bb": {"ee"},
+            "cc": {"dd"},
+            "dd": {"ee"},
+            "ee": {"ff", "hh"},
+            "ff": {"gg"},
+            "gg": set[str](),
+            "hh": {"ii"},
+            "ii": set[str](),
+            }
+        for keys in [["a"], ["e"], ["i"], ["a", "i"]]:
+            anchors = set(n[key] for key in keys)
+            m = process_graph(self.func, anchors)
+            self.assertEqual(set(m.keys()), anchors)
+            self.assert_fits(set(m.values()), t)
+
+    def test_diamonds(self):
+        n = self.build({
+            "a": {"b", "c"},
+            "b": {"d"},
+            "c": {"d"},
+            "d": {"e", "f"},
+            "e": {"g"},
+            "f": {"g"},
+            "g": set(),
+            })
+        t = {
+            "aa": {"bb", "cc"},
+            "bb": {"dd"},
+            "cc": {"dd"},
+            "dd": {"ee", "ff"},
+            "ee": {"gg"},
+            "ff": {"gg"},
+            "gg": set[str](),
+            }
+        for keys in [["a"], ["d"], ["g"], ["b"], ["f"], ["a", "g"], ["b", "f"]]:
+            anchors = set(n[key] for key in keys)
+            m = process_graph(self.func, anchors)
+            self.assertEqual(set(m.keys()), anchors)
+            self.assert_fits(set(m.values()), t)
