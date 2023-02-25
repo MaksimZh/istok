@@ -57,10 +57,11 @@ class Test_Solver(unittest.TestCase):
             s.run()
             self.assertTrue(s.is_status("run", "INVALID_INPUT"))
         for input in self.error_inputs:
-            for id, value in input.items():
-                s.put(id, value)
-            s.run()
-            self.assertTrue(s.is_status("run", "INTERNAL_ERROR"))
+            with self.subTest(input=input):
+                for id, value in input.items():
+                    s.put(id, value)
+                s.run()
+                self.assertTrue(s.is_status("run", "INTERNAL_ERROR"))
         for id, value in self.valid_input.items():
             s.put(id, value)
         s.run()

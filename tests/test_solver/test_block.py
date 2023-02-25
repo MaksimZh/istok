@@ -23,3 +23,22 @@ class Test_Single(Test_Solver):
         self.valid_input = {"aa": 5, "bb": "foo"}
         self.valid_output = {"cc": 10, "dd": "foofoo"}
         self.error_inputs = [{"aa": 5, "bb": "error"}]
+
+
+class Test_Chain(Test_Solver):
+    
+    def setUp(self):
+        self.factory = Block(
+            [
+                (W, {"a": "aa", "b": "bb"}, {"c": "u1", "d": "v1"}),
+                (W, {"a": "u1", "b": "v1"}, {"c": "u2", "d": "v2"}),
+                (W, {"a": "u2", "b": "v2"}, {"c": "cc", "d": "dd"}),
+            ],
+            inputs=["aa", "bb"], outputs=["cc", "dd"])
+        self.input_spec = {"aa": int, "bb": str}
+        self.output_spec = {"cc": int, "dd": str}
+        self.invalid_id = "foo"
+        self.invalid_put = ("aa", "foo")
+        self.valid_input = {"aa": 5, "bb": "foo"}
+        self.valid_output = {"cc": 40, "dd": "foofoofoofoofoofoofoofoo"}
+        self.error_inputs = [{"aa": 5, "bb": "error"}]
