@@ -1,4 +1,4 @@
-from typing import Any, Callable
+from typing import Any, Callable, TypeVar
 
 from istok.tools import Status, status
 
@@ -63,22 +63,24 @@ class Node(Status):
         return self.__outputs
 
 
-def process_graph(func: Callable[[Any], Any],
-        anchors: set[Node]) -> dict[Node, Node]:
-    mapping: dict[Node, Node] = dict()
+N = TypeVar("N", bound=Node)
+
+def process_graph(func: Callable[[Node], N],
+        anchors: set[Node]) -> dict[Node, N]:
+    mapping: dict[Node, N] = dict()
     for node in anchors:
         _process_graph_iter(func, node, mapping)
-    anchor_mapping = dict[Node, Node]()
+    anchor_mapping = dict[Node, N]()
     for key in anchors:
         anchor_mapping[key] = mapping[key]
     return anchor_mapping
 
 
-def _process_graph_iter(func: Callable[[Any], Any], node: Node,
-        mapping: dict[Node, Node]) -> None:
+def _process_graph_iter(func: Callable[[Node], N], node: Node,
+        mapping: dict[Node, N]) -> None:
     if node in mapping:
         return
-    new_node = Node(func(node.get_item()))
+    new_node = func(node)
     mapping[node] = new_node
     for input in node.get_inputs():
         if input in mapping:

@@ -41,12 +41,18 @@ class Test_Node(unittest.TestCase):
         self.assertEqual(a.get_outputs(), {c, e})
 
 
+class MyNode(Node):
+
+    def __init__(self, item: Any) -> None:
+        super().__init__(item)
+
 
 class Test_process(unittest.TestCase):
 
     @staticmethod
-    def func(v: Any) -> Any:
-        return v + v
+    def func(n: Node) -> MyNode:
+        i = n.get_item()
+        return MyNode(i + i)
 
     @staticmethod
     def link(a: Node, b: Node) -> None:
