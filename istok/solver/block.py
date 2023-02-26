@@ -1,7 +1,7 @@
 from typing import Any
 
 from istok.tools import status
-from istok.solver.base import Solver, SolverFactory, DataContainer
+from istok.solver.base import Solver, SolverFactory, DataContainer, is_subtype
 from istok.solver.graph import Node, chain_nodes, process_graph
 
 
@@ -225,25 +225,31 @@ class Block(SolverFactory):
         super().__init__()
         data = dict[str, Node]()
 
-        def ensure_data(id: str, data_type: type) -> None:
-            if id not in data:
-                data[id] = Node(data_type)
-
         def add_solver(description: SolverNodeDescription) -> None:
             solver, solver_inputs, solver_outputs = description
             solver_node = Node(solver)
             solver_input_spec = solver.get_input_spec().copy()
             solver_output_spec = solver.get_output_spec()
-            for id, link in solver_inputs.items():
-                ensure_data(link, solver_input_spec[id])
-                chain_nodes(data[link], Node(id), solver_node)
-                del solver_input_spec[id]
+            for slot_id, id in solver_inputs.items():
+                input_type = solver_input_spec[slot_id]
+                if id in data and not is_subtype(data[id].get_item(), input_type):
+                    self.__init_message = f"Type mismatch: {id}"
+                    return
+                if id not in data:
+                    data[id] = Node(input_type)
+                chain_nodes(data[id], Node(slot_id), solver_node)
+                del solver_input_spec[slot_id]
             if len(solver_input_spec) > 0:
                 self.__init_message = f"Missing inputs: {str(set(solver_input_spec.keys()))}"
                 return
-            for id, link in solver_outputs.items():
-                ensure_data(link, solver_output_spec[id])
-                chain_nodes(solver_node, Node(id), data[link])
+            for slot_id, id in solver_outputs.items():
+                output_type = solver_output_spec[slot_id]
+                if id in data and not is_subtype(output_type, data[id].get_item()):
+                    self.__init_message = f"Type mismatch: {id}"
+                    return
+                if id not in data:
+                    data[id] = Node(output_type)
+                chain_nodes(solver_node, Node(slot_id), data[id])
         
         self.__init_message = ""
         for d in description:

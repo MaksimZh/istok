@@ -111,9 +111,23 @@ class Test_Diamond(Test_Solver):
 
 class Test_Fail(unittest.TestCase):
     
-    def test1(self):
+    def test_missing_input(self):
         b = Block([
             (W, {}, {}),
         ],
         inputs=[], outputs=[])
         self.assertTrue(b.get_init_message().startswith("Missing inputs:"))
+        
+        b = Block([
+            (W, {"a": "aa"}, {}),
+        ],
+        inputs=[], outputs=[])
+        self.assertTrue(b.get_init_message().startswith("Missing inputs:"))
+
+    def test_type_mismatch(self):
+        b = Block([
+            (W, {"a": "a1", "b": "b1"}, {"c": "c1", "d": "d1"}),
+            (W, {"a": "d1", "b": "c1"}, {"c": "c2", "d": "d2"}),
+        ],
+        inputs=["a1", "b1"], outputs=["c2", "d2"])
+        self.assertTrue(b.get_init_message().startswith("Type mismatch:"))
