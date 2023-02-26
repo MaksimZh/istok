@@ -1,3 +1,5 @@
+import unittest
+
 from istok.solver import Block, Wrapper
 from .base_test import Test_Solver
 
@@ -24,6 +26,10 @@ class Test_Single(Test_Solver):
         self.valid_output = {"cc": 10, "dd": "foofoo"}
         self.error_inputs = [{"aa": 5, "bb": "error"}]
 
+    def test_init_factory(self):
+        assert isinstance(self.factory, Block)
+        self.assertEqual(self.factory.get_init_message(), "OK")
+
 
 class Test_Chain(Test_Solver):
     
@@ -42,6 +48,10 @@ class Test_Chain(Test_Solver):
         self.valid_input = {"aa": 5, "bb": "foo"}
         self.valid_output = {"cc": 40, "dd": "foofoofoofoofoofoofoofoo"}
         self.error_inputs = [{"aa": 5, "bb": "error"}]
+
+    def test_init_factory(self):
+        assert isinstance(self.factory, Block)
+        self.assertEqual(self.factory.get_init_message(), "OK")
 
 
 class Test_Cross(Test_Solver):
@@ -67,6 +77,10 @@ class Test_Cross(Test_Solver):
             {"i1": 5, "i2": 7, "s1": "a", "s2": "err"},
             ]
 
+    def test_init_factory(self):
+        assert isinstance(self.factory, Block)
+        self.assertEqual(self.factory.get_init_message(), "OK")
+
 
 class Test_Diamond(Test_Solver):
     
@@ -89,3 +103,17 @@ class Test_Diamond(Test_Solver):
             {"i1": 5, "s1": "error"},
             {"i1": 5, "s1": "err"},
             ]
+        
+    def test_init_factory(self):
+        assert isinstance(self.factory, Block)
+        self.assertEqual(self.factory.get_init_message(), "OK")
+
+
+class Test_Fail(unittest.TestCase):
+    
+    def test1(self):
+        b = Block([
+            (W, {}, {}),
+        ],
+        inputs=[], outputs=[])
+        self.assertTrue(b.get_init_message().startswith("Missing inputs:"))

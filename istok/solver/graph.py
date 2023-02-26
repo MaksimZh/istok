@@ -63,6 +63,12 @@ class Node(Status):
         return self.__outputs
 
 
+def chain_nodes(*nodes: Node) -> None:
+    for a, b in zip(nodes, nodes[1:]):
+        a.add_output(b)
+        b.add_input(a)
+
+
 N = TypeVar("N", bound=Node)
 
 def process_graph(func: Callable[[Node], N],
@@ -84,14 +90,10 @@ def _process_graph_iter(func: Callable[[Node], N], node: Node,
     mapping[node] = new_node
     for input in node.get_inputs():
         if input in mapping:
-            new_input = mapping[input]
-            new_node.add_input(new_input)
-            new_input.add_output(new_node)
+            chain_nodes(mapping[input], new_node)
     for output in node.get_outputs():
         if output in mapping:
-            new_output = mapping[output]
-            new_node.add_output(new_output)
-            new_output.add_input(new_node)
+            chain_nodes(new_node, mapping[output])
     for input in node.get_inputs():
         _process_graph_iter(func, input, mapping)
     for output in node.get_outputs():

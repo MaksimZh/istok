@@ -2,7 +2,7 @@ from typing import Any
 
 from istok.tools import status
 from istok.solver.base import Solver, SolverFactory, DataContainer
-from istok.solver.graph import Node, process_graph
+from istok.solver.graph import Node, chain_nodes, process_graph
 
 
 SolverNodeDescription = tuple[SolverFactory, dict[str, str], dict[str, str]]
@@ -216,6 +216,7 @@ class Block(SolverFactory):
 
     __inputs: dict[str, Node]
     __outputs: dict[str, Node]
+    __init_message: str
 
     
     # CONSTRUCTOR
@@ -223,31 +224,43 @@ class Block(SolverFactory):
             inputs: list[str], outputs: list[str]) -> None:
         super().__init__()
         data = dict[str, Node]()
-        for solver, solver_inputs, solver_outputs in description:
+
+        def ensure_data(id: str, data_type: type) -> None:
+            if id not in data:
+                data[id] = Node(data_type)
+
+        def add_solver(description: SolverNodeDescription) -> None:
+            solver, solver_inputs, solver_outputs = description
             solver_node = Node(solver)
-            solver_input_spec = solver.get_input_spec()
+            solver_input_spec = solver.get_input_spec().copy()
             solver_output_spec = solver.get_output_spec()
             for id, link in solver_inputs.items():
-                slot_node = Node(id)
-                if link not in data:
-                    data[link] = Node(solver_input_spec[id])
-                data[link].add_output(slot_node)
-                slot_node.add_input(data[link])
-                slot_node.add_output(solver_node)
-                solver_node.add_input(slot_node)
+                ensure_data(link, solver_input_spec[id])
+                chain_nodes(data[link], Node(id), solver_node)
+                del solver_input_spec[id]
+            if len(solver_input_spec) > 0:
+                self.__init_message = f"Missing inputs: {str(set(solver_input_spec.keys()))}"
+                return
             for id, link in solver_outputs.items():
-                slot_node = Node(id)
-                if link not in data:
-                    data[link] = Node(solver_output_spec[id])
-                solver_node.add_output(slot_node)
-                slot_node.add_input(solver_node)
-                slot_node.add_output(data[link])
-                data[link].add_input(slot_node)
+                ensure_data(link, solver_output_spec[id])
+                chain_nodes(solver_node, Node(id), data[link])
+        
+        self.__init_message = ""
+        for d in description:
+            add_solver(d)
+            if self.__init_message != "":
+                return
+            
         self.__inputs = dict((id, data[id]) for id in inputs)
         self.__outputs = dict((id, data[id]) for id in outputs)
+        self.__init_message = "OK"
 
     
     # QUERIES
+
+    # Get initialization result message
+    def get_init_message(self) -> str:
+        return self.__init_message
     
     # Create solver with empty inputs and outputs
     def create(self) -> Solver:
