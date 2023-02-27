@@ -53,15 +53,15 @@ end_equation_solver = Block([], [], [])
 boundary_value_calculator = Block([], [], [])
 fitting_matrix_calculator = Block([], [], [])
 wavefunction_calculator = Block([], [], [])
+local_solutions_calculator = Block([], [], [])
+localization_rate_calculator = Block([], [], [])
 
-
-radial_equation_solver = Block([
+local_solutions_calculator = Block([
         (start_equation_solver,
             {
                 "equation": "equation",
                 "energy": "energy",
                 "mesh": "??",
-                "r_approx": "??",
             },
             {
                 "solutions": "start_solutions",
@@ -70,8 +70,7 @@ radial_equation_solver = Block([
             {
                 "equation": "equation",
                 "energy": "energy",
-                "mesh": "??",
-                "boundaries": "??",
+                "meshes": "??",
             },
             {
                 "solutions": "middle_solutions",
@@ -80,7 +79,7 @@ radial_equation_solver = Block([
             {
                 "equation": "equation",
                 "energy": "energy",
-                "boundary": "??",
+                "mesh": "??",
             },
             {
                 "solutions": "end_solutions",
@@ -115,9 +114,51 @@ radial_equation_solver = Block([
         "energy",
     ],
     [
+        "local_solutions",
+    ])
+
+
+radial_equation_solver = Block([
+        (local_solutions_calculator,
+            {
+                "equation": "equation",
+                "energy": "energy",
+                "mesh": "mesh",
+            },
+            {
+                "local_solutions": "local_solutions",
+            }),
+        (fitting_matrix_calculator,
+            {
+                "local_solutions": "local_solutions",
+            },
+            {
+                "fitting_matrices": "fitting_matrices",
+            }),
+        (wavefunction_calculator,
+            {
+                "fitting_matrices": "fitting_matrices",
+                "local_solutions": "local_solutions",
+            },
+            {
+                "wavefunction": "wavefunction",
+            }),
+        (localization_rate_calculator,
+            {
+                "fitting_matrices": "fitting_matrices",
+            },
+            {
+                "localization_rate": "localization_rate"
+            })
+    ],
+    [
+        "equation",
+        "mesh",
+        "energy",
+    ],
+    [
         "wavefunction",
         "localization_rate",
-        "faraway_amplitudes",
     ])
 
 
@@ -147,7 +188,6 @@ spherical_wavefunction_solver = Block([
             {
                 "wavefunction": "wavefunction",
                 "localization_rate": "localization_rate",
-                "faraway_amplitudes": "faraway_amplitudes",
             }),
     ],
     inputs=[
@@ -160,5 +200,4 @@ spherical_wavefunction_solver = Block([
     outputs=[
         "wavefunction",
         "localization_rate",
-        "faraway_amplitudes",
     ])
