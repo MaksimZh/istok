@@ -1,203 +1,258 @@
-from typing import NamedTuple
+from typing import Iterable
 import numpy as np
-from nptyping import NDArray, Shape, Complex
+from nptyping import NDArray, Shape, Complex, Float
+from dataclasses import dataclass
+from scipy.interpolate import Akima1DInterpolator
+import scipy.constants as const
 
 from istok.solver import Block, Wrapper
 
 
-class BulkHamiltonian:
-    
-    # QUERIES
+class AngularMomentum:
 
-    def get_tensor(self) -> NDArray[Shape["*, *, 4, 4"], Complex]:
-        return np.zeros((6, 6, 4, 4), dtype=complex)
+    __enumerator: int
+
+    def __init__(self, value: float) -> None:
+        self.__enumerator = int(2 * value)
+        assert abs(self.__enumerator - 2 * value) < 1e-5
+
+    def is_int(self) -> bool:
+        return self.__enumerator % 2 == 0
+
+    def get_enumerator(self) -> int:
+        return self.__enumerator
+
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, int) or isinstance(other, float):
+            return abs(self.__enumerator / 2 - other) < 1e-5
+        if isinstance(other, AngularMomentum):
+            return self.__enumerator == other.__enumerator
+        return False
+
+    def __int__(self) -> int:
+        assert self.is_int()
+        return self.__enumerator // 2
+
+    def __float__(self) -> float:
+        return self.__enumerator / 2
+
+    def __pos__(self) -> "AngularMomentum":
+        return self
+
+    def __neg__(self) -> "AngularMomentum":
+        return AngularMomentum(-self.__enumerator / 2)
+
+    def __add__(self, other: "AngularMomentum | int | float") -> "AngularMomentum":
+        if isinstance(other, int) or isinstance(other, float):
+            return AngularMomentum(self.__enumerator / 2 + other)
+        return AngularMomentum((self.__enumerator + other.__enumerator) / 2)
+
+    def __sub__(self, other: "AngularMomentum | int | float") -> "AngularMomentum":
+        if isinstance(other, int) or isinstance(other, float):
+            return AngularMomentum(self.__enumerator / 2 - other)
+        return AngularMomentum((self.__enumerator - other.__enumerator) / 2)
+
+    def __mul__(self, other: int) -> "AngularMomentum":
+        return AngularMomentum((self.__enumerator * other) / 2)
+
+    def __rmul__(self, other: int) -> "AngularMomentum":
+        return AngularMomentum((self.__enumerator * other) / 2)
 
 
-class AngularParams(NamedTuple):
-    j: float
-    l: int
+@dataclass(frozen=True)
+class AngularCoefs:
+
+    j: AngularMomentum
+    l: AngularMomentum
+    wm: float
+    wp: float
+    w: float
+    w2: float
+
+    def __init__(self, j: AngularMomentum, l: AngularMomentum) -> None:
+        if l == j - 1/2:
+            self.__init_lo(j)
+            return
+        if l == j + 1/2:
+            self.__init_hi(j)
+            return
+        assert False
+
+    def __init_lo(self, j: AngularMomentum) -> None:
+        setattr(self, "wm", np.sqrt(float(2 * j + 3) / float(12 * j)))
+        setattr(self, "wp", np.sqrt(float(2 * j - 1) / float(4 * j)))
+        setattr(self, "w", -float(2 * j - 3) / float(4 * j))
+        setattr(self, "w2", np.sqrt(3 * float(2 * j - 1) * float(2 * j + 3)) / float(4 * j))
+
+    def __init_hi(self, j: AngularMomentum) -> None:
+        setattr(self, "wm", np.sqrt(float(2 * j + 3) / float(4 * (j + 1))))
+        setattr(self, "wp", np.sqrt(float(2 * j - 1) / float(12 * (j + 1))))
+        setattr(self, "w", -float(2 * j + 5) / float(4 * (j + 1)))
+        setattr(self, "w2", np.sqrt(3 * float(2 * j - 1) * float(2 * j + 3)) / float(4 * (j + 1)))
+
+
+@dataclass(frozen=True)
+class AngularCoefs:
+
+    j: AngularMomentum
+    l: AngularMomentum
+    wm: float
+    wp: float
+    w: float
+    w2: float
+
+    def __init__(self, j: AngularMomentum, l: AngularMomentum) -> None:
+        if l == j - 1/2:
+            self.__init_lo(j)
+            return
+        if l == j + 1/2:
+            self.__init_hi(j)
+            return
+        assert False
+
+    def __init_lo(self, j: AngularMomentum) -> None:
+        setattr(self, "wm", np.sqrt(float(2 * j + 3) / float(12 * j)))
+        setattr(self, "wp", np.sqrt(float(2 * j - 1) / float(4 * j)))
+        setattr(self, "w", -float(2 * j - 3) / float(4 * j))
+        setattr(self, "w2", np.sqrt(3 * float(2 * j - 1) * float(2 * j + 3)) \
+            / float(4 * j))
+
+    def __init_hi(self, j: AngularMomentum) -> None:
+        setattr(self, "wm", np.sqrt(float(2 * j + 3) / float(4 * (j + 1))))
+        setattr(self, "wp", np.sqrt(float(2 * j - 1) / float(12 * (j + 1))))
+        setattr(self, "w", -float(2 * j + 5) / float(4 * (j + 1)))
+        setattr(self, "w2", np.sqrt(3 * float(2 * j - 1) * float(2 * j + 3)) \
+            / float(4 * (j + 1)))
+
+
+@dataclass(frozen=True)
+class MaterialParams:
+
+    eg: float
+    p: float
+    ac: float
+    gamma: float
+    nu: float
+    cf: float
+
+    def __init__(self, x: float) -> None:
+        hb2m = const.hbar**2 / (2 * const.electron_mass) \
+            / (const.milli * const.electron_volt) \
+            / const.nano**2
+        e2eps = const.e**2 / (4 * const.pi * const.epsilon_0) \
+            / (const.milli * const.electron_volt) \
+            / const.nano
+        ep = 18.8
+        egHgTe = -303
+        egCdTe = 1606
+        eg2 = -132
+        dHgTe = 1080
+        dCdTe = 910
+        fHgTe = 0
+        fCdTe = -0.09
+        eps0HgTe = 20.8
+        eps0CdTe = 10.2
+        gamma1HgTe = 4.1
+        gamma1CdTe = 1.47
+        gamma2HgTe = 0.5
+        gamma2CdTe = -0.28
+        gamma3HgTe = 1.3
+        gamma3CdTe = 0.03
+        delta = dHgTe * (1 - x) + dCdTe * x
+        f = fHgTe * (1 - x) + fCdTe * x
+        gamma1 = gamma1HgTe * (1 - x) + gamma1CdTe * x
+        gamma2 = gamma2HgTe * (1 - x) + gamma2CdTe * x
+        gamma3 = gamma3HgTe * (1 - x) + gamma3CdTe * x
+        eps0 = eps0HgTe * (1 - x) + eps0CdTe * x
+        setattr(self, "eg", egHgTe * (1 - x) + egCdTe * x + eg2 * x * (1 - x))
+        setattr(self, "p", np.sqrt(ep / const.milli * hb2m))
+        setattr(self, "ac", hb2m * (1 + 2 * f) + self.p**2 / 3 / (self.eg + delta))
+        setattr(self, "gamma", hb2m * gamma1)
+        setattr(self, "nu", 2 * hb2m * (2 * gamma2 + 3 * gamma3) / 5)
+        setattr(self, "cf", e2eps / eps0)
 
 
 class SphericalHamiltonian:
-    pass
+
+    __tensor: NDArray[Shape["*, *, 3, 3"], Complex]
+    __orbital_momentum: tuple[AngularMomentum, ...]
 
 
-class Potential:
-    pass
+    # CONSTRUCTOR
+
+    def __init__(self,
+            tensor: NDArray[Shape["*, *, 3, 3"], Complex],
+            orbital_momentum: Iterable[AngularMomentum]) -> None:
+        self.__tensor = tensor
+        self.__orbital_momentum = tuple(orbital_momentum)
+        assert tensor.shape[0] == tensor.shape[1]
+        assert len(self.__orbital_momentum) == self.__tensor.shape[0]
+
+
+    # QUERIES
+
+    def get_tensor(self) -> NDArray[Shape["*, *, 3, 3"], Complex]:
+        return self.__tensor
+
+    def get_orbital_momentum(self) -> tuple[AngularMomentum, ...]:
+        return self.__orbital_momentum
 
 
 class RadialEquation:
-    pass
+
+    __tensor_interpolator: Akima1DInterpolator
+
+    # CONSTRUCTOR
+    def __init__(self, radial_mesh: NDArray[Shape["*"], Float],
+            tensor_mesh: NDArray[Shape["*, 3, *, *"], Complex]) -> None:
+        self.__tensor_interpolator = Akima1DInterpolator(radial_mesh, tensor_mesh)
+
+    # QUERIES
+    def get_tensor(self, r: float) -> NDArray[Shape["3, *, *"], Complex]:
+        return self.__tensor_interpolator(r)  #type: ignore
 
 
-def calc_spherical_hamiltonian(
-        hamiltonian: BulkHamiltonian,
-        angular_params: AngularParams) -> SphericalHamiltonian:
-    return SphericalHamiltonian()
+def calc_spherical_bulk_hamiltonian(x: float,
+        j: AngularMomentum, l: AngularMomentum) -> SphericalHamiltonian:
+    par = MaterialParams(x)
+    ang = AngularCoefs(j, l)
+    eg = par.eg
+    ac = par.ac
+    pp = par.p * ang.wp
+    pm = par.p * ang.wm
+    gp = par.gamma + par.nu * ang.w
+    gm = par.gamma - par.nu * ang.w
+    n2 = par.nu * ang.w2
+
+    one = np.array([
+        [1, 0, 0],
+        [0, 0, 0],
+        [0, 0, 0],
+    ])
+    kpr = np.array([
+        [0, 1, 0],
+        [0, 0, 0],
+        [0, 0, 0],
+    ])
+    kmr = np.array([
+        [0, 0, 1],
+        [0, 0, 0],
+        [0, 0, 0],
+    ])
+
+    kpl = kmr.T
+    kml = kpr.T
+
+    tensor = np.array([
+        [eg * one + ac * kml @ kpr,  pm * kmr,  pp * kpr],
+        [pm * kpl,  -gp * kml @ kpr,  -n2 * kpl @ kpr],
+        [pp * kml,  -n2 * kml @ kmr,  -gm * kml @ kpr],
+    ], dtype=complex)
+    return SphericalHamiltonian(tensor, (l, l + 1, l - 1))
 
 
 def build_radial_equation(
-        hamiltonian: SphericalHamiltonian,
-        potential: Potential) -> RadialEquation:
-    return RadialEquation()
-
-
-spherical_hamiltonian_builder = \
-    Wrapper(calc_spherical_hamiltonian, ["spherical_hamiltonian"])
-radial_equation_builder = \
-    Wrapper(build_radial_equation, ["radial_equation"])
-
-start_equation_solver = Block([], [], [])
-middle_equation_solver = Block([], [], [])
-end_equation_solver = Block([], [], [])
-boundary_value_calculator = Block([], [], [])
-fitting_matrix_calculator = Block([], [], [])
-wavefunction_calculator = Block([], [], [])
-local_solutions_calculator = Block([], [], [])
-localization_rate_calculator = Block([], [], [])
-
-local_solutions_calculator = Block([
-        (start_equation_solver,
-            {
-                "equation": "equation",
-                "energy": "energy",
-                "mesh": "??",
-            },
-            {
-                "solutions": "start_solutions",
-            }),
-        (middle_equation_solver,
-            {
-                "equation": "equation",
-                "energy": "energy",
-                "meshes": "??",
-            },
-            {
-                "solutions": "middle_solutions",
-            }),
-        (end_equation_solver,
-            {
-                "equation": "equation",
-                "energy": "energy",
-                "mesh": "??",
-            },
-            {
-                "solutions": "end_solutions",
-            }),
-        (boundary_value_calculator,
-            {
-                "start": "start_solutions",
-                "middle": "middle_solutions",
-                "end": "end_solutions",
-            },
-            {
-                "boundary_values": "boundary_values",
-            }),
-        (fitting_matrix_calculator,
-            {
-                "boundary_values": "boundary_values",
-            },
-            {
-                "fitting_matrices": "fitting_matrices",
-            }),
-        (wavefunction_calculator,
-            {
-                "fitting_matrices": "fitting_matrices",
-            },
-            {
-                "wavefunction": "wavefunction",
-            })
-    ],
-    [
-        "equation",
-        "mesh",
-        "energy",
-    ],
-    [
-        "local_solutions",
-    ])
-
-
-radial_equation_solver = Block([
-        (local_solutions_calculator,
-            {
-                "equation": "equation",
-                "energy": "energy",
-                "mesh": "mesh",
-            },
-            {
-                "local_solutions": "local_solutions",
-            }),
-        (fitting_matrix_calculator,
-            {
-                "local_solutions": "local_solutions",
-            },
-            {
-                "fitting_matrices": "fitting_matrices",
-            }),
-        (wavefunction_calculator,
-            {
-                "fitting_matrices": "fitting_matrices",
-                "local_solutions": "local_solutions",
-            },
-            {
-                "wavefunction": "wavefunction",
-            }),
-        (localization_rate_calculator,
-            {
-                "fitting_matrices": "fitting_matrices",
-            },
-            {
-                "localization_rate": "localization_rate"
-            })
-    ],
-    [
-        "equation",
-        "mesh",
-        "energy",
-    ],
-    [
-        "wavefunction",
-        "localization_rate",
-    ])
-
-
-spherical_wavefunction_solver = Block([
-        (spherical_hamiltonian_builder,
-            {
-                "hamiltonian": "bulk_hamiltonian",
-                "angular_params": "angular_params",
-            },
-            {
-                "spherical_hamiltonian": "spherical_hamiltonian",
-            }),
-        (radial_equation_builder,
-            {
-                "hamiltonian": "spherical_hamiltonian",
-                "potential": "potential",
-            },
-            {
-                "radial_equation": "radial_equation",
-            }),
-        (radial_equation_solver,
-            {
-                "equation": "radial_equation",
-                "mesh": "mesh",
-                "energy": "energy",
-            },
-            {
-                "wavefunction": "wavefunction",
-                "localization_rate": "localization_rate",
-            }),
-    ],
-    inputs=[
-        "bulk_hamiltonian",
-        "angular_params",
-        "potential",
-        "mesh",
-        "energy",
-    ],
-    outputs=[
-        "wavefunction",
-        "localization_rate",
-    ])
+        bulk_hamiltonian: SphericalHamiltonian,
+        radial_mesh: NDArray[Shape["*"], Float],
+        potential_mesh: NDArray[Shape["*"], Float]) -> RadialEquation:
+    assert False
