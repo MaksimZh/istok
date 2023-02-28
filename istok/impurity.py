@@ -92,40 +92,6 @@ class AngularCoefs:
 
 
 @dataclass(frozen=True)
-class AngularCoefs:
-
-    j: AngularMomentum
-    l: AngularMomentum
-    wm: float
-    wp: float
-    w: float
-    w2: float
-
-    def __init__(self, j: AngularMomentum, l: AngularMomentum) -> None:
-        if l == j - 1/2:
-            self.__init_lo(j)
-            return
-        if l == j + 1/2:
-            self.__init_hi(j)
-            return
-        assert False
-
-    def __init_lo(self, j: AngularMomentum) -> None:
-        setattr(self, "wm", np.sqrt(float(2 * j + 3) / float(12 * j)))
-        setattr(self, "wp", np.sqrt(float(2 * j - 1) / float(4 * j)))
-        setattr(self, "w", -float(2 * j - 3) / float(4 * j))
-        setattr(self, "w2", np.sqrt(3 * float(2 * j - 1) * float(2 * j + 3)) \
-            / float(4 * j))
-
-    def __init_hi(self, j: AngularMomentum) -> None:
-        setattr(self, "wm", np.sqrt(float(2 * j + 3) / float(4 * (j + 1))))
-        setattr(self, "wp", np.sqrt(float(2 * j - 1) / float(12 * (j + 1))))
-        setattr(self, "w", -float(2 * j + 5) / float(4 * (j + 1)))
-        setattr(self, "w2", np.sqrt(3 * float(2 * j - 1) * float(2 * j + 3)) \
-            / float(4 * (j + 1)))
-
-
-@dataclass(frozen=True)
 class MaterialParams:
 
     eg: float
