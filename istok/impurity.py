@@ -198,20 +198,6 @@ class SphericalHamiltonian:
         return self.__orbital_momentum
 
 
-class RadialEquation:
-
-    __tensor_interpolator: Akima1DInterpolator
-
-    # CONSTRUCTOR
-    def __init__(self, radial_mesh: NDArray[Shape["*"], Float],
-            tensor_mesh: NDArray[Shape["*, 3, *, *"], Complex]) -> None:
-        self.__tensor_interpolator = Akima1DInterpolator(radial_mesh, tensor_mesh)
-
-    # QUERIES
-    def get_tensor(self, r: float) -> NDArray[Shape["3, *, *"], Complex]:
-        return self.__tensor_interpolator(r)  #type: ignore
-
-
 def calc_spherical_bulk_hamiltonian(x: float,
         j: AngularMomentum, l: AngularMomentum) -> SphericalHamiltonian:
     par = MaterialParams(x)
@@ -249,6 +235,20 @@ def calc_spherical_bulk_hamiltonian(x: float,
         [pp * kml,  -n2 * kml @ kmr,  -gm * kml @ kpr],
     ], dtype=complex)
     return SphericalHamiltonian(tensor, (l, l + 1, l - 1))
+
+
+class RadialEquation:
+
+    __tensor_interpolator: Akima1DInterpolator
+
+    # CONSTRUCTOR
+    def __init__(self, radial_mesh: NDArray[Shape["*"], Float],
+            tensor_mesh: NDArray[Shape["*, 3, *, *"], Complex]) -> None:
+        self.__tensor_interpolator = Akima1DInterpolator(radial_mesh, tensor_mesh)
+
+    # QUERIES
+    def get_tensor(self, r: float) -> NDArray[Shape["3, *, *"], Complex]:
+        return self.__tensor_interpolator(r)  #type: ignore
 
 
 def build_radial_equation(
