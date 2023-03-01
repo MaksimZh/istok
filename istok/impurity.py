@@ -265,6 +265,9 @@ def build_radial_equation(
     radius = xr.DataArray(radius_mesh, dims="r")
     radius_pow = radius ** pows
     tensor_mesh = (equation_coefs * radius_pow).sum("pow").transpose("deriv", "r", "u+", "u")
+    potential = radius_pow[{"pow": 2}] * xr.DataArray(potential_mesh, dims="r")
+    for i in range(tensor_mesh.sizes["u"]):
+        tensor_mesh[{"deriv": 0, "u+": i, "u": i}] += potential
     d2_matrix_mesh = tensor_mesh[{"deriv": 2}]
     inv_d2_matrix_mesh = xr.DataArray(np.linalg.inv(d2_matrix_mesh.data), dims=("r", "u+", "u*"))
     lo_tensor_mesh = tensor_mesh[{"deriv": slice(0, 2)}]
