@@ -1,5 +1,6 @@
 from typing import Iterable
 import numpy as np
+import xarray as xr
 from nptyping import NDArray, Shape, Complex, Float
 from dataclasses import dataclass
 from scipy.interpolate import Akima1DInterpolator
@@ -59,7 +60,7 @@ class AngularMomentum:
         return AngularMomentum((self.__enumerator * other) / 2)
 
 
-@dataclass(frozen=True)
+@dataclass
 class AngularCoefs:
 
     j: AngularMomentum
@@ -79,19 +80,19 @@ class AngularCoefs:
         assert False
 
     def __init_lo(self, j: AngularMomentum) -> None:
-        setattr(self, "wm", np.sqrt(float(2 * j + 3) / float(12 * j)))
-        setattr(self, "wp", np.sqrt(float(2 * j - 1) / float(4 * j)))
-        setattr(self, "w", -float(2 * j - 3) / float(4 * j))
-        setattr(self, "w2", np.sqrt(3 * float(2 * j - 1) * float(2 * j + 3)) / float(4 * j))
+        self.wm = np.sqrt(float(2 * j + 3) / float(12 * j))
+        self.wp = np.sqrt(float(2 * j - 1) / float(4 * j))
+        self.w = -float(2 * j - 3) / float(4 * j)
+        self.w2 = np.sqrt(3 * float(2 * j - 1) * float(2 * j + 3)) / float(4 * j)
 
     def __init_hi(self, j: AngularMomentum) -> None:
-        setattr(self, "wm", np.sqrt(float(2 * j + 3) / float(4 * (j + 1))))
-        setattr(self, "wp", np.sqrt(float(2 * j - 1) / float(12 * (j + 1))))
-        setattr(self, "w", -float(2 * j + 5) / float(4 * (j + 1)))
-        setattr(self, "w2", np.sqrt(3 * float(2 * j - 1) * float(2 * j + 3)) / float(4 * (j + 1)))
+        self.wm = np.sqrt(float(2 * j + 3) / float(4 * (j + 1)))
+        self.wp = np.sqrt(float(2 * j - 1) / float(12 * (j + 1)))
+        self.w = -float(2 * j + 5) / float(4 * (j + 1))
+        self.w2 = np.sqrt(3 * float(2 * j - 1) * float(2 * j + 3)) / float(4 * (j + 1))
 
 
-@dataclass(frozen=True)
+@dataclass
 class MaterialParams:
 
     eg: float
@@ -130,24 +131,24 @@ class MaterialParams:
         gamma2 = gamma2HgTe * (1 - x) + gamma2CdTe * x
         gamma3 = gamma3HgTe * (1 - x) + gamma3CdTe * x
         eps0 = eps0HgTe * (1 - x) + eps0CdTe * x
-        setattr(self, "eg", egHgTe * (1 - x) + egCdTe * x + eg2 * x * (1 - x))
-        setattr(self, "p", np.sqrt(ep / const.milli * hb2m))
-        setattr(self, "ac", hb2m * (1 + 2 * f) + self.p**2 / 3 / (self.eg + delta))
-        setattr(self, "gamma", hb2m * gamma1)
-        setattr(self, "nu", 2 * hb2m * (2 * gamma2 + 3 * gamma3) / 5)
-        setattr(self, "cf", e2eps / eps0)
+        self.eg = egHgTe * (1 - x) + egCdTe * x + eg2 * x * (1 - x)
+        self.p = np.sqrt(ep / const.milli * hb2m)
+        self.ac = hb2m * (1 + 2 * f) + self.p**2 / 3 / (self.eg + delta)
+        self.gamma = hb2m * gamma1
+        self.nu = 2 * hb2m * (2 * gamma2 + 3 * gamma3) / 5
+        self.cf = e2eps / eps0
 
 
 class SphericalHamiltonian:
 
-    __tensor: NDArray[Shape["*, *, 3, 3"], Complex]
+    __tensor: NDArray[Shape["*, *, 3, 3"], Float]
     __orbital_momentum: tuple[AngularMomentum, ...]
 
 
     # CONSTRUCTOR
 
     def __init__(self,
-            tensor: NDArray[Shape["*, *, 3, 3"], Complex],
+            tensor: NDArray[Shape["*, *, 3, 3"], Float],
             orbital_momentum: Iterable[AngularMomentum]) -> None:
         self.__tensor = tensor
         self.__orbital_momentum = tuple(orbital_momentum)
@@ -157,7 +158,7 @@ class SphericalHamiltonian:
 
     # QUERIES
 
-    def get_tensor(self) -> NDArray[Shape["*, *, 3, 3"], Complex]:
+    def get_tensor(self) -> NDArray[Shape["*, *, 3, 3"], Float]:
         return self.__tensor
 
     def get_orbital_momentum(self) -> tuple[AngularMomentum, ...]:
@@ -199,7 +200,7 @@ def calc_spherical_bulk_hamiltonian(x: float,
         [eg * one + ac * kml @ kpr,  pm * kmr,  pp * kpr],
         [pm * kpl,  -gp * kml @ kpr,  -n2 * kpl @ kpr],
         [pp * kml,  -n2 * kml @ kmr,  -gm * kml @ kpr],
-    ], dtype=complex)
+    ], dtype=float)
     return SphericalHamiltonian(tensor, (l, l + 1, l - 1))
 
 
@@ -208,17 +209,65 @@ class RadialEquation:
     __tensor_interpolator: Akima1DInterpolator
 
     # CONSTRUCTOR
-    def __init__(self, radial_mesh: NDArray[Shape["*"], Float],
-            tensor_mesh: NDArray[Shape["*, 3, *, *"], Complex]) -> None:
-        self.__tensor_interpolator = Akima1DInterpolator(radial_mesh, tensor_mesh)
+    def __init__(self, radius_mesh: NDArray[Shape["*"], Float],
+            tensor_mesh: NDArray[Shape["*, 2, *, *"], Float]) -> None:
+        self.__tensor_interpolator = Akima1DInterpolator(radius_mesh, tensor_mesh)
 
     # QUERIES
-    def get_tensor(self, r: float) -> NDArray[Shape["3, *, *"], Complex]:
+    def get_tensor(self, r: float) -> NDArray[Shape["3, *, *"], Float]:
         return self.__tensor_interpolator(r)  #type: ignore
 
 
 def build_radial_equation(
         bulk_hamiltonian: SphericalHamiltonian,
-        radial_mesh: NDArray[Shape["*"], Float],
+        radius_mesh: NDArray[Shape["*"], Float],
         potential_mesh: NDArray[Shape["*"], Float]) -> RadialEquation:
-    assert False
+    hamiltonian_coefs = xr.DataArray(
+        bulk_hamiltonian.get_tensor(),
+        dims=("u+", "u", "Ks+", "Ks"))
+    l = xr.DataArray([int(j) for j in bulk_hamiltonian.get_orbital_momentum()], dims="u")
+    
+    pattern = xr.DataArray(np.zeros((hamiltonian_coefs.sizes["u"], 3, 3, 3, 3)),
+        dims=("u", "Ks+", "Ks", "deriv", "pow"))
+
+    pattern[{"Ks+": 0, "Ks": 0, "deriv": 0, "pow": 2}] = 1
+
+    pattern[{"Ks+": 0, "Ks": 1, "deriv": 0, "pow": 1}] = l
+    pattern[{"Ks+": 0, "Ks": 1, "deriv": 1, "pow": 2}] = -1
+
+    pattern[{"Ks+": 0, "Ks": 2, "deriv": 0, "pow": 1}] = l + 1
+    pattern[{"Ks+": 0, "Ks": 2, "deriv": 1, "pow": 2}] = 1
+
+    pattern[{"Ks+": 1, "Ks": 0, "deriv": 0, "pow": 1}] = l + 1
+    pattern[{"Ks+": 1, "Ks": 0, "deriv": 1, "pow": 2}] = 1
+
+    pattern[{"Ks+": 1, "Ks": 1, "deriv": 0, "pow": 0}] = l * (l + 1)
+    pattern[{"Ks+": 1, "Ks": 1, "deriv": 1, "pow": 1}] = -2
+    pattern[{"Ks+": 1, "Ks": 1, "deriv": 2, "pow": 2}] = -1
+
+    pattern[{"Ks+": 1, "Ks": 2, "deriv": 0, "pow": 0}] = (l - 1) * (l + 1)
+    pattern[{"Ks+": 1, "Ks": 2, "deriv": 1, "pow": 1}] = 2 * l + 1
+    pattern[{"Ks+": 1, "Ks": 2, "deriv": 2, "pow": 2}] = 1
+
+    pattern[{"Ks+": 2, "Ks": 0, "deriv": 0, "pow": 1}] = l
+    pattern[{"Ks+": 2, "Ks": 0, "deriv": 1, "pow": 2}] = -1
+
+    pattern[{"Ks+": 2, "Ks": 1, "deriv": 0, "pow": 0}] = l * (l + 2)
+    pattern[{"Ks+": 2, "Ks": 1, "deriv": 1, "pow": 1}] = -(2 * l + 1)
+    pattern[{"Ks+": 2, "Ks": 1, "deriv": 2, "pow": 2}] = 1
+
+    pattern[{"Ks+": 2, "Ks": 2, "deriv": 0, "pow": 0}] = l * (l + 1)
+    pattern[{"Ks+": 2, "Ks": 2, "deriv": 1, "pow": 1}] = -2
+    pattern[{"Ks+": 2, "Ks": 2, "deriv": 2, "pow": 2}] = -1
+
+    equation_coefs = xr.dot(hamiltonian_coefs, pattern, dims=("Ks+", "Ks"))
+    pows = xr.DataArray(range(0, 3), dims="pow")
+    radius = xr.DataArray(radius_mesh, dims="r")
+    radius_pow = radius ** pows
+    tensor_mesh = (equation_coefs * radius_pow).sum("pow").transpose("deriv", "r", "u+", "u")
+    d2_matrix_mesh = tensor_mesh[{"deriv": 2}]
+    inv_d2_matrix_mesh = xr.DataArray(np.linalg.inv(d2_matrix_mesh.data), dims=("r", "u+", "u*"))
+    lo_tensor_mesh = tensor_mesh[{"deriv": slice(0, 2)}]
+    normalized_tensor_mesh = xr.dot(inv_d2_matrix_mesh, lo_tensor_mesh, dims=("u*")) \
+        .transpose("r", "deriv", "u+", "u")
+    return RadialEquation(radius_mesh, normalized_tensor_mesh.data)
