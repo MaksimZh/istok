@@ -214,7 +214,8 @@ class RadialEquation:
         self.__tensor_interpolator = Akima1DInterpolator(radius_mesh, tensor_mesh)
 
     # QUERIES
-    def get_tensor(self, r: float) -> NDArray[Shape["3, *, *"], Float]:
+    def get_tensor(self, r: float | NDArray[Shape["*"], Float]
+            ) -> NDArray[Shape["3, *, *"], Float]:
         return self.__tensor_interpolator(r)  #type: ignore
 
 
@@ -270,7 +271,7 @@ def build_radial_equation(
         tensor_mesh[{"deriv": 0, "u+": i, "u": i}] += potential
     d2_matrix_mesh = tensor_mesh[{"deriv": 2}]
     inv_d2_matrix_mesh = xr.DataArray(np.linalg.inv(d2_matrix_mesh.data), dims=("r", "u+", "u*"))
-    lo_tensor_mesh = tensor_mesh[{"deriv": slice(0, 2)}]
-    normalized_tensor_mesh = xr.dot(inv_d2_matrix_mesh, lo_tensor_mesh, dims=("u*")) \
+    lo_tensor_mesh = tensor_mesh[{"deriv": slice(0, 2)}].rename({"u+": "u*"})
+    normalized_tensor_mesh = -xr.dot(inv_d2_matrix_mesh, lo_tensor_mesh, dims=("u*")) \
         .transpose("r", "deriv", "u+", "u")
     return RadialEquation(radius_mesh, normalized_tensor_mesh.data)
