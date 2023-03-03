@@ -1,10 +1,17 @@
-from typing import Iterable
+from typing import Iterable, Any
 import numpy as np
 import xarray as xr
 from nptyping import NDArray, Shape, Float
 from dataclasses import dataclass
 from scipy.interpolate import Akima1DInterpolator
 import scipy.constants as const
+
+
+Array1D = NDArray[Shape["*"], Float]
+Array2D = NDArray[Shape["*, *"], Float]
+Array3D = NDArray[Shape["*, *, *"], Float]
+Array4D = NDArray[Shape["*, *, *, *"], Float]
+ArrayND = NDArray[Any, Float]
 
 
 class AngularMomentum:
@@ -213,13 +220,13 @@ class SingularRadialEquation:
 
     __max_radius: float
     __tensor_interpolator: Akima1DInterpolator
-    __zero_tensor: NDArray[Shape["*, *, *, *"], Float]
+    __zero_tensor: Array4D
 
     # CONSTRUCTOR
     # Create ODE using Akima interpolation for tensor
-    def __init__(self, radius_mesh: NDArray[Shape["*"], Float],
-            tensor_mesh: NDArray[Shape["*, *, *, *"], Float],
-            zero_tensor: NDArray[Shape["*, *, *, *"], Float]) -> None:
+    def __init__(self, radius_mesh: Array1D,
+            tensor_mesh: Array4D,
+            zero_tensor: Array4D) -> None:
         self.__max_radius = radius_mesh[-1]
         self.__tensor_interpolator = Akima1DInterpolator(radius_mesh, tensor_mesh)
         self.__zero_tensor = zero_tensor
@@ -231,19 +238,19 @@ class SingularRadialEquation:
         return self.__max_radius
 
     # Get values of ODE tensor T
-    def get_tensor(self, r: float | NDArray[Shape["*"], Float]
-            ) -> NDArray[Shape["*, *, *"], Float]:
+    def get_tensor(self, r: float | Array1D
+            ) -> Array3D:
         return self.__tensor_interpolator(r)  #type: ignore
     
     # Get values of ODE tensor D
-    def get_zero_tensor(self) -> NDArray[Shape["*, *, *, *"], Float]:
+    def get_zero_tensor(self) -> Array4D:
         return self.__zero_tensor
 
 
 def build_radial_equation(
         bulk_hamiltonian: SphericalHamiltonian,
-        radius_mesh: NDArray[Shape["*"], Float],
-        potential_mesh: NDArray[Shape["*"], Float],
+        radius_mesh: Array1D,
+        potential_mesh: Array1D,
         potential_coefs_m2: list[int]) -> SingularRadialEquation:
     hamiltonian_coefs = xr.DataArray(
         bulk_hamiltonian.get_tensor(),
@@ -305,3 +312,28 @@ def build_radial_equation(
         radius_mesh,
         normalized_tensor_mesh.data,
         zero_tensor.data)
+
+
+class GenPoly:
+
+    __coefs: Array2D
+    __pows: Array1D
+
+    # CONSTRUCTOR
+    def __init__(self, min_pow: float, coefs: Array2D) -> None:
+        npow = len(coefs)
+        self.__coefs = coefs
+        self.__pows = min_pow + np.arange(npow)
+
+
+    # QUERIES
+
+    def get_value(self, r: float | Array1D) -> ArrayND:
+        return r**self.__pows
+
+    def get_deriv(self, max_deriv: int, r: float | Array1D) -> ArrayND:
+        assert False
+
+
+def find_frobenius_solutions(ode: SingularRadialEquation) -> tuple[GenPoly, ...]:
+    assert False

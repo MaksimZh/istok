@@ -219,3 +219,20 @@ class Test_build_radial_equation(unittest.TestCase):
                 ],
             ],
         ])
+
+
+class Test_Polynomial(unittest.TestCase):
+
+    def test(self):
+        p = imp.GenPoly(1, np.array([
+            [1, 2, 3],
+            [4, 5, 6],
+        ]))
+        r = 2
+        np.testing.assert_almost_equal(p.get_value(r), [
+            [
+                1 * r + 4 * r**2,
+                2 * r + 5 * r**2,
+                3 * r + 6 * r**2,
+            ]
+        ])
