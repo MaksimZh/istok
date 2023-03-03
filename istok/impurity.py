@@ -211,6 +211,7 @@ def calc_spherical_bulk_hamiltonian(x: float,
 # The dimensions of tensor D are: [derivative, power of r, equation, component]
 class SingularRadialEquation:
 
+    __max_radius: float
     __tensor_interpolator: Akima1DInterpolator
     __zero_tensor: NDArray[Shape["*, *, *, *"], Float]
 
@@ -219,10 +220,15 @@ class SingularRadialEquation:
     def __init__(self, radius_mesh: NDArray[Shape["*"], Float],
             tensor_mesh: NDArray[Shape["*, *, *, *"], Float],
             zero_tensor: NDArray[Shape["*, *, *, *"], Float]) -> None:
+        self.__max_radius = radius_mesh[-1]
         self.__tensor_interpolator = Akima1DInterpolator(radius_mesh, tensor_mesh)
         self.__zero_tensor = zero_tensor
 
     # QUERIES
+
+    # Get maximal radius where the ODE is defined
+    def get_max_radius(self) -> float:
+        return self.__max_radius
 
     # Get values of ODE tensor T
     def get_tensor(self, r: float | NDArray[Shape["*"], Float]

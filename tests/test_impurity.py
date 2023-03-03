@@ -49,6 +49,7 @@ class Test_build_radial_equation(unittest.TestCase):
         radius = np.linspace(0.1, 3, 30)
         potential = z / radius
         eq = imp.build_radial_equation(hamilt, radius, potential, [p1, p2, p3])
+        self.assertAlmostEqual(eq.get_max_radius(), radius[-1])
         r = np.linspace(1, 2, 11)
         mx = (r[:, np.newaxis, np.newaxis] ** 2) * np.array([
             [b + c, 0, 0],
