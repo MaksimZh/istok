@@ -237,7 +237,8 @@ class SingularRadialEquation:
 def build_radial_equation(
         bulk_hamiltonian: SphericalHamiltonian,
         radius_mesh: NDArray[Shape["*"], Float],
-        potential_mesh: NDArray[Shape["*"], Float]) -> SingularRadialEquation:
+        potential_mesh: NDArray[Shape["*"], Float],
+        potential_coefs_m2: list[int]) -> SingularRadialEquation:
     hamiltonian_coefs = xr.DataArray(
         bulk_hamiltonian.get_tensor(),
         dims=("u+", "u", "Ks+", "Ks"))
@@ -291,6 +292,9 @@ def build_radial_equation(
         .transpose("r", "deriv", "u+", "u")
     
     zero_tensor = equation_coefs.transpose("deriv", "pow", "u+", "u")
+    potential_pow = xr.DataArray(potential_coefs_m2, dims="pow")
+    for i in range(tensor_mesh.sizes["u"]):
+        zero_tensor[{"deriv": 0, "u+": i, "u": i}] += potential_pow
     return SingularRadialEquation(
         radius_mesh,
         normalized_tensor_mesh.data,

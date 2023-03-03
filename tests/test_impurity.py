@@ -35,6 +35,7 @@ class Test_build_radial_equation(unittest.TestCase):
             [0, 0, 0],
             ])
         a, b, c, d, e, f, g, h, u, v, x, y, z = 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14
+        p1, p2, p3 = 15, 16, 17
 
         tensor = np.array([
             [a * one + b * kml @ kpr + c * kpl @ kmr, d * kmr, e * kpr],
@@ -47,7 +48,7 @@ class Test_build_radial_equation(unittest.TestCase):
             imp.AngularMomentum(1)))
         radius = np.linspace(0.1, 3, 30)
         potential = z / radius
-        eq = imp.build_radial_equation(hamilt, radius, potential)
+        eq = imp.build_radial_equation(hamilt, radius, potential, [p1, p2, p3])
         r = np.linspace(1, 2, 11)
         mx = (r[:, np.newaxis, np.newaxis] ** 2) * np.array([
             [b + c, 0, 0],
@@ -95,19 +96,19 @@ class Test_build_radial_equation(unittest.TestCase):
         np.testing.assert_almost_equal(m0, [
             [
                 [
-                    [(b + c) * 2 * (2 + 1), 0, 0],
-                    [0, (g + h) * 3 * (3 + 1), u * 1 * (1 + 2)],
-                    [0, u * (3 - 1) * (3 + 1), (x + y) * 1 * (1 + 1)],
+                    [(b + c) * 2 * (2 + 1) + p1, 0, 0],
+                    [0, (g + h) * 3 * (3 + 1) + p1, u * 1 * (1 + 2)],
+                    [0, u * (3 - 1) * (3 + 1), (x + y) * 1 * (1 + 1) + p1],
                 ],
                 [
-                    [0, d * (3 + 1), e * 1],
-                    [d * 2, 0, 0],
-                    [e * (2 + 1), 0, 0],
+                    [p2, d * (3 + 1), e * 1],
+                    [d * 2, p2, 0],
+                    [e * (2 + 1), 0, p2],
                 ],
                 [
-                    [a, 0, 0],
-                    [0, f, 0],
-                    [0, 0, v],
+                    [a + p3, 0, 0],
+                    [0, f + p3, 0],
+                    [0, 0, v + p3],
                 ],
             ],
             [
