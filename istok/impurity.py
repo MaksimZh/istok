@@ -1,12 +1,10 @@
 from typing import Iterable
 import numpy as np
 import xarray as xr
-from nptyping import NDArray, Shape, Complex, Float
+from nptyping import NDArray, Shape, Float
 from dataclasses import dataclass
 from scipy.interpolate import Akima1DInterpolator
 import scipy.constants as const
-
-from istok.solver import Block, Wrapper
 
 
 class AngularMomentum:
@@ -204,25 +202,42 @@ def calc_spherical_bulk_hamiltonian(x: float,
     return SphericalHamiltonian(tensor, (l, l + 1, l - 1))
 
 
-class RadialEquation:
+# Holds the following linear ODE:
+# f^(n) = T * (f, f^(1), ..., f^(n-1))
+# The dimensions of tensor T are: [derivative, equation, component]
+# The point r=0 is assumed to be singular and the equation at this point
+# is encoded as follows:
+# D * (1, d/dr, d2/dr2, ...) * (r^0, r^1, ...) * f = 0
+# The dimensions of tensor D are: [derivative, power of r, equation, component]
+class SingularRadialEquation:
 
     __tensor_interpolator: Akima1DInterpolator
+    __zero_tensor: NDArray[Shape["*, *, *, *"], Float]
 
     # CONSTRUCTOR
+    # Create ODE using Akima interpolation for tensor
     def __init__(self, radius_mesh: NDArray[Shape["*"], Float],
-            tensor_mesh: NDArray[Shape["*, 2, *, *"], Float]) -> None:
+            tensor_mesh: NDArray[Shape["*, *, *, *"], Float],
+            zero_tensor: NDArray[Shape["*, *, *, *"], Float]) -> None:
         self.__tensor_interpolator = Akima1DInterpolator(radius_mesh, tensor_mesh)
+        self.__zero_tensor = zero_tensor
 
     # QUERIES
+
+    # Get values of ODE tensor T
     def get_tensor(self, r: float | NDArray[Shape["*"], Float]
-            ) -> NDArray[Shape["3, *, *"], Float]:
+            ) -> NDArray[Shape["*, *, *"], Float]:
         return self.__tensor_interpolator(r)  #type: ignore
+    
+    # Get values of ODE tensor D
+    def get_zero_tensor(self) -> NDArray[Shape["*, *, *, *"], Float]:
+        return self.__zero_tensor
 
 
 def build_radial_equation(
         bulk_hamiltonian: SphericalHamiltonian,
         radius_mesh: NDArray[Shape["*"], Float],
-        potential_mesh: NDArray[Shape["*"], Float]) -> RadialEquation:
+        potential_mesh: NDArray[Shape["*"], Float]) -> SingularRadialEquation:
     hamiltonian_coefs = xr.DataArray(
         bulk_hamiltonian.get_tensor(),
         dims=("u+", "u", "Ks+", "Ks"))
@@ -274,4 +289,9 @@ def build_radial_equation(
     lo_tensor_mesh = tensor_mesh[{"deriv": slice(0, 2)}].rename({"u+": "u*"})
     normalized_tensor_mesh = -xr.dot(inv_d2_matrix_mesh, lo_tensor_mesh, dims=("u*")) \
         .transpose("r", "deriv", "u+", "u")
-    return RadialEquation(radius_mesh, normalized_tensor_mesh.data)
+    
+    zero_tensor = equation_coefs.transpose("deriv", "pow", "u+", "u")
+    return SingularRadialEquation(
+        radius_mesh,
+        normalized_tensor_mesh.data,
+        zero_tensor.data)
