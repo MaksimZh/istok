@@ -86,7 +86,7 @@ class AngularCoefs:
     def __init_hi(self, j: AngularMomentum) -> None:
         self.wm = np.sqrt(float(2 * j + 3) / float(4 * (j + 1)))
         self.wp = np.sqrt(float(2 * j - 1) / float(12 * (j + 1)))
-        self.w = -float(2 * j + 5) / float(4 * (j + 1))
+        self.w = float(2 * j + 5) / float(4 * (j + 1))
         self.w2 = np.sqrt(3 * float(2 * j - 1) * float(2 * j + 3)) / float(4 * (j + 1))
 
 

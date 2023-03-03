@@ -6,6 +6,78 @@ import numpy as np
 import istok.impurity as imp
 
 
+class Test_calc_spherical_bulk_hamiltonian(unittest.TestCase):
+
+    def test(self):
+        h = imp.calc_spherical_bulk_hamiltonian(
+            0.2, imp.AngularMomentum(3/2), imp.AngularMomentum(2))
+        eg = 57.68
+        p = 846.331281
+        ac = 253.058032
+        gamma = 136.168761
+        nu = 58.307966
+        wm = 0.77459667
+        wp = 0.25819889
+        w = 0.8
+        w2 = 0.6
+        t = h.get_tensor()
+        self.assertEqual(h.get_orbital_momentum(), (2, 3, 1))
+        np.testing.assert_almost_equal(t, [
+            [
+                [
+                    [eg, 0, 0],
+                    [0, ac, 0],
+                    [0, 0, 0],
+                ],
+                [
+                    [0, 0, p * wm],
+                    [0, 0, 0],
+                    [0, 0, 0],
+                ],
+                [
+                    [0, p * wp, 0],
+                    [0, 0, 0],
+                    [0, 0, 0],
+                ],
+            ],
+            [
+                [
+                    [0, 0, 0],
+                    [0, 0, 0],
+                    [p * wm, 0, 0],
+                ],
+                [
+                    [0, 0, 0],
+                    [0, -(gamma + nu * w), 0],
+                    [0, 0, 0],
+                ],
+                [
+                    [0, 0, 0],
+                    [0, 0, 0],
+                    [0, -nu * w2, 0],
+                ],
+            ],
+            [
+                [
+                    [0, 0, 0],
+                    [p * wp, 0, 0],
+                    [0, 0, 0],
+                ],
+                [
+                    [0, 0, 0],
+                    [0, 0, -nu * w2],
+                    [0, 0, 0],
+                ],
+                [
+                    [0, 0, 0],
+                    [0, -(gamma - nu * w), 0],
+                    [0, 0, 0],
+                ],
+            ],
+        ],
+        decimal=5)
+
+
 class Test_build_radial_equation(unittest.TestCase):
 
     def test(self):
