@@ -223,16 +223,56 @@ class Test_build_radial_equation(unittest.TestCase):
 
 class Test_Polynomial(unittest.TestCase):
 
-    def test(self):
+    def test_get_value(self):
         p = imp.GenPoly(1, np.array([
             [1, 2, 3],
             [4, 5, 6],
         ]))
-        r = 2
+        r = 5
         np.testing.assert_almost_equal(p.get_value(r), [
+            1 * r + 4 * r**2,
+            2 * r + 5 * r**2,
+            3 * r + 6 * r**2,
+        ])
+        r = np.array([3, 5])
+        np.testing.assert_almost_equal(p.get_value(r), np.array([
+            1 * r + 4 * r**2,
+            2 * r + 5 * r**2,
+            3 * r + 6 * r**2,
+            ]).transpose(1, 0))
+
+    def test_get_deriv(self):
+        p = imp.GenPoly(1, np.array([
+            [1, 2, 3],
+            [4, 5, 6],
+        ]))
+        r = 3
+        np.testing.assert_almost_equal(p.get_deriv(2, r), [
             [
                 1 * r + 4 * r**2,
                 2 * r + 5 * r**2,
                 3 * r + 6 * r**2,
-            ]
+            ],
+            [
+                1 + 4 * 2 * r,
+                2 + 5 * 2 * r,
+                3 + 6 * 2 * r,
+            ],
+            [
+                4 * 2,
+                5 * 2,
+                6 * 2,
+            ],
         ])
+        r = np.array([3, 5, 7, 8])
+        np.testing.assert_almost_equal(p.get_deriv(2, r), np.array([
+            1 * r + 4 * r**2,
+            2 * r + 5 * r**2,
+            3 * r + 6 * r**2,
+            1 + 4 * 2 * r,
+            2 + 5 * 2 * r,
+            3 + 6 * 2 * r,
+            4 * 2 * np.ones_like(r),
+            5 * 2 * np.ones_like(r),
+            6 * 2 * np.ones_like(r),
+        ]).transpose(1, 0).reshape(4, 3, 3))

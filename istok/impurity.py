@@ -1,8 +1,9 @@
 from typing import Iterable, Any
+from dataclasses import dataclass
+from numbers import Real
 import numpy as np
 import xarray as xr
 from nptyping import NDArray, Shape, Float
-from dataclasses import dataclass
 from scipy.interpolate import Akima1DInterpolator
 import scipy.constants as const
 
@@ -318,21 +319,51 @@ class GenPoly:
 
     __coefs: Array2D
     __pows: Array1D
+    __pow_slice: tuple[Any, ...]
 
     # CONSTRUCTOR
     def __init__(self, min_pow: float, coefs: Array2D) -> None:
         npow = len(coefs)
         self.__coefs = coefs
         self.__pows = min_pow + np.arange(npow)
+        self.__pow_slice = (np.newaxis,) * (self.__coefs.ndim - 1)
 
 
     # QUERIES
 
     def get_value(self, r: float | Array1D) -> ArrayND:
-        return r**self.__pows
+        if isinstance(r, Real):
+            return np.sum(
+                (r**self.__pows)[(slice(None),) + self.__pow_slice] * \
+                    self.__coefs,
+                axis=0)
+        assert not isinstance(r, float)
+        r_pow = r[np.newaxis, :] ** self.__pows[:, np.newaxis]
+        return np.sum(
+            r_pow[(slice(None), slice(None)) + self.__pow_slice] * \
+                self.__coefs[:, np.newaxis, ...],
+            axis=0)
 
     def get_deriv(self, max_deriv: int, r: float | Array1D) -> ArrayND:
-        assert False
+        pows = np.zeros((len(self.__pows), max_deriv + 1))
+        deriv_coefs = np.zeros((len(self.__pows), max_deriv + 1))
+        pows[:, 0] = self.__pows
+        deriv_coefs[:, 0] = 1
+        for i in range(0, max_deriv):
+            pows[:, i + 1] = pows[:, i] - 1
+            deriv_coefs[:, i + 1] = deriv_coefs[:, i] * pows[:, i]
+        if isinstance(r, Real):
+            return np.sum(
+                (deriv_coefs * r**pows)[(slice(None), slice(None)) + self.__pow_slice] * \
+                    self.__coefs[:, np.newaxis, ...],
+                axis=0)
+        assert not isinstance(r, float)
+        r_pow = deriv_coefs[:, np.newaxis, :] * \
+            (r[np.newaxis, :, np.newaxis] ** pows[:, np.newaxis, :])
+        return np.sum(
+            r_pow[(slice(None), slice(None), slice(None)) + self.__pow_slice] * \
+                self.__coefs[:, np.newaxis, np.newaxis, ...],
+            axis=0)
 
 
 def find_frobenius_solutions(ode: SingularRadialEquation) -> tuple[GenPoly, ...]:
