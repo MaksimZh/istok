@@ -6,6 +6,7 @@ import xarray as xr
 from nptyping import NDArray, Shape, Float
 from scipy.interpolate import Akima1DInterpolator
 import scipy.constants as const
+import frobenius
 
 
 Array1D = NDArray[Shape["*"], Float]
@@ -366,5 +367,17 @@ class GenPoly:
             axis=0)
 
 
-def find_frobenius_solutions(ode: SingularRadialEquation) -> tuple[GenPoly, ...]:
-    assert False
+def find_frobenius_solutions(ode: SingularRadialEquation, lambda_roots: list[float]) -> tuple[GenPoly, ...]:
+    zero_tensor = ode.get_zero_tensor()
+    theta_tensor = np.zeros_like(zero_tensor, dtype=complex)
+    factors = np.zeros((len(zero_tensor), 1, 1, 1))
+    factors[0] = 1
+    for i in range(len(zero_tensor)):
+        assert np.sum(np.abs(zero_tensor[i, :i])) < 1e-5
+        delta = zero_tensor[i : i + 1, i:] * factors
+        for j in range(i + 1):
+            theta_tensor[j, : delta.shape[1]] += delta[j]
+        factors = np.roll(factors, 1) - factors * i
+    sol: list[tuple[float, list[list[Array4D]]]] = \
+        frobenius.solve(theta_tensor, lambda_roots=lambda_roots)
+    
