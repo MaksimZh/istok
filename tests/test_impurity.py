@@ -221,10 +221,10 @@ class Test_build_radial_equation(unittest.TestCase):
         ])
 
 
-class Test_Polynomial(unittest.TestCase):
+class Test_LogPoly(unittest.TestCase):
 
     def test_get_value(self):
-        p = imp.GenPoly(1, np.array([
+        p = imp.LogPoly(1, np.array([
             [1, 2, 3],
             [4, 5, 6],
         ]))
@@ -242,7 +242,7 @@ class Test_Polynomial(unittest.TestCase):
             ]).transpose(1, 0))
 
     def test_get_deriv(self):
-        p = imp.GenPoly(1, np.array([
+        p = imp.LogPoly(1, np.array([
             [1, 2, 3],
             [4, 5, 6],
         ]))

@@ -316,9 +316,9 @@ def build_radial_equation(
         zero_tensor.data)
 
 
-class GenPoly:
+class LogPoly:
 
-    __coefs: Array2D
+    __coefs: Array3D
     __pows: Array1D
     __pow_slice: tuple[Any, ...]
 
@@ -367,7 +367,7 @@ class GenPoly:
             axis=0)
 
 
-def find_frobenius_solutions(ode: SingularRadialEquation, lambda_roots: list[float]) -> tuple[GenPoly, ...]:
+def find_frobenius_solutions(ode: SingularRadialEquation, lambda_roots: list[float]) -> tuple[LogPoly, ...]:
     zero_tensor = ode.get_zero_tensor()
     theta_tensor = np.zeros_like(zero_tensor, dtype=complex)
     factors = np.zeros((len(zero_tensor), 1, 1, 1))
