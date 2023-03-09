@@ -404,6 +404,13 @@ class FrobeniusFunction:
         self.__prepare_deriv(max_deriv)
 
 
+def eval_frobenius_solutions(funcs: tuple[FrobeniusFunction, ...], x: float) -> Tensor:
+    values = tuple(f.get_deriv(x, 1) for f in funcs)
+    axis_names = ("sol", *values[0].get_axis_names())
+    array = np.array([v.get_array() for v in values])
+    return Tensor(array, axis_names)
+
+
 def find_frobenius_solutions(theta_coefs: Tensor, lambda_roots: tuple[float, ...]
         ) -> tuple[FrobeniusFunction, ...]:
     solutions: list[tuple[float, list[list[Array4D]]]] = \
