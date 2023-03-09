@@ -5,7 +5,7 @@ from istok.tensor import Tensor
 
 class Test_Status(unittest.TestCase):
 
-    def test(self):
+    def test_array(self):
         a = np.arange(1, 2 * 3 * 4 + 1).reshape(2, 3, 4)
         t = Tensor(a, ("x", "y", "z"))
         self.assertEqual(t.get_axis_names(), ("x", "y", "z"))
@@ -40,3 +40,12 @@ class Test_Status(unittest.TestCase):
             t.get_array("z", "x", "*w", "y"),
             a.transpose(2, 0, 1)[:, :, np.newaxis, :])
         self.assertTrue(t.is_status("get_array", "OK"))
+
+    def test_copy(self):
+        a = np.arange(1, 2 * 3 * 4 + 1).reshape(2, 3, 4)
+        t = Tensor(a, ("x", "y", "z")).copy()
+        self.assertEqual(t.get_axis_names(), ("x", "y", "z"))
+        np.testing.assert_equal(t.get_array(), a)
+        b = a.copy()
+        a[0, 0, 0] = 42
+        np.testing.assert_equal(t.get_array(), b)

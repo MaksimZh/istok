@@ -51,3 +51,7 @@ class Tensor(Status):
             return np.array([])
         self._set_status("get_array", "OK")
         return self.__array.transpose(*indices)[*slices]
+
+    # Create copy of the tensor with shallow copy of the data
+    def copy(self) -> "Tensor":
+        return Tensor(self.__array.copy(), self.__axis_names)

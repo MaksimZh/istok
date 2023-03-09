@@ -287,24 +287,72 @@ class Test_FrobeniusFunction(unittest.TestCase):
             ("pow", "log", "f"))
         p = 2
         ff = imp.FrobeniusFunction(t, p)
-        x = 3
+        x = 0.7
         v = ff.get_value(x)
         self.assertEqual(v.get_axis_names(), ("f",))
         np.testing.assert_almost_equal(
             v.get_array(),
             [
                 x**p * (1 + 4 * log(x)) + \
+                x**(p + 1) * (7 + 10 * log(x)) + \
+                x**(p + 2) * (13 + 16 * log(x)) + \
+                x**(p + 3) * (19 + 22 * log(x)),
+
+                x**p * (2 + 5 * log(x)) + \
+                x**(p + 1) * (8 + 11 * log(x)) + \
+                x**(p + 2) * (14 + 17 * log(x)) + \
+                x**(p + 3) * (20 + 23 * log(x)),
+
+                x**p * (3 + 6 * log(x)) + \
+                x**(p + 1) * (9 + 12 * log(x)) + \
+                x**(p + 2) * (15 + 18 * log(x)) + \
+                x**(p + 3) * (21 + 24 * log(x)),
+            ])
+        
+    def test_get_deriv(self):
+        t = Tensor(
+            np.arange(1, 4 * 2 * 3 + 1).reshape(4, 2, 3),
+            ("pow", "log", "f"))
+        p = 2
+        ff = imp.FrobeniusFunction(t, p)
+        x = 0.7
+        v = ff.get_deriv(x, 1)
+        self.assertEqual(v.get_axis_names(), ("deriv", "f"))
+        np.testing.assert_almost_equal(
+            v.get_array(),
+            [
+                [
+                    x**p * (1 + 4 * log(x)) + \
                     x**(p + 1) * (7 + 10 * log(x)) + \
                     x**(p + 2) * (13 + 16 * log(x)) + \
                     x**(p + 3) * (19 + 22 * log(x)),
-                x**p * (2 + 5 * log(x)) + \
+                    
+                    x**p * (2 + 5 * log(x)) + \
                     x**(p + 1) * (8 + 11 * log(x)) + \
                     x**(p + 2) * (14 + 17 * log(x)) + \
                     x**(p + 3) * (20 + 23 * log(x)),
-                x**p * (3 + 6 * log(x)) + \
+                    
+                    x**p * (3 + 6 * log(x)) + \
                     x**(p + 1) * (9 + 12 * log(x)) + \
                     x**(p + 2) * (15 + 18 * log(x)) + \
                     x**(p + 3) * (21 + 24 * log(x)),
+                ],
+                [
+                    x**(p - 1) * (1 * p + 4 * (1 + p * log(x))) + \
+                    x**p * (7 * (p + 1) + 10 * (1 + (p + 1) * log(x))) + \
+                    x**(p + 1) * (13 * (p + 2) + 16 * (1 + (p + 2) * log(x))) + \
+                    x**(p + 2) * (19 * (p + 3) + 22 * (1 + (p + 3) * log(x))),
+                    
+                    x**(p - 1) * (2 * p + 5 * (1 +p *  log(x))) + \
+                    x**p * (8 * (p + 1) + 11 * (1 +(p + 1) *  log(x))) + \
+                    x**(p + 1) * (14 * (p + 2) + 17 * (1 +(p + 2) *  log(x))) + \
+                    x**(p + 2) * (20 * (p + 3) + 23 * (1 + (p + 3) * log(x))),
+                    
+                    x**(p - 1) * (3 * p + 6 * (1 + p * log(x))) + \
+                    x**p * (9 * (p + 1) + 12 * (1 + (p + 1) * log(x))) + \
+                    x**(p + 1) * (15 * (p + 2) + 18 * (1 + (p + 2) * log(x))) + \
+                    x**(p + 2) * (21 * (p + 3) + 24 * (1 + (p + 3) * log(x))),
+                ]
             ])
 
 

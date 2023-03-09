@@ -387,33 +387,85 @@ def find_frobenius_solutions(ode: SingularRadialEquation, lambda_roots: list[flo
 class FrobeniusFunction:
 
     __coefs: Tensor
-    __min_pow: int
+    __pows: Tensor
+    __log_pows: Tensor
+    __rest_axes: tuple[str, ...]
+    __new_rest_axes: tuple[str, ...]
+    __deriv_coefs: Tensor
+    __deriv_pows: Tensor
 
     # CONSTRUCTOR
     def __init__(self, coefs: Tensor, min_pow: int) -> None:
         assert {"pow", "log"} < set(coefs.get_axis_names())
         self.__coefs = coefs
-        self.__min_pow = min_pow
+        self.__pows = Tensor(
+            np.arange(min_pow, min_pow + self.__coefs.get_size("pow")),
+            ("pow",))
+        self.__log_pows = Tensor(
+            np.arange(self.__coefs.get_size("log")),
+            ("log",))
+        self.__rest_axes = tuple(set(self.__coefs.get_axis_names()) - {"pow", "log"})
+        self.__new_rest_axes = tuple("*" + a for a in self.__rest_axes)
+        self.__deriv_coefs = Tensor(
+            coefs.get_array("*deriv", "pow", "log", *self.__rest_axes).copy(),
+            ("deriv", "pow", "log", *self.__rest_axes))
+        self.__deriv_pows = self.__pows.copy()
 
 
     # QUERIES
 
     def get_value(self, x: float) -> Tensor:
-        pows = Tensor(
-            np.arange(
-                self.__min_pow,
-                self.__min_pow + self.__coefs.get_size("pow")),
-            ("pow",))
-        log_pows = Tensor(
-            np.arange(self.__coefs.get_size("log")),
-            ("log",))
         log_x = np.log(x)
-        rest_axes = tuple(set(self.__coefs.get_axis_names()) - {"pow", "log"})
-        new_rest_axes = tuple("*" + a for a in rest_axes)
         return Tensor(
             np.sum(
-                x ** pows.get_array("pow", "*log", *new_rest_axes) * \
-                log_x ** log_pows.get_array("*pow", "log", *new_rest_axes) * \
-                self.__coefs.get_array("pow", "log", *rest_axes),
+                x ** self.__pows.get_array("pow", "*log", *self.__new_rest_axes) * \
+                log_x ** self.__log_pows.get_array("*pow", "log", *self.__new_rest_axes) * \
+                self.__coefs.get_array("pow", "log", *self.__rest_axes),
                 axis=(0, 1)),
-            tuple(rest_axes))
+            self.__rest_axes)
+    
+    def get_deriv(self, x: float, max_deriv: int) -> Tensor:
+        self.__prepare_deriv(max_deriv)
+        log_x = np.log(x)
+        return Tensor(
+            np.sum(
+                x ** self.__deriv_pows.get_array(
+                    "pow", "*log", "*deriv", *self.__new_rest_axes) * \
+                log_x ** self.__log_pows.get_array(
+                    "*pow", "log", "*deriv", *self.__new_rest_axes) * \
+                self.__deriv_coefs.get_array(
+                    "pow", "log", "deriv", *self.__rest_axes),
+                axis=(0, 1)),
+            ("deriv", *self.__rest_axes))
+
+    
+    def __prepare_deriv(self, max_deriv: int) -> None:
+
+        if max_deriv < self.__deriv_coefs.get_size("deriv"):
+            return
+
+        coefs = np.zeros((
+            self.__deriv_coefs.get_size("deriv") + 1,
+            self.__deriv_coefs.get_size("pow") + 1,
+            self.__deriv_coefs.get_size("log"),
+            *self.__deriv_coefs.get_array().shape[3:]
+        ))
+        old_coefs = self.__deriv_coefs.get_array("deriv", "pow", "log", *self.__rest_axes)
+        coefs[:-1, 1:] = old_coefs
+        coefs[-1, :-1] += \
+            old_coefs[-1] * \
+            self.__deriv_pows.get_array("pow", "*log", *self.__new_rest_axes)
+        coefs[-1, :-1, :-1] += \
+            old_coefs[-1, :, 1:] * \
+            self.__log_pows.get_array(
+                "*pow", "log", *self.__new_rest_axes)[:, 1:]
+        self.__deriv_coefs = Tensor(
+            coefs,
+            ("deriv", "pow", "log", *self.__rest_axes))
+
+        pows = np.zeros(self.__deriv_pows.get_size("pow") + 1)
+        pows[1:] = self.__deriv_pows.get_array()
+        pows[0] = pows[1] - 1
+        self.__deriv_pows = Tensor(pows, ("pow",))
+
+        self.__prepare_deriv(max_deriv)
