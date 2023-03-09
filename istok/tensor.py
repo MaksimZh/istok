@@ -13,12 +13,17 @@ class Tensor(Status):
     # CONSTRUCTOR
     def __init__(self, array: NDArray[Any, Any], axis_names: tuple[str, ...]) -> None:
         super().__init__()
+        assert array.ndim == len(axis_names)
         self.__array = array
         self.__axis_names = axis_names
         self.__axis_indices = dict((axis_names[i], i) for i in range(len(axis_names)))
 
 
     # QUERIES
+
+    # Get number of dimensions
+    def get_ndim(self) -> int:
+        return self.__array.ndim
 
     # Get ordered names of the axes
     def get_axis_names(self) -> tuple[str, ...]:

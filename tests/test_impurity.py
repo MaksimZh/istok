@@ -23,7 +23,7 @@ class Test_calc_spherical_bulk_hamiltonian(unittest.TestCase):
         w2 = 0.6
         t = h.get_tensor()
         self.assertEqual(h.get_orbital_momentum(), (2, 3, 1))
-        self.assertEqual(t.get_axis_names(), ("f", "f+"))
+        self.assertEqual(t.get_axis_names(), ("f", "f+", "Ks", "Ks+"))
         np.testing.assert_almost_equal(t.get_array(), [
             [
                 [
@@ -115,14 +115,14 @@ class Test_build_radial_equation(unittest.TestCase):
                 [d * kpl, f * one + g * kml @ kpr + h * kpl @ kmr, u * kpl @ kpr],
                 [e * kml, u * kml @ kmr, v * one + x * kml @ kpr + y * kpl @ kmr],
             ], dtype=float),
-            ("f", "f+"))
+            ("f", "f+", "Ks", "Ks+"))
         hamilt = imp.SphericalHamiltonian(tensor, (
             imp.AngularMomentum(2),
             imp.AngularMomentum(3),
             imp.AngularMomentum(1)))
         radius = np.linspace(0.1, 3, 30)
         potential = z / radius
-        eq = imp.build_radial_equation(hamilt, radius, potential)
+        eq = imp.build_radial_equation(hamilt, Tensor(radius, ("r",)), potential)
         self.assertAlmostEqual(eq.get_max_radius(), radius[-1])
         r = np.linspace(1, 2, 11)
         t = eq.get_tensor(Tensor(r, ("r",)))
@@ -363,7 +363,7 @@ class Test_find_frobenius_solutions(unittest.TestCase):
                     [[0]],
                 ],
             ]),
-            ("theta", "pow", "f"))
+            ("theta", "pow", "f", "f+"))
         sol = imp.find_frobenius_solutions(coefs, (0,))
         self.assertEqual(len(sol), 1)
         x = 0.7

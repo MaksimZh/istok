@@ -1,4 +1,4 @@
-from typing import Iterable, Any
+from typing import Iterable
 from dataclasses import dataclass
 import numpy as np
 import xarray as xr
@@ -11,10 +11,7 @@ from istok.tensor import Tensor
 
 
 Array1D = NDArray[Shape["*"], Float]
-Array2D = NDArray[Shape["*, *"], Float]
-Array3D = NDArray[Shape["*, *, *"], Float]
 Array4D = NDArray[Shape["*, *, *, *"], Float]
-ArrayND = NDArray[Any, Float]
 
 
 class AngularMomentum:
@@ -211,7 +208,7 @@ def calc_spherical_bulk_hamiltonian(x: float,
             [pm * kpl,  -gp * kml @ kpr,  -n2 * kpl @ kpr],
             [pp * kml,  -n2 * kml @ kmr,  -gm * kml @ kpr],
         ], dtype=float),
-        ("f", "f+"))
+        ("f", "f+", "Ks", "Ks+"))
     return SphericalHamiltonian(tensor, (l, l + 1, l - 1))
 
 
@@ -225,9 +222,15 @@ class RadialEquation:
 
     # CONSTRUCTOR
     # Create ODE using Akima interpolation for tensor
-    def __init__(self, radius_mesh: Array1D, tensor_mesh: Array4D) -> None:
-        self.__max_radius = radius_mesh[-1]
-        self.__tensor_interpolator = Akima1DInterpolator(radius_mesh, tensor_mesh)
+    def __init__(self, radius_mesh: Tensor, tensor_mesh: Tensor) -> None:
+        assert radius_mesh.get_ndim() == 1
+        assert tensor_mesh.get_ndim() == 4
+        self.__max_radius = radius_mesh.get_array()[-1]
+        self.__tensor_interpolator = Akima1DInterpolator(
+            radius_mesh.get_array(),
+            tensor_mesh.get_array(
+                *radius_mesh.get_axis_names(),
+                "deriv", "eq", "f"))
 
     # QUERIES
 
@@ -246,8 +249,9 @@ class RadialEquation:
 
 def build_radial_equation(
         bulk_hamiltonian: SphericalHamiltonian,
-        radius_mesh: Array1D,
+        radius_mesh: Tensor,
         potential_mesh: Array1D) -> RadialEquation:
+    assert radius_mesh.get_ndim() == 1
     hamiltonian_coefs = xr.DataArray(
         bulk_hamiltonian.get_tensor().get_array(),
         dims=("u+", "u", "Ks+", "Ks"))
@@ -288,7 +292,7 @@ def build_radial_equation(
 
     equation_coefs = xr.dot(hamiltonian_coefs, pattern, dims=("Ks+", "Ks"))
     pows = xr.DataArray(range(0, 3), dims="pow")
-    radius = xr.DataArray(radius_mesh, dims="r")
+    radius = xr.DataArray(radius_mesh.get_array(), dims="r")
     radius_pow = radius ** pows
     tensor_mesh = (equation_coefs * radius_pow).sum("pow").transpose("deriv", "r", "u+", "u")
     potential = radius_pow[{"pow": 2}] * xr.DataArray(potential_mesh, dims="r")
@@ -302,7 +306,7 @@ def build_radial_equation(
     
     return RadialEquation(
         radius_mesh,
-        normalized_tensor_mesh.data)
+        Tensor(normalized_tensor_mesh.data, ("r", "deriv", "eq", "f")))
 
 
 class FrobeniusFunction:

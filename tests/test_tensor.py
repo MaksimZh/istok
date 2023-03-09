@@ -8,6 +8,7 @@ class Test_Status(unittest.TestCase):
     def test_array(self):
         a = np.arange(1, 2 * 3 * 4 + 1).reshape(2, 3, 4)
         t = Tensor(a, ("x", "y", "z"))
+        self.assertEqual(t.get_ndim(), 3)
         self.assertEqual(t.get_axis_names(), ("x", "y", "z"))
         self.assertEqual(t.get_size("x"), 2)
         self.assertEqual(t.get_size("y"), 3)
