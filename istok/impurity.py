@@ -1,17 +1,12 @@
-from typing import Iterable
+from typing import Iterable, Any
 from dataclasses import dataclass
 import numpy as np
 import xarray as xr
-from nptyping import NDArray, Shape, Float
 from scipy.interpolate import Akima1DInterpolator
 import scipy.constants as const
 import frobenius
 
 from istok.tensor import Tensor
-
-
-Array1D = NDArray[Shape["*"], Float]
-Array4D = NDArray[Shape["*, *, *, *"], Float]
 
 
 class AngularMomentum:
@@ -250,7 +245,7 @@ class RadialEquation:
 def build_radial_equation(
         bulk_hamiltonian: SphericalHamiltonian,
         radius_mesh: Tensor,
-        potential_mesh: Array1D) -> RadialEquation:
+        potential_mesh: Tensor) -> RadialEquation:
     assert radius_mesh.get_ndim() == 1
     hamiltonian_coefs = xr.DataArray(
         bulk_hamiltonian.get_tensor().get_array(),
@@ -295,7 +290,7 @@ def build_radial_equation(
     radius = xr.DataArray(radius_mesh.get_array(), dims="r")
     radius_pow = radius ** pows
     tensor_mesh = (equation_coefs * radius_pow).sum("pow").transpose("deriv", "r", "u+", "u")
-    potential = radius_pow[{"pow": 2}] * xr.DataArray(potential_mesh, dims="r")
+    potential = radius_pow[{"pow": 2}] * xr.DataArray(potential_mesh.get_array(), dims="r")
     for i in range(tensor_mesh.sizes["u"]):
         tensor_mesh[{"deriv": 0, "u+": i, "u": i}] += potential
     d2_matrix_mesh = tensor_mesh[{"deriv": 2}]
@@ -405,7 +400,7 @@ def eval_frobenius_solutions(funcs: tuple[FrobeniusFunction, ...], x: float) -> 
 
 def find_frobenius_solutions(theta_coefs: Tensor, lambda_roots: tuple[float, ...]
         ) -> tuple[FrobeniusFunction, ...]:
-    solutions: list[tuple[float, list[list[Array4D]]]] = \
+    solutions: list[tuple[float, list[list[Any]]]] = \
         frobenius.solve(theta_coefs.get_array(), lambda_roots=lambda_roots)
     funcs = list[FrobeniusFunction]()
     for pow, coef_list_of_lists in solutions:

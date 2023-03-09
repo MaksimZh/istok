@@ -121,7 +121,7 @@ class Test_build_radial_equation(unittest.TestCase):
             imp.AngularMomentum(3),
             imp.AngularMomentum(1)))
         radius = np.linspace(0.1, 3, 30)
-        potential = z / radius
+        potential = Tensor(z / radius, ("r",))
         eq = imp.build_radial_equation(hamilt, Tensor(radius, ("r",)), potential)
         self.assertAlmostEqual(eq.get_max_radius(), radius[-1])
         r = np.linspace(1, 2, 11)
