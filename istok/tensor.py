@@ -7,31 +7,44 @@ from istok.tools import Status, status
 class Tensor(Status):
 
     __array: NDArray[Any, Any]
-    __dim_names: tuple[str, ...]
-    __dim_indices: dict[str, int]
+    __axis_names: tuple[str, ...]
+    __axis_indices: dict[str, int]
 
-    def __init__(self, array: NDArray[Any, Any], dim_names: tuple[str, ...]) -> None:
+    # CONSTRUCTOR
+    def __init__(self, array: NDArray[Any, Any], axis_names: tuple[str, ...]) -> None:
         super().__init__()
         self.__array = array
-        self.__dim_names = dim_names
-        self.__dim_indices = dict((dim_names[i], i) for i in range(len(dim_names)))
+        self.__axis_names = axis_names
+        self.__axis_indices = dict((axis_names[i], i) for i in range(len(axis_names)))
 
+
+    # QUERIES
+
+    # Get ordered names of the axes
+    def get_axis_names(self) -> tuple[str, ...]:
+        return self.__axis_names
+    
+    # Get size of axis
+    def get_size(self, axis: str) -> int:
+        return self.__array.shape[self.__axis_indices[axis]]
+
+    # Get numpy array with optionally transposed and/or additional axes
     @status("OK", "ERR")
-    def get_array(self, *dims: str) -> NDArray[Any, Any]:
-        if len(dims) == 0 or tuple(dims) == self.__dim_names:
+    def get_array(self, *axes: str) -> NDArray[Any, Any]:
+        if len(axes) == 0 or tuple(axes) == self.__axis_names:
             self._set_status("get_array", "OK")
             return self.__array
-        if len(dims) < len(self.__dim_names):
+        if len(axes) < len(self.__axis_names):
             self._set_status("get_array", "ERR")
             return np.array([])
         indices = list[int]()
         slices = list[slice | type(np.newaxis)]()
-        for dim in dims:
-            if dim in self.__dim_indices:
-                indices.append(self.__dim_indices[dim])
+        for ax in axes:
+            if ax in self.__axis_indices:
+                indices.append(self.__axis_indices[ax])
                 slices.append(slice(None))
                 continue
-            if dim.startswith("*") and dim[1:] not in self.__dim_indices:
+            if ax.startswith("*") and ax[1:] not in self.__axis_indices:
                 slices.append(np.newaxis)
                 continue
             self._set_status("get_array", "ERR")

@@ -1,8 +1,9 @@
 import unittest
 
+from math import log
 import numpy as np
 
-
+from istok.tensor import Tensor
 import istok.impurity as imp
 
 
@@ -278,6 +279,36 @@ class Test_LogPoly(unittest.TestCase):
         ]).transpose(1, 0).reshape(4, 3, 3))
 
 
+class Test_FrobeniusFunction(unittest.TestCase):
+
+    def test_get_value(self):
+        t = Tensor(
+            np.arange(1, 4 * 2 * 3 + 1).reshape(4, 2, 3),
+            ("pow", "log", "f"))
+        p = 2
+        ff = imp.FrobeniusFunction(t, p)
+        x = 3
+        v = ff.get_value(x)
+        self.assertEqual(v.get_axis_names(), ("f",))
+        np.testing.assert_almost_equal(
+            v.get_array(),
+            [
+                x**p * (1 + 4 * log(x)) + \
+                    x**(p + 1) * (7 + 10 * log(x)) + \
+                    x**(p + 2) * (13 + 16 * log(x)) + \
+                    x**(p + 3) * (19 + 22 * log(x)),
+                x**p * (2 + 5 * log(x)) + \
+                    x**(p + 1) * (8 + 11 * log(x)) + \
+                    x**(p + 2) * (14 + 17 * log(x)) + \
+                    x**(p + 3) * (20 + 23 * log(x)),
+                x**p * (3 + 6 * log(x)) + \
+                    x**(p + 1) * (9 + 12 * log(x)) + \
+                    x**(p + 2) * (15 + 18 * log(x)) + \
+                    x**(p + 3) * (21 + 24 * log(x)),
+            ])
+
+
+"""
 class Test_find_frobenius_solutions(unittest.TestCase):
 
     def test_barkatou(self):
@@ -315,8 +346,6 @@ class Test_find_frobenius_solutions(unittest.TestCase):
         ])
         eq = imp.SingularRadialEquation(np.array([1, 2]), np.zeros((2, 1, 1, 1)), coefs)
         sol = imp.find_frobenius_solutions(eq, [0, 2])
-        """
-        print(sol)
         s = solve(ode_coefs_theta, min_terms=3, lambda_roots=[0, 2])
         self.assertEqual(len(s), 2)
 

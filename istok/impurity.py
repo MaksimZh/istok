@@ -6,7 +6,9 @@ import xarray as xr
 from nptyping import NDArray, Shape, Float
 from scipy.interpolate import Akima1DInterpolator
 import scipy.constants as const
-import frobenius
+#import frobenius
+
+from istok.tensor import Tensor
 
 
 Array1D = NDArray[Shape["*"], Float]
@@ -366,7 +368,7 @@ class LogPoly:
                 self.__coefs[:, np.newaxis, np.newaxis, ...],
             axis=0)
 
-
+"""
 def find_frobenius_solutions(ode: SingularRadialEquation, lambda_roots: list[float]) -> tuple[LogPoly, ...]:
     zero_tensor = ode.get_zero_tensor()
     theta_tensor = np.zeros_like(zero_tensor, dtype=complex)
@@ -380,4 +382,38 @@ def find_frobenius_solutions(ode: SingularRadialEquation, lambda_roots: list[flo
         factors = np.roll(factors, 1) - factors * i
     sol: list[tuple[float, list[list[Array4D]]]] = \
         frobenius.solve(theta_tensor, lambda_roots=lambda_roots)
-    
+"""
+
+class FrobeniusFunction:
+
+    __coefs: Tensor
+    __min_pow: int
+
+    # CONSTRUCTOR
+    def __init__(self, coefs: Tensor, min_pow: int) -> None:
+        assert {"pow", "log"} < set(coefs.get_axis_names())
+        self.__coefs = coefs
+        self.__min_pow = min_pow
+
+
+    # QUERIES
+
+    def get_value(self, x: float) -> Tensor:
+        pows = Tensor(
+            np.arange(
+                self.__min_pow,
+                self.__min_pow + self.__coefs.get_size("pow")),
+            ("pow",))
+        log_pows = Tensor(
+            np.arange(self.__coefs.get_size("log")),
+            ("log",))
+        log_x = np.log(x)
+        rest_axes = tuple(set(self.__coefs.get_axis_names()) - {"pow", "log"})
+        new_rest_axes = tuple("*" + a for a in rest_axes)
+        return Tensor(
+            np.sum(
+                x ** pows.get_array("pow", "*log", *new_rest_axes) * \
+                log_x ** log_pows.get_array("*pow", "log", *new_rest_axes) * \
+                self.__coefs.get_array("pow", "log", *rest_axes),
+                axis=(0, 1)),
+            tuple(rest_axes))
