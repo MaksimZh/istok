@@ -109,7 +109,6 @@ class Test_build_radial_equation(unittest.TestCase):
             [0, 0, 0],
             ])
         a, b, c, d, e, f, g, h, u, v, x, y, z = 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14
-        p1, p2, p3 = 15, 16, 17
 
         tensor = Tensor(np.array([
                 [a * one + b * kml @ kpr + c * kpl @ kmr, d * kmr, e * kpr],
@@ -123,18 +122,17 @@ class Test_build_radial_equation(unittest.TestCase):
             imp.AngularMomentum(1)))
         radius = np.linspace(0.1, 3, 30)
         potential = z / radius
-        eq = imp.build_radial_equation(hamilt, radius, potential, [p1, p2, p3])
+        eq = imp.build_radial_equation(hamilt, radius, potential)
         self.assertAlmostEqual(eq.get_max_radius(), radius[-1])
-        r = Tensor(np.linspace(1, 2, 11), ("r",))
-        t = eq.get_tensor(r)
+        r = np.linspace(1, 2, 11)
+        t = eq.get_tensor(Tensor(r, ("r",)))
         self.assertEqual(t.get_axis_names(), ("r", "deriv", "eq", "f"))
-        """
         mx = (r[:, np.newaxis, np.newaxis] ** 2) * np.array([
             [b + c, 0, 0],
             [0, g + h, -u],
             [0, -u, x + y],
         ])
-        m = (mx @ eq.get_tensor(r).transpose(1, 0, 2, 3)).transpose(0, 2, 3, 1)
+        m = (mx @ t.get_array("deriv", "r", "eq", "f")).transpose(0, 2, 3, 1)
         np.testing.assert_almost_equal(m, [
             [
                 [
@@ -171,7 +169,6 @@ class Test_build_radial_equation(unittest.TestCase):
                 ],
             ],
         ])
-    """
 
 """
 class Test_build_frobenius_equation(unittest.TestCase):

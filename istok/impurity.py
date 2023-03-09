@@ -247,8 +247,7 @@ class RadialEquation:
 def build_radial_equation(
         bulk_hamiltonian: SphericalHamiltonian,
         radius_mesh: Array1D,
-        potential_mesh: Array1D,
-        potential_coefs_m2: list[int]) -> RadialEquation:
+        potential_mesh: Array1D) -> RadialEquation:
     hamiltonian_coefs = xr.DataArray(
         bulk_hamiltonian.get_tensor().get_array(),
         dims=("u+", "u", "Ks+", "Ks"))
@@ -301,10 +300,6 @@ def build_radial_equation(
     normalized_tensor_mesh = -xr.dot(inv_d2_matrix_mesh, lo_tensor_mesh, dims=("u*")) \
         .transpose("r", "deriv", "u+", "u")
     
-    zero_tensor = equation_coefs.transpose("deriv", "pow", "u+", "u")
-    potential_pow = xr.DataArray(potential_coefs_m2, dims="pow")
-    for i in range(tensor_mesh.sizes["u"]):
-        zero_tensor[{"deriv": 0, "u+": i, "u": i}] += potential_pow
     return RadialEquation(
         radius_mesh,
         normalized_tensor_mesh.data)
