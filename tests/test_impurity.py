@@ -222,63 +222,6 @@ class Test_build_radial_equation(unittest.TestCase):
         ])
 
 
-class Test_LogPoly(unittest.TestCase):
-
-    def test_get_value(self):
-        p = imp.LogPoly(1, np.array([
-            [1, 2, 3],
-            [4, 5, 6],
-        ]))
-        r = 5
-        np.testing.assert_almost_equal(p.get_value(r), [
-            1 * r + 4 * r**2,
-            2 * r + 5 * r**2,
-            3 * r + 6 * r**2,
-        ])
-        r = np.array([3, 5])
-        np.testing.assert_almost_equal(p.get_value(r), np.array([
-            1 * r + 4 * r**2,
-            2 * r + 5 * r**2,
-            3 * r + 6 * r**2,
-            ]).transpose(1, 0))
-
-    def test_get_deriv(self):
-        p = imp.LogPoly(1, np.array([
-            [1, 2, 3],
-            [4, 5, 6],
-        ]))
-        r = 3
-        np.testing.assert_almost_equal(p.get_deriv(2, r), [
-            [
-                1 * r + 4 * r**2,
-                2 * r + 5 * r**2,
-                3 * r + 6 * r**2,
-            ],
-            [
-                1 + 4 * 2 * r,
-                2 + 5 * 2 * r,
-                3 + 6 * 2 * r,
-            ],
-            [
-                4 * 2,
-                5 * 2,
-                6 * 2,
-            ],
-        ])
-        r = np.array([3, 5, 7, 8])
-        np.testing.assert_almost_equal(p.get_deriv(2, r), np.array([
-            1 * r + 4 * r**2,
-            2 * r + 5 * r**2,
-            3 * r + 6 * r**2,
-            1 + 4 * 2 * r,
-            2 + 5 * 2 * r,
-            3 + 6 * 2 * r,
-            4 * 2 * np.ones_like(r),
-            5 * 2 * np.ones_like(r),
-            6 * 2 * np.ones_like(r),
-        ]).transpose(1, 0).reshape(4, 3, 3))
-
-
 class Test_FrobeniusFunction(unittest.TestCase):
 
     def test_get_value(self):
@@ -356,100 +299,25 @@ class Test_FrobeniusFunction(unittest.TestCase):
             ])
 
 
-"""
 class Test_find_frobenius_solutions(unittest.TestCase):
 
-    def test_barkatou(self):
-        m = 3
-        a = 5
-        coefs = np.array([
-            [ # d^0
-                [[0, 2, 0], [0, 0, 0], [0, 0, 0]], # r^0
-                [[0, 0, 0], [0, 0, 0], [0, 0, 0]], # r^1
-                [[-m**3, 0, 0], [0, m, 0], [0, 0, -m**2]], # r^2
-                [[0, 0, 0], [0, 0, 0], [0, 0, 0]], # r^3
-                [[0, 0, 0], [0, 0, a], [0, 0, 0]], # r^4
-            ],
-            [ # d^1
-                [[0, 0, 0], [0, 0, 0], [0, 0, 0]], # r^0
-                [[-m, -1, 0], [-1, 0, 0], [-1, 0, 1]], # r^1
-                [[0, 0, 0], [0, 0, 0], [0, 0, 0]], # r^2
-                [[0, 0, 0], [m**2, 0, 0], [0, 0, 0]], # r^3
-                [[0, 0, 0], [0, 0, 0], [0, 0, 0]], # r^4
-            ],
-            [ # d^2
-                [[0, 0, 0], [0, 0, 0], [0, 0, 0]], # r^0
-                [[0, 0, 0], [0, 0, 0], [0, 0, 0]], # r^1
-                [[m, 0, 0], [1, 0, 0], [0, 0, 1]], # r^2
-                [[0, 0, 0], [0, 0, 0], [0, 0, 0]], # r^3
-                [[0, 0, 0], [0, 0, 0], [0, 0, 0]], # r^4
-            ],
-            [ # d^3
-                [[0, 0, 0], [0, 0, 0], [0, 0, 0]], # r^0
-                [[0, 0, 0], [0, 0, 0], [0, 0, 0]], # r^1
-                [[0, 0, 0], [0, 0, 0], [0, 0, 0]], # r^2
-                [[0, 0, 0], [-1, 0, 0], [0, 0, 0]], # r^3
-                [[0, 0, 0], [0, 0, 0], [0, 0, 0]], # r^4
-            ],
-        ])
-        eq = imp.SingularRadialEquation(np.array([1, 2]), np.zeros((2, 1, 1, 1)), coefs)
-        sol = imp.find_frobenius_solutions(eq, [0, 2])
-        s = solve(ode_coefs_theta, min_terms=3, lambda_roots=[0, 2])
-        self.assertEqual(len(s), 2)
-
-        lj, gj = s[0]
-        self.assertAlmostEqual(lj, 0)
-        self.assertEqual(len(gj), 2)
-        self.assertEqual(len(gj[0]), 1)
-        self.assertEqual(len(gj[1]), 2)
-
-        g = gj[0][0]
-        np.testing.assert_allclose(g / g[0, 0, 0, 0], [
-            [[[1], [0], [0]], [[0], [0], [0]]],
-            [[[0], [0], [0]], [[0], [0], [0]]],
-            [[[-9/4], [0], [-9/4]], [[9/2], [0], [9/4]]],
-            [[[0], [0], [0]], [[0], [0], [0]]],
-            [[[-405/64], [0], [-243/64]], [[81/16], [0], [81/32]]],
-        ], atol=1e-10)
-        g = gj[1][0]
-        np.testing.assert_allclose(g / g[0, 0, 2, 0], [
-            [[[0], [0], [1]]],
-            [[[0], [0], [0]]],
-            [[[0], [0], [9/4]]],
-            [[[0], [0], [0]]],
-            [[[5/16], [15/4], [43/32]]],
-        ], atol=1e-10)
-        g = gj[1][1]
-        np.testing.assert_allclose(g / g[0, 1, 2, 0], [
-            [[[0], [0], [0]], [[0], [0], [1]]],
-            [[[0], [0], [0]], [[0], [0], [0]]],
-            [[[0], [0], [-9/4]], [[0], [0], [9/4]]],
-            [[[0], [0], [0]], [[0], [0], [0]]],
-            [[[-25/64], [-15/4], [-129/64]], [[5/16], [15/4], [43/32]]],
-        ], atol=1e-10)
-
-        lj, gj = s[1]
-        self.assertAlmostEqual(lj, 2)
-        self.assertEqual(len(gj), 2)
-        self.assertEqual(len(gj[0]), 1)
-        self.assertEqual(len(gj[1]), 2)
-
-        g = gj[0][0]
-        np.testing.assert_allclose(g / g[0, 0, 1, 0], [
-            [[[0], [1], [0]]],
-            [[[0], [0], [0]]],
-            [[[3/16], [9/4], [3/64]]],
-        ], atol=1e-10)
-        g = gj[1][0]
-        np.testing.assert_allclose(g / g[0, 0, 2, 0], [
-            [[[2], [12], [1]]],
-            [[[0], [0], [0]]],
-            [[[9/2], [27], [27/16]]],
-        ], atol=1e-10)
-        g = gj[1][1]
-        np.testing.assert_allclose(g / g[0, 0, 0, 0], [
-            [[[1], [0], [0]], [[2], [12], [1]]],
-            [[[0], [0], [0]], [[0], [0], [0]]],
-            [[[-27/8], [-27], [-45/32]], [[9/2], [27], [27/16]]],
-        ], atol=1e-10)
-        """
+    def test(self):
+        a = 3
+        coefs = Tensor(np.array([
+                [
+                    [[0]],
+                    [[-a]],
+                ],
+                [
+                    [[1]],
+                    [[0]],
+                ],
+            ]),
+            ("theta", "pow", "f"))
+        sol = imp.find_frobenius_solutions(coefs, (0,))
+        self.assertEqual(len(sol), 1)
+        x = 0.7
+        ax = a * x
+        v = sol[0].get_value(x)
+        self.assertEqual(v.get_axis_names(), ("f",))
+        np.testing.assert_almost_equal(v.get_array(), [1 + ax + ax**2/2])

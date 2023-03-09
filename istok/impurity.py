@@ -1,12 +1,11 @@
 from typing import Iterable, Any
 from dataclasses import dataclass
-from numbers import Real
 import numpy as np
 import xarray as xr
 from nptyping import NDArray, Shape, Float
 from scipy.interpolate import Akima1DInterpolator
 import scipy.constants as const
-#import frobenius
+import frobenius
 
 from istok.tensor import Tensor
 
@@ -318,72 +317,6 @@ def build_radial_equation(
         zero_tensor.data)
 
 
-class LogPoly:
-
-    __coefs: Array3D
-    __pows: Array1D
-    __pow_slice: tuple[Any, ...]
-
-    # CONSTRUCTOR
-    def __init__(self, min_pow: float, coefs: Array2D) -> None:
-        npow = len(coefs)
-        self.__coefs = coefs
-        self.__pows = min_pow + np.arange(npow)
-        self.__pow_slice = (np.newaxis,) * (self.__coefs.ndim - 1)
-
-
-    # QUERIES
-
-    def get_value(self, r: float | Array1D) -> ArrayND:
-        if isinstance(r, Real):
-            return np.sum(
-                (r**self.__pows)[(slice(None),) + self.__pow_slice] * \
-                    self.__coefs,
-                axis=0)
-        assert not isinstance(r, float)
-        r_pow = r[np.newaxis, :] ** self.__pows[:, np.newaxis]
-        return np.sum(
-            r_pow[(slice(None), slice(None)) + self.__pow_slice] * \
-                self.__coefs[:, np.newaxis, ...],
-            axis=0)
-
-    def get_deriv(self, max_deriv: int, r: float | Array1D) -> ArrayND:
-        pows = np.zeros((len(self.__pows), max_deriv + 1))
-        deriv_coefs = np.zeros((len(self.__pows), max_deriv + 1))
-        pows[:, 0] = self.__pows
-        deriv_coefs[:, 0] = 1
-        for i in range(0, max_deriv):
-            pows[:, i + 1] = pows[:, i] - 1
-            deriv_coefs[:, i + 1] = deriv_coefs[:, i] * pows[:, i]
-        if isinstance(r, Real):
-            return np.sum(
-                (deriv_coefs * r**pows)[(slice(None), slice(None)) + self.__pow_slice] * \
-                    self.__coefs[:, np.newaxis, ...],
-                axis=0)
-        assert not isinstance(r, float)
-        r_pow = deriv_coefs[:, np.newaxis, :] * \
-            (r[np.newaxis, :, np.newaxis] ** pows[:, np.newaxis, :])
-        return np.sum(
-            r_pow[(slice(None), slice(None), slice(None)) + self.__pow_slice] * \
-                self.__coefs[:, np.newaxis, np.newaxis, ...],
-            axis=0)
-
-"""
-def find_frobenius_solutions(ode: SingularRadialEquation, lambda_roots: list[float]) -> tuple[LogPoly, ...]:
-    zero_tensor = ode.get_zero_tensor()
-    theta_tensor = np.zeros_like(zero_tensor, dtype=complex)
-    factors = np.zeros((len(zero_tensor), 1, 1, 1))
-    factors[0] = 1
-    for i in range(len(zero_tensor)):
-        assert np.sum(np.abs(zero_tensor[i, :i])) < 1e-5
-        delta = zero_tensor[i : i + 1, i:] * factors
-        for j in range(i + 1):
-            theta_tensor[j, : delta.shape[1]] += delta[j]
-        factors = np.roll(factors, 1) - factors * i
-    sol: list[tuple[float, list[list[Array4D]]]] = \
-        frobenius.solve(theta_tensor, lambda_roots=lambda_roots)
-"""
-
 class FrobeniusFunction:
 
     __coefs: Tensor
@@ -395,7 +328,7 @@ class FrobeniusFunction:
     __deriv_pows: Tensor
 
     # CONSTRUCTOR
-    def __init__(self, coefs: Tensor, min_pow: int) -> None:
+    def __init__(self, coefs: Tensor, min_pow: float) -> None:
         assert {"pow", "log"} < set(coefs.get_axis_names())
         self.__coefs = coefs
         self.__pows = Tensor(
@@ -469,3 +402,17 @@ class FrobeniusFunction:
         self.__deriv_pows = Tensor(pows, ("pow",))
 
         self.__prepare_deriv(max_deriv)
+
+
+def find_frobenius_solutions(theta_coefs: Tensor, lambda_roots: tuple[float, ...]
+        ) -> tuple[FrobeniusFunction, ...]:
+    solutions: list[tuple[float, list[list[Array4D]]]] = \
+        frobenius.solve(theta_coefs.get_array(), lambda_roots=lambda_roots)
+    funcs = list[FrobeniusFunction]()
+    for pow, coef_list_of_lists in solutions:
+        for coef_list in coef_list_of_lists:
+            for coefs in coef_list:
+                funcs.append(FrobeniusFunction(
+                    Tensor(coefs[:, :, :, 0], ("pow", "log", "f")),
+                    pow))
+    return tuple(funcs)
