@@ -149,24 +149,25 @@ class MaterialParams:
 
 class SphericalHamiltonian:
 
-    __tensor: NDArray[Shape["*, *, 3, 3"], Float]
+    __tensor: Tensor
     __orbital_momentum: tuple[AngularMomentum, ...]
 
 
     # CONSTRUCTOR
 
     def __init__(self,
-            tensor: NDArray[Shape["*, *, 3, 3"], Float],
+            tensor: Tensor,
             orbital_momentum: Iterable[AngularMomentum]) -> None:
         self.__tensor = tensor
         self.__orbital_momentum = tuple(orbital_momentum)
-        assert tensor.shape[0] == tensor.shape[1]
-        assert len(self.__orbital_momentum) == self.__tensor.shape[0]
+        shape = tensor.get_array().shape
+        assert shape[0] == shape[1]
+        assert len(self.__orbital_momentum) == shape[0]
 
 
     # QUERIES
 
-    def get_tensor(self) -> NDArray[Shape["*, *, 3, 3"], Float]:
+    def get_tensor(self) -> Tensor:
         return self.__tensor
 
     def get_orbital_momentum(self) -> tuple[AngularMomentum, ...]:
@@ -204,35 +205,29 @@ def calc_spherical_bulk_hamiltonian(x: float,
     kpl = kmr.T
     kml = kpr.T
 
-    tensor = np.array([
-        [eg * one + ac * kml @ kpr,  pm * kmr,  pp * kpr],
-        [pm * kpl,  -gp * kml @ kpr,  -n2 * kpl @ kpr],
-        [pp * kml,  -n2 * kml @ kmr,  -gm * kml @ kpr],
-    ], dtype=float)
+    tensor = Tensor(
+        np.array([
+            [eg * one + ac * kml @ kpr,  pm * kmr,  pp * kpr],
+            [pm * kpl,  -gp * kml @ kpr,  -n2 * kpl @ kpr],
+            [pp * kml,  -n2 * kml @ kmr,  -gm * kml @ kpr],
+        ], dtype=float),
+        ("f", "f+"))
     return SphericalHamiltonian(tensor, (l, l + 1, l - 1))
 
 
 # Holds the following linear ODE:
 # f^(n) = T * (f, f^(1), ..., f^(n-1))
-# The dimensions of tensor T are: [derivative, equation, component]
-# The point r=0 is assumed to be singular and the equation at this point
-# is encoded as follows:
-# D * (1, d/dr, d2/dr2, ...) * (r^0, r^1, ...) * f = 0
-# The dimensions of tensor D are: [derivative, power of r, equation, component]
-class SingularRadialEquation:
+# The dimensions of tensor T are: [deriv, eq, f]
+class RadialEquation:
 
     __max_radius: float
     __tensor_interpolator: Akima1DInterpolator
-    __zero_tensor: Array4D
 
     # CONSTRUCTOR
     # Create ODE using Akima interpolation for tensor
-    def __init__(self, radius_mesh: Array1D,
-            tensor_mesh: Array4D,
-            zero_tensor: Array4D) -> None:
+    def __init__(self, radius_mesh: Array1D, tensor_mesh: Array4D) -> None:
         self.__max_radius = radius_mesh[-1]
         self.__tensor_interpolator = Akima1DInterpolator(radius_mesh, tensor_mesh)
-        self.__zero_tensor = zero_tensor
 
     # QUERIES
 
@@ -241,22 +236,21 @@ class SingularRadialEquation:
         return self.__max_radius
 
     # Get values of ODE tensor T
-    def get_tensor(self, r: float | Array1D
-            ) -> Array3D:
-        return self.__tensor_interpolator(r)  #type: ignore
-    
-    # Get values of ODE tensor D
-    def get_zero_tensor(self) -> Array4D:
-        return self.__zero_tensor
+    def get_tensor(self, r: float | Tensor) -> Tensor:
+        if not isinstance(r, Tensor):
+            return Tensor(self.__tensor_interpolator(r), ("deriv", "eq", "f"))
+        return Tensor(
+            self.__tensor_interpolator(r.get_array()),
+            (*r.get_axis_names(), "deriv", "eq", "f"))
 
 
 def build_radial_equation(
         bulk_hamiltonian: SphericalHamiltonian,
         radius_mesh: Array1D,
         potential_mesh: Array1D,
-        potential_coefs_m2: list[int]) -> SingularRadialEquation:
+        potential_coefs_m2: list[int]) -> RadialEquation:
     hamiltonian_coefs = xr.DataArray(
-        bulk_hamiltonian.get_tensor(),
+        bulk_hamiltonian.get_tensor().get_array(),
         dims=("u+", "u", "Ks+", "Ks"))
     l = xr.DataArray([int(j) for j in bulk_hamiltonian.get_orbital_momentum()], dims="u")
     
@@ -311,10 +305,9 @@ def build_radial_equation(
     potential_pow = xr.DataArray(potential_coefs_m2, dims="pow")
     for i in range(tensor_mesh.sizes["u"]):
         zero_tensor[{"deriv": 0, "u+": i, "u": i}] += potential_pow
-    return SingularRadialEquation(
+    return RadialEquation(
         radius_mesh,
-        normalized_tensor_mesh.data,
-        zero_tensor.data)
+        normalized_tensor_mesh.data)
 
 
 class FrobeniusFunction:
