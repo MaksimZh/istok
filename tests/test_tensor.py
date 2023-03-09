@@ -1,0 +1,38 @@
+import unittest
+import numpy as np
+
+from istok.tensor import Tensor
+
+class Test_Status(unittest.TestCase):
+
+    def test(self):
+        a = np.arange(1, 2 * 3 * 4 + 1).reshape(2, 3, 4)
+        t = Tensor(a, ("x", "y", "z"))
+        self.assertTrue(t.is_status("get_array", "NIL"))
+
+        np.testing.assert_equal(t.get_array(), a)
+        self.assertTrue(t.is_status("get_array", "OK"))
+
+        np.testing.assert_equal(t.get_array("x", "y", "z"), a)
+        self.assertTrue(t.is_status("get_array", "OK"))
+
+        t.get_array("x")
+        self.assertTrue(t.is_status("get_array", "ERR"))
+
+        t.get_array("x", "foo", "z")
+        self.assertTrue(t.is_status("get_array", "ERR"))
+
+        np.testing.assert_equal(
+            t.get_array("y", "x", "z"),
+            a.transpose(1, 0, 2))
+        self.assertTrue(t.is_status("get_array", "OK"))
+
+        np.testing.assert_equal(
+            t.get_array("x", "y", "*w", "z"),
+            a[:, :, np.newaxis, :])
+        self.assertTrue(t.is_status("get_array", "OK"))
+
+        np.testing.assert_equal(
+            t.get_array("z", "x", "*w", "y"),
+            a.transpose(2, 0, 1)[:, :, np.newaxis, :])
+        self.assertTrue(t.is_status("get_array", "OK"))

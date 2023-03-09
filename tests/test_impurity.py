@@ -315,8 +315,8 @@ class Test_find_frobenius_solutions(unittest.TestCase):
         ])
         eq = imp.SingularRadialEquation(np.array([1, 2]), np.zeros((2, 1, 1, 1)), coefs)
         sol = imp.find_frobenius_solutions(eq, [0, 2])
-        print(sol)
         """
+        print(sol)
         s = solve(ode_coefs_theta, min_terms=3, lambda_roots=[0, 2])
         self.assertEqual(len(s), 2)
 
