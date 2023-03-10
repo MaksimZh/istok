@@ -374,15 +374,14 @@ class Test_find_frobenius_solutions(unittest.TestCase):
         np.testing.assert_almost_equal(v.get_array(), [1 + ax + ax**2/2])
 
 
-class Test_solve_ode(unittest.TestCase):
+class Test_solve_radial_equation(unittest.TestCase):
 
     def test(self):
         a = 3
         b = 5
         c = 2
         d = 4
-        ri = Tensor(np.linspace(-1, 2, 11), ("r",))
-        rs = Tensor(np.linspace(0, 1, 7), ("r",))
+        ri = Tensor(np.linspace(-2, 2, 11), ("r",))
         one = np.ones_like(ri.get_array())
         ode_tensor = Tensor(
             np.array([
@@ -403,6 +402,8 @@ class Test_solve_ode(unittest.TestCase):
                 [0, d * b],
             ]),
             ("deriv", "f"))
+        
+        rs = Tensor(np.linspace(0, 1, 5), ("r",))
         sol = imp.solve_radial_equation(ode, f0, rs)
         self.assertEqual(sol.get_axis_names(), ("r", "deriv", "f"))
         r = rs.get_array()
@@ -413,5 +414,19 @@ class Test_solve_ode(unittest.TestCase):
                 d * np.sin(b * r),
                 -c * a * np.sin(a * r),
                 d * b * np.cos(b * r),
+            ]).reshape(2, 2, -1).transpose(2, 0, 1),
+            decimal=3)
+
+        rs1 = Tensor(-rs.get_array(), ("r",))
+        sol = imp.solve_radial_equation(ode, f0, rs1)
+        self.assertEqual(sol.get_axis_names(), ("r", "deriv", "f"))
+        r1 = rs1.get_array()
+        np.testing.assert_almost_equal(
+            sol.get_array(),
+            np.array([
+                c * np.cos(a * r1),
+                d * np.sin(b * r1),
+                -c * a * np.sin(a * r1),
+                d * b * np.cos(b * r1),
             ]).reshape(2, 2, -1).transpose(2, 0, 1),
             decimal=3)
