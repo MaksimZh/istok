@@ -109,6 +109,7 @@ class Test_build_radial_equation(unittest.TestCase):
             [0, 0, 0],
             ])
         a, b, c, d, e, f, g, h, u, v, x, y, z = 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14
+        energy = 15
 
         tensor = Tensor(np.array([
                 [a * one + b * kml @ kpr + c * kpl @ kmr, d * kmr, e * kpr],
@@ -122,7 +123,7 @@ class Test_build_radial_equation(unittest.TestCase):
             imp.AngularMomentum(1)))
         radius = np.linspace(0.1, 3, 30)
         potential = Tensor(z / radius, ("r",))
-        eq = imp.build_radial_equation(hamilt, Tensor(radius, ("r",)), potential)
+        eq = imp.build_radial_equation(hamilt, Tensor(radius, ("r",)), potential, energy)
         self.assertAlmostEqual(eq.get_max_radius(), radius[-1])
         r = np.linspace(1, 2, 11)
         t = eq.get_tensor(Tensor(r, ("r",)))
@@ -136,19 +137,19 @@ class Test_build_radial_equation(unittest.TestCase):
         np.testing.assert_almost_equal(m, [
             [
                 [
-                    a * r**2 + (b + c) * 2 * (2 + 1) + z * r,
+                    (a - energy) * r**2 + (b + c) * 2 * (2 + 1) + z * r,
                     d * r * (3 + 1),
                     e * r * 1,
                 ],
                 [
                     d * r * 2,
-                    f * r**2 + (g + h) * 3 * (3 + 1) + z * r,
+                    (f - energy) * r**2 + (g + h) * 3 * (3 + 1) + z * r,
                     u * r**0 * 1 * (1 + 2),
                 ],
                 [
                     e * r * (2 + 1),
                     u * r**0 * (3 - 1) * (3 + 1),
-                    v * r**2 + (x + y) * 1 * (1 + 1) + z * r,
+                    (v - energy) * r**2 + (x + y) * 1 * (1 + 1) + z * r,
                 ],
             ],
             [
