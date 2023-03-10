@@ -80,47 +80,56 @@ class Test_calc_spherical_bulk_hamiltonian(unittest.TestCase):
         decimal=5)
 
 
+def build_test_hamiltonian(
+        a: float, b: float, c: float, d: float, e: float,
+        f: float, g: float, h: float, u: float, v: float,
+        x: float, y: float) -> imp.SphericalHamiltonian:
+    one = np.array([
+        [1, 0, 0],
+        [0, 0, 0],
+        [0, 0, 0],
+        ])
+    kpr = np.array([
+        [0, 1, 0],
+        [0, 0, 0],
+        [0, 0, 0],
+        ])
+    kmr = np.array([
+        [0, 0, 1],
+        [0, 0, 0],
+        [0, 0, 0],
+        ])
+    kpl = np.array([
+        [0, 0, 0],
+        [0, 0, 0],
+        [1, 0, 0],
+        ])
+    kml = np.array([
+        [0, 0, 0],
+        [1, 0, 0],
+        [0, 0, 0],
+        ])
+
+    tensor = Tensor(np.array([
+            [a * one + b * kml @ kpr + c * kpl @ kmr, d * kmr, e * kpr],
+            [d * kpl, f * one + g * kml @ kpr + h * kpl @ kmr, u * kpl @ kpr],
+            [e * kml, u * kml @ kmr, v * one + x * kml @ kpr + y * kpl @ kmr],
+        ], dtype=float),
+        ("f+", "f", "Ks+", "Ks"))
+    return imp.SphericalHamiltonian(tensor, (
+        imp.AngularMomentum(2),
+        imp.AngularMomentum(3),
+        imp.AngularMomentum(1)))
+
+
 class Test_build_radial_equation(unittest.TestCase):
 
     def test(self):
-        one = np.array([
-            [1, 0, 0],
-            [0, 0, 0],
-            [0, 0, 0],
-            ])
-        kpr = np.array([
-            [0, 1, 0],
-            [0, 0, 0],
-            [0, 0, 0],
-            ])
-        kmr = np.array([
-            [0, 0, 1],
-            [0, 0, 0],
-            [0, 0, 0],
-            ])
-        kpl = np.array([
-            [0, 0, 0],
-            [0, 0, 0],
-            [1, 0, 0],
-            ])
-        kml = np.array([
-            [0, 0, 0],
-            [1, 0, 0],
-            [0, 0, 0],
-            ])
-        a, b, c, d, e, f, g, h, u, v, x, y, z = 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14
+        a, b, c, d, e, f, g, h, u, v, x, y = 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13
+        z = 14
         energy = 15
 
-        tensor = Tensor(np.array([
-                [a * one + b * kml @ kpr + c * kpl @ kmr, d * kmr, e * kpr],
-                [d * kpl, f * one + g * kml @ kpr + h * kpl @ kmr, u * kpl @ kpr],
-                [e * kml, u * kml @ kmr, v * one + x * kml @ kpr + y * kpl @ kmr],
-            ], dtype=float),
-            ("f+", "f", "Ks+", "Ks"))
-        hamilt = imp.SphericalHamiltonian(tensor, (
-            imp.AngularMomentum(2),
-            imp.AngularMomentum(3),
-            imp.AngularMomentum(1)))
+        hamilt = build_test_hamiltonian(a, b, c, d, e, f, g, h, u, v, x, y)
         radius = np.linspace(0.1, 3, 30)
         potential = Tensor(z / radius, ("r",))
         eq = imp.build_radial_equation(hamilt, Tensor(radius, ("r",)), potential, energy)
@@ -175,46 +184,12 @@ class Test_build_radial_equation(unittest.TestCase):
 class Test_build_frobenius_data(unittest.TestCase):
 
     def test(self):
-        one = np.array([
-            [1, 0, 0],
-            [0, 0, 0],
-            [0, 0, 0],
-            ])
-        kpr = np.array([
-            [0, 1, 0],
-            [0, 0, 0],
-            [0, 0, 0],
-            ])
-        kmr = np.array([
-            [0, 0, 1],
-            [0, 0, 0],
-            [0, 0, 0],
-            ])
-        kpl = np.array([
-            [0, 0, 0],
-            [0, 0, 0],
-            [1, 0, 0],
-            ])
-        kml = np.array([
-            [0, 0, 0],
-            [1, 0, 0],
-            [0, 0, 0],
-            ])
         a, b, c, d, e, f, g, h, u, v, x, y = 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13
         p1, p2 = 14, 15
         pow = -1
         energy = 16
 
-        tensor = Tensor(np.array([
-                [a * one + b * kml @ kpr + c * kpl @ kmr, d * kmr, e * kpr],
-                [d * kpl, f * one + g * kml @ kpr + h * kpl @ kmr, u * kpl @ kpr],
-                [e * kml, u * kml @ kmr, v * one + x * kml @ kpr + y * kpl @ kmr],
-            ], dtype=float),
-            ("f+", "f", "Ks+", "Ks"))
-        hamilt = imp.SphericalHamiltonian(tensor, (
-            imp.AngularMomentum(2),
-            imp.AngularMomentum(3),
-            imp.AngularMomentum(1)))
+        hamilt = build_test_hamiltonian(a, b, c, d, e, f, g, h, u, v, x, y)
         mxA, lam = imp.build_frobenius_data(hamilt, pow, (p1, p2), energy)
         self.assertEqual(mxA.get_axis_names(), ("theta", "pow", "eq", "f"))
         self.assertEqual(lam, (2, 3, 1))
@@ -430,3 +405,74 @@ class Test_solve_radial_equation(unittest.TestCase):
                 d * b * np.cos(b * r1),
             ]).reshape(2, 2, -1).transpose(2, 0, 1),
             decimal=3)
+
+"""
+class Test_calc_initial_solutions(unittest.TestCase):
+
+    def test(self):
+        a = 3
+        b = 5
+        ri = Tensor(np.linspace(-2, 2, 2), ("r",))
+        one = np.ones_like(ri.get_array())
+        ode_tensor = Tensor(
+            np.array([
+                [
+                    [-a**2 * one, 0 * one],
+                    [0 * one, -b**2 * one],
+                ],
+                [
+                    [0 * one, 0 * one],
+                    [0 * one, 0 * one],
+                ]
+            ]), #type: ignore
+            ("deriv", "eq", "f", "r"))
+        ode = imp.RadialEquation(ri, ode_tensor)
+        frobenius_tensor = Tensor(
+            np.array([
+                [
+                    [
+                        [0, 0],
+                        [0, 0],
+                    ],
+                    [
+                        [0, 0],
+                        [0, 0],
+                    ],
+                    [
+                        [a**2, 0],
+                        [0, b**2],
+                    ],
+                ],
+                [
+                    [
+                        [-1, 0],
+                        [0, -1],
+                    ],
+                    [
+                        [0, 0],
+                        [0, 0],
+                    ],
+                    [
+                        [0, 0],
+                        [0, 0],
+                    ],
+                ],
+                [
+                    [
+                        [1, 0],
+                        [0, 1],
+                    ],
+                    [
+                        [0, 0],
+                        [0, 0],
+                    ],
+                    [
+                        [0, 0],
+                        [0, 0],
+                    ],
+                ],
+            ]),
+            ("theta", "pow", "eq", "f"))
+        rs = Tensor(np.linspace(0, 1, 5), ("r",))
+        #sol = imp.calc_initial_solutions(frobenius_tensor, (0, 1), ode, rs)
+"""

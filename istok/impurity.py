@@ -436,7 +436,7 @@ class FrobeniusFunction:
             self.__deriv_coefs.get_size("pow") + 1,
             self.__deriv_coefs.get_size("log"),
             *self.__deriv_coefs.get_array().shape[3:]
-        ))
+        ), dtype=complex)
         old_coefs = self.__deriv_coefs.get_array("deriv", "pow", "log", *self.__rest_axes)
         coefs[:-1, 1:] = old_coefs
         coefs[-1, :-1] += \
@@ -508,3 +508,7 @@ def solve_radial_equation(
     return Tensor(
         y.reshape(n_deriv, dim, -1).transpose(2, 0, 1),
         (*radius_mesh.get_axis_names(), "deriv", "f"))
+
+
+def concat_tensors(a: Tensor, b: Tensor, axis: str) -> Tensor:
+    return Tensor(np.array(None), ())
