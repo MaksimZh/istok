@@ -372,3 +372,31 @@ class Test_find_frobenius_solutions(unittest.TestCase):
         v = sol[0].get_value(x)
         self.assertEqual(v.get_axis_names(), ("f",))
         np.testing.assert_almost_equal(v.get_array(), [1 + ax + ax**2/2])
+
+
+class Test_solve_ode(unittest.TestCase):
+
+    def test(self):
+        a = 1.1
+        b = 1.2
+        c = 2
+        d = 4
+        ri = Tensor(np.linspace(-1, 2, 1001), ("r",))
+        r = Tensor(np.linspace(0, 1, 51), ("r",))
+        one = np.ones_like(ri.get_array())
+        ode_tensor = Tensor(
+            np.array([[
+                [a * one, 0 * one],
+                [0 * one, b * one],
+            ]]), #type: ignore
+            ("deriv", "eq", "f", "r"))
+        ode = imp.RadialEquation(ri, ode_tensor)
+        f0 = Tensor(np.array([[c, d]]), ("deriv", "f"))
+        sol = imp.solve_radial_equation(ode, f0, r)
+        self.assertEqual(sol.get_axis_names(), ("r", "deriv", "f"))
+        np.testing.assert_almost_equal(
+            sol.get_array(),
+            np.array([
+                c * np.exp(a * r.get_array()),
+                d * np.exp(b * r.get_array())]).T.reshape(-1, 1, 2),
+            decimal=3)

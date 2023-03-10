@@ -1,8 +1,10 @@
 from typing import Iterable, Any
 from dataclasses import dataclass
 import numpy as np
+from nptyping import NDArray
 import xarray as xr
 from scipy.interpolate import Akima1DInterpolator
+from scipy.integrate import solve_ivp #type: ignore
 import scipy.constants as const
 import frobenius
 
@@ -211,7 +213,7 @@ def calc_spherical_bulk_hamiltonian(x: float,
 
 # Holds the following linear ODE:
 # f^(n) = T * (f, f^(1), ..., f^(n-1))
-# The dimensions of tensor T are: [deriv, eq, f]
+# The dimensions of tensor T are: [r, deriv, eq, f]
 class RadialEquation:
 
     __max_radius: float
@@ -477,3 +479,31 @@ def find_frobenius_solutions(theta_coefs: Tensor, lambda_roots: tuple[float, ...
                     Tensor(coefs[:, :, :, 0], ("pow", "log", "f")),
                     pow))
     return tuple(funcs)
+
+
+def solve_radial_equation(
+        equation: RadialEquation,
+        initial: Tensor,
+        radius_mesh: Tensor,
+        ) -> Tensor:
+    t = equation.get_tensor(1)
+    n_deriv = t.get_size("deriv")
+    dim = t.get_size("eq")
+    
+    def func(r: float, y: Any):
+        d = equation.get_tensor(r).get_array("deriv", "eq", "f")
+        y1 = y.reshape(n_deriv, dim)
+        y2 = np.zeros_like(y1)
+        y2[:-1] = y1[1:]
+        y2[-1] = (d @ y1[..., np.newaxis])[..., 0]
+        return y2.reshape(-1)
+    
+    r = radius_mesh.get_array()
+    y: NDArray[Any, Any] = \
+        solve_ivp(
+            func, (r[0], r[-1]), initial.get_array().reshape(-1), t_eval=r
+            ).y #type: ignore
+    
+    return Tensor(
+        y.reshape(n_deriv, dim, -1).transpose(2, 0, 1),
+        (*radius_mesh.get_axis_names(), "deriv", "f"))
