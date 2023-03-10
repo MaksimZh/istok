@@ -495,13 +495,14 @@ def solve_radial_equation(
         y1 = y.reshape(n_deriv, dim)
         y2 = np.zeros_like(y1)
         y2[:-1] = y1[1:]
-        y2[-1] = (d @ y1[..., np.newaxis])[..., 0]
+        y2[-1] = np.sum(d * y1[:, np.newaxis, :], axis=(0, 2))
         return y2.reshape(-1)
     
     r = radius_mesh.get_array()
     y: NDArray[Any, Any] = \
         solve_ivp(
-            func, (r[0], r[-1]), initial.get_array().reshape(-1), t_eval=r
+            func, (r[0], r[-1]), initial.get_array().reshape(-1), t_eval=r,
+            rtol=1e-5, atol=1e-5,
             ).y #type: ignore
     
     return Tensor(
