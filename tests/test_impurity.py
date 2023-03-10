@@ -23,7 +23,7 @@ class Test_calc_spherical_bulk_hamiltonian(unittest.TestCase):
         w2 = 0.6
         t = h.get_tensor()
         self.assertEqual(h.get_orbital_momentum(), (2, 3, 1))
-        self.assertEqual(t.get_axis_names(), ("f", "f+", "Ks", "Ks+"))
+        self.assertEqual(t.get_axis_names(), ("f+", "f", "Ks+", "Ks"))
         np.testing.assert_almost_equal(t.get_array(), [
             [
                 [
@@ -115,7 +115,7 @@ class Test_build_radial_equation(unittest.TestCase):
                 [d * kpl, f * one + g * kml @ kpr + h * kpl @ kmr, u * kpl @ kpr],
                 [e * kml, u * kml @ kmr, v * one + x * kml @ kpr + y * kpl @ kmr],
             ], dtype=float),
-            ("f", "f+", "Ks", "Ks+"))
+            ("f+", "f", "Ks+", "Ks"))
         hamilt = imp.SphericalHamiltonian(tensor, (
             imp.AngularMomentum(2),
             imp.AngularMomentum(3),
@@ -170,8 +170,8 @@ class Test_build_radial_equation(unittest.TestCase):
             ],
         ])
 
-"""
-class Test_build_frobenius_equation(unittest.TestCase):
+
+class Test_build_frobenius_data(unittest.TestCase):
 
     def test(self):
         one = np.array([
@@ -199,78 +199,78 @@ class Test_build_frobenius_equation(unittest.TestCase):
             [1, 0, 0],
             [0, 0, 0],
             ])
-        a, b, c, d, e, f, g, h, u, v, x, y, z = 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14
+        a, b, c, d, e, f, g, h, u, v, x, y = 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13
         p1, p2, p3 = 15, 16, 17
         pow = -1
         energy = 18
 
-        tensor = np.array([
-            [a * one + b * kml @ kpr + c * kpl @ kmr, d * kmr, e * kpr],
-            [d * kpl, f * one + g * kml @ kpr + h * kpl @ kmr, u * kpl @ kpr],
-            [e * kml, u * kml @ kmr, v * one + x * kml @ kpr + y * kpl @ kmr],
-        ], dtype=float)
+        tensor = Tensor(np.array([
+                [a * one + b * kml @ kpr + c * kpl @ kmr, d * kmr, e * kpr],
+                [d * kpl, f * one + g * kml @ kpr + h * kpl @ kmr, u * kpl @ kpr],
+                [e * kml, u * kml @ kmr, v * one + x * kml @ kpr + y * kpl @ kmr],
+            ], dtype=float),
+            ("f+", "f", "Ks+", "Ks"))
         hamilt = imp.SphericalHamiltonian(tensor, (
             imp.AngularMomentum(2),
             imp.AngularMomentum(3),
             imp.AngularMomentum(1)))
-        mxA, lam = imp.build_frobenius_equation(hamilt, pow, [p1, p2, p3])
-        self.assertEqual(mxA.get_axis_names(), ())
-        np.testing.assert_almost_equal(
-            m0.get_array(),
+        mxA, lam = imp.build_frobenius_data(hamilt, pow, (p1, p2, p3), energy)
+        self.assertEqual(mxA.get_axis_names(), ("theta", "pow", "eq", "f"))
+        self.assertEqual(lam, (2, 3, 1))
+        np.testing.assert_almost_equal(mxA.get_array(), [
             [
                 [
-                    [
-                        [(b + c) * 2 * (2 + 1) + p1, 0, 0],
-                        [0, (g + h) * 3 * (3 + 1) + p1, u * 1 * (1 + 2)],
-                        [0, u * (3 - 1) * (3 + 1), (x + y) * 1 * (1 + 1) + p1],
-                    ],
-                    [
-                        [p2, d * (3 + 1), e * 1],
-                        [d * 2, p2, 0],
-                        [e * (2 + 1), 0, p2],
-                    ],
-                    [
-                        [a + p3, 0, 0],
-                        [0, f + p3, 0],
-                        [0, 0, v + p3],
-                    ],
+                    [(b + c) * 2 * (2 + 1), 0, 0],
+                    [0, (g + h) * 3 * (3 + 1), u * 1 * (1 + 2)],
+                    [0, u * (3 - 1) * (3 + 1), (x + y) * 1 * (1 + 1)],
                 ],
                 [
-                    [
-                        [-(b + c), 0, 0],
-                        [0, -(g + h), -u * (2 * 1 + 2)],
-                        [0, u * 2 * 3, -(x + y)],
-                    ],
-                    [
-                        [0, d, -e],
-                        [-d, 0, 0],
-                        [e, 0, 0],
-                    ],
-                    [
-                        [0, 0, 0],
-                        [0, 0, 0],
-                        [0, 0, 0],
-                    ],
+                    [0, d * (3 + 1), e * 1],
+                    [d * 2, 0, 0],
+                    [e * (2 + 1), 0, 0],
                 ],
                 [
-                    [
-                        [-(b + c), 0, 0],
-                        [0, -(g + h), u],
-                        [0, u, -(x + y)],
-                    ],
-                    [
-                        [0, 0, 0],
-                        [0, 0, 0],
-                        [0, 0, 0],
-                    ],
-                    [
-                        [0, 0, 0],
-                        [0, 0, 0],
-                        [0, 0, 0],
-                    ],
+                    [a, 0, 0],
+                    [0, f, 0],
+                    [0, 0, v],
                 ],
-            ])        
-"""
+            ],
+            [
+                [
+                    [-(b + c), 0, 0],
+                    [0, -(g + h), -u * 2 * (1 + 1)],
+                    [0, u * 2 * 3, -(x + y)],
+                ],
+                [
+                    [0, d, -e],
+                    [-d, 0, 0],
+                    [e, 0, 0],
+                ],
+                [
+                    [0, 0, 0],
+                    [0, 0, 0],
+                    [0, 0, 0],
+                ],
+            ],
+            [
+                [
+                    [-(b + c), 0, 0],
+                    [0, -(g + h), u],
+                    [0, u, -(x + y)],
+                ],
+                [
+                    [0, 0, 0],
+                    [0, 0, 0],
+                    [0, 0, 0],
+                ],
+                [
+                    [0, 0, 0],
+                    [0, 0, 0],
+                    [0, 0, 0],
+                ],
+            ],
+        ])
+
 
 class Test_FrobeniusFunction(unittest.TestCase):
 
@@ -363,7 +363,7 @@ class Test_find_frobenius_solutions(unittest.TestCase):
                     [[0]],
                 ],
             ]),
-            ("theta", "pow", "f", "f+"))
+            ("theta", "pow", "eq", "f"))
         sol = imp.find_frobenius_solutions(coefs, (0,))
         self.assertEqual(len(sol), 1)
         x = 0.7

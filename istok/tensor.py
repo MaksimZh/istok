@@ -35,16 +35,21 @@ class Tensor(Status):
 
     # Get numpy array with optionally transposed and/or additional axes
     @status("OK", "ERR")
-    def get_array(self, *axes: str) -> NDArray[Any, Any]:
+    def get_array(self, *axes: str | tuple[str, int]) -> NDArray[Any, Any]:
         if len(axes) == 0 or tuple(axes) == self.__axis_names:
             self._set_status("get_array", "OK")
             return self.__array
         if len(axes) < len(self.__axis_names):
             self._set_status("get_array", "ERR")
-            return np.array([])
+            return np.array(None)
         indices = list[int]()
-        slices = list[slice | type(np.newaxis)]()
+        slices = list[int | slice | type(np.newaxis)]()
         for ax in axes:
+            if isinstance(ax, tuple) and ax[0] in self.__axis_indices:
+                indices.append(self.__axis_indices[ax[0]])
+                slices.append(ax[1])
+                continue
+            assert isinstance(ax, str)
             if ax in self.__axis_indices:
                 indices.append(self.__axis_indices[ax])
                 slices.append(slice(None))
@@ -53,7 +58,7 @@ class Tensor(Status):
                 slices.append(np.newaxis)
                 continue
             self._set_status("get_array", "ERR")
-            return np.array([])
+            return np.array(None)
         self._set_status("get_array", "OK")
         return self.__array.transpose(*indices)[*slices]
 

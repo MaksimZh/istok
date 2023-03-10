@@ -159,6 +159,8 @@ class SphericalHamiltonian:
 
     # QUERIES
 
+    # Get the tensor describing the Hamiltonian with the following dimensions:
+    # [f, f+, Ks, Ks+]
     def get_tensor(self) -> Tensor:
         return self.__tensor
 
@@ -203,7 +205,7 @@ def calc_spherical_bulk_hamiltonian(x: float,
             [pm * kpl,  -gp * kml @ kpr,  -n2 * kpl @ kpr],
             [pp * kml,  -n2 * kml @ kmr,  -gm * kml @ kpr],
         ], dtype=float),
-        ("f", "f+", "Ks", "Ks+"))
+        ("f+", "f", "Ks+", "Ks"))
     return SphericalHamiltonian(tensor, (l, l + 1, l - 1))
 
 
@@ -304,6 +306,54 @@ def build_radial_equation(
         Tensor(normalized_tensor_mesh.data, ("r", "deriv", "eq", "f")))
 
 
+def build_frobenius_data(
+        bulk_hamiltonian: SphericalHamiltonian,
+        potential_min_pow: int,
+        potential_coefs: tuple[float, ...],
+        energy: float,
+        ) -> tuple[Tensor, tuple[int, ...]]:
+    l = np.array([int(v) for v in bulk_hamiltonian.get_orbital_momentum()])
+    one = np.ones_like(l)
+    zero = np.zeros_like(l)
+    dim = len(l)
+    
+    pattern = Tensor(
+        np.zeros((dim, 3, 3, 3, 3)),
+        ("f", "Ks+", "Ks", "theta", "pow"))
+    
+    pattern.get_array(("Ks+", 0), ("Ks", 0), "theta", ("pow", 2), "f")[...] = \
+        np.array([one, zero, zero])
+    pattern.get_array(("Ks+", 0), ("Ks", 1), "theta", ("pow", 1), "f")[...] = \
+        np.array([l, -one, zero])
+    pattern.get_array(("Ks+", 0), ("Ks", 2), "theta", ("pow", 1), "f")[...] = \
+        np.array([l + 1, one, zero])
+    
+    pattern.get_array(("Ks+", 1), ("Ks", 0), "theta", ("pow", 1), "f")[...] = \
+        np.array([l + 1, one, zero])
+    pattern.get_array(("Ks+", 1), ("Ks", 1), "theta", ("pow", 0), "f")[...] = \
+        np.array([l * (l + 1), -one, -one])
+    pattern.get_array(("Ks+", 1), ("Ks", 2), "theta", ("pow", 0), "f")[...] = \
+        np.array([(l - 1) * (l + 1), 2 * l, one])
+    
+    pattern.get_array(("Ks+", 2), ("Ks", 0), "theta", ("pow", 1), "f")[...] = \
+        np.array([l, -one, zero])
+    pattern.get_array(("Ks+", 2), ("Ks", 1), "theta", ("pow", 0), "f")[...] = \
+        np.array([l * (l + 2), -2 * (l + 1), one])
+    pattern.get_array(("Ks+", 2), ("Ks", 2), "theta", ("pow", 0), "f")[...] = \
+        np.array([l * (l + 1), -one, -one])
+    
+    coefs = np.sum(
+        pattern.get_array(
+            "Ks+", "Ks", "theta", "pow", "*f+", "f") * \
+        bulk_hamiltonian.get_tensor().get_array(
+            "Ks+", "Ks", "*theta", "*pow", "f+", "f"),
+        axis=(0, 1))
+    
+    frobenius_tensor = Tensor(coefs, ("theta", "pow", "eq", "f"))
+    
+    return frobenius_tensor, tuple(l)
+
+
 class FrobeniusFunction:
 
     __coefs: Tensor
@@ -401,7 +451,9 @@ def eval_frobenius_solutions(funcs: tuple[FrobeniusFunction, ...], x: float) -> 
 def find_frobenius_solutions(theta_coefs: Tensor, lambda_roots: tuple[float, ...]
         ) -> tuple[FrobeniusFunction, ...]:
     solutions: list[tuple[float, list[list[Any]]]] = \
-        frobenius.solve(theta_coefs.get_array(), lambda_roots=lambda_roots)
+        frobenius.solve(
+            theta_coefs.get_array("theta", "pow", "eq", "f"),
+            lambda_roots=lambda_roots)
     funcs = list[FrobeniusFunction]()
     for pow, coef_list_of_lists in solutions:
         for coef_list in coef_list_of_lists:

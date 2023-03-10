@@ -42,6 +42,12 @@ class Test_Status(unittest.TestCase):
             a.transpose(2, 0, 1)[:, :, np.newaxis, :])
         self.assertTrue(t.is_status("get_array", "OK"))
 
+        np.testing.assert_equal(
+            t.get_array("z", ("x", 1), "*w", "y"),
+            a.transpose(2, 0, 1)[:, 1, np.newaxis, :])
+        self.assertTrue(t.is_status("get_array", "OK"))
+
+
     def test_copy(self):
         a = np.arange(1, 2 * 3 * 4 + 1).reshape(2, 3, 4)
         t = Tensor(a, ("x", "y", "z")).copy()
