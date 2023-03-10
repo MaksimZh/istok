@@ -312,6 +312,8 @@ def build_frobenius_data(
         potential_coefs: tuple[float, ...],
         energy: float,
         ) -> tuple[Tensor, tuple[int, ...]]:
+    assert potential_min_pow >= -2
+    assert potential_min_pow + len(potential_coefs) - 1 <= 2
     l = np.array([int(v) for v in bulk_hamiltonian.get_orbital_momentum()])
     one = np.ones_like(l)
     zero = np.zeros_like(l)
@@ -342,16 +344,25 @@ def build_frobenius_data(
     pattern.get_array(("Ks+", 2), ("Ks", 2), "theta", ("pow", 0), "f")[...] = \
         np.array([l * (l + 1), -one, -one])
     
-    coefs = np.sum(
-        pattern.get_array(
-            "Ks+", "Ks", "theta", "pow", "*f+", "f") * \
-        bulk_hamiltonian.get_tensor().get_array(
-            "Ks+", "Ks", "*theta", "*pow", "f+", "f"),
-        axis=(0, 1))
+    coefs = Tensor(
+        np.sum(
+            pattern.get_array(
+                "Ks+", "Ks", "theta", "pow", "*f+", "f") * \
+            bulk_hamiltonian.get_tensor().get_array(
+                "Ks+", "Ks", "*theta", "*pow", "f+", "f"),
+            axis=(0, 1)),
+        ("theta", "pow", "eq", "f"))
     
-    frobenius_tensor = Tensor(coefs, ("theta", "pow", "eq", "f"))
+    shift = list(potential_coefs)
+    shift[potential_min_pow + 2] -= energy
+
+    for i in range(len(potential_coefs)):
+        a = coefs.get_array(
+            ("theta", 0), ("pow", potential_min_pow + i + 2), "eq", "f")
+        for j in range(dim):
+            a[j, j] += shift[i]
     
-    return frobenius_tensor, tuple(l)
+    return coefs, tuple(l)
 
 
 class FrobeniusFunction:

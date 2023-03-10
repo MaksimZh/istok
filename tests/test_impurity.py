@@ -200,9 +200,9 @@ class Test_build_frobenius_data(unittest.TestCase):
             [0, 0, 0],
             ])
         a, b, c, d, e, f, g, h, u, v, x, y = 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13
-        p1, p2, p3 = 15, 16, 17
+        p1, p2 = 14, 15
         pow = -1
-        energy = 18
+        energy = 16
 
         tensor = Tensor(np.array([
                 [a * one + b * kml @ kpr + c * kpl @ kmr, d * kmr, e * kpr],
@@ -214,7 +214,7 @@ class Test_build_frobenius_data(unittest.TestCase):
             imp.AngularMomentum(2),
             imp.AngularMomentum(3),
             imp.AngularMomentum(1)))
-        mxA, lam = imp.build_frobenius_data(hamilt, pow, (p1, p2, p3), energy)
+        mxA, lam = imp.build_frobenius_data(hamilt, pow, (p1, p2), energy)
         self.assertEqual(mxA.get_axis_names(), ("theta", "pow", "eq", "f"))
         self.assertEqual(lam, (2, 3, 1))
         np.testing.assert_almost_equal(mxA.get_array(), [
@@ -225,14 +225,14 @@ class Test_build_frobenius_data(unittest.TestCase):
                     [0, u * (3 - 1) * (3 + 1), (x + y) * 1 * (1 + 1)],
                 ],
                 [
-                    [0, d * (3 + 1), e * 1],
-                    [d * 2, 0, 0],
-                    [e * (2 + 1), 0, 0],
+                    [p1, d * (3 + 1), e * 1],
+                    [d * 2, p1, 0],
+                    [e * (2 + 1), 0, p1],
                 ],
                 [
-                    [a, 0, 0],
-                    [0, f, 0],
-                    [0, 0, v],
+                    [a + p2 - energy, 0, 0],
+                    [0, f + p2 - energy, 0],
+                    [0, 0, v + p2 - energy],
                 ],
             ],
             [
