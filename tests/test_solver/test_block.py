@@ -1,6 +1,6 @@
 import unittest
 
-from istok.solver import Block, Wrapper
+from istok.solver import Block, Wrapper, In, Out, Link
 from .base_test import Test_Solver
 
 
@@ -16,8 +16,7 @@ class Test_Single(Test_Solver):
     
     def setUp(self):
         self.factory = Block(
-            [(W, {"a": "aa", "b": "bb"}, {"c": "cc", "d": "dd"})],
-            inputs=["aa", "bb"], outputs=["cc", "dd"])
+            [(W, {"a": In("aa"), "b": In("bb")}, {"c": Out("cc"), "d": Out("dd")})])
         self.input_spec = {"aa": int, "bb": str}
         self.output_spec = {"cc": int, "dd": str}
         self.invalid_id = "foo"
@@ -36,11 +35,10 @@ class Test_Chain(Test_Solver):
     def setUp(self):
         self.factory = Block(
             [
-                (W, {"a": "aa", "b": "bb"}, {"c": "u1", "d": "v1"}),
-                (W, {"a": "u1", "b": "v1"}, {"c": "u2", "d": "v2"}),
-                (W, {"a": "u2", "b": "v2"}, {"c": "cc", "d": "dd"}),
-            ],
-            inputs=["aa", "bb"], outputs=["cc", "dd"])
+                (W, {"a": In("aa"), "b": In("bb")}, {"c": Link("u1"), "d": Link("v1")}),
+                (W, {"a": Link("u1"), "b": Link("v1")}, {"c": Link("u2"), "d": Link("v2")}),
+                (W, {"a": Link("u2"), "b": Link("v2")}, {"c": Out("cc"), "d": Out("dd")}),
+            ])
         self.input_spec = {"aa": int, "bb": str}
         self.output_spec = {"cc": int, "dd": str}
         self.invalid_id = "foo"
@@ -59,13 +57,12 @@ class Test_Cross(Test_Solver):
     def setUp(self):
         self.factory = Block(
             [
-                (W, {"a": "i1", "b": "s1"}, {"c": "u1", "d": "v1"}),
-                (W, {"a": "i2", "b": "s2"}, {"c": "u2", "d": "v2"}),
-                (W, {"a": "u1", "b": "v2"}, {"c": "u3", "d": "v3"}),
-                (W, {"a": "u3", "b": "v3"}, {"c": "i3", "d": "s3"}),
-                (W, {"a": "u3", "b": "v3"}, {"c": "i4", "d": "s4"}),
-            ],
-            inputs=["i1", "i2", "s1", "s2"], outputs=["i3", "i4", "s3", "s4"])
+                (W, {"a": In("i1"), "b": In("s1")}, {"c": Link("u1"), "d": Link("v1")}),
+                (W, {"a": In("i2"), "b": In("s2")}, {"c": Link("u2"), "d": Link("v2")}),
+                (W, {"a": Link("u1"), "b": Link("v2")}, {"c": Link("u3"), "d": Link("v3")}),
+                (W, {"a": Link("u3"), "b": Link("v3")}, {"c": Out("i3"), "d": Out("s3")}),
+                (W, {"a": Link("u3"), "b": Link("v3")}, {"c": Out("i4"), "d": Out("s4")}),
+            ])
         self.input_spec = {"i1": int, "i2": int, "s1": str, "s2": str}
         self.output_spec = {"i3": int, "i4": int, "s3": str, "s4": str}
         self.invalid_id = "foo"
@@ -87,12 +84,11 @@ class Test_Diamond(Test_Solver):
     def setUp(self):
         self.factory = Block(
             [
-                (W, {"a": "i1", "b": "s1"}, {"c": "u1", "d": "v1"}),
-                (W, {"a": "u1", "b": "v1"}, {"c": "u2", "d": "v2"}),
-                (W, {"a": "u1", "b": "v1"}, {"c": "u3", "d": "v3"}),
-                (W, {"a": "u2", "b": "v3"}, {"c": "i2", "d": "s2"}),
-            ],
-            inputs=["i1", "s1"], outputs=["i2", "s2"])
+                (W, {"a": In("i1"), "b": In("s1")}, {"c": Link("u1"), "d": Link("v1")}),
+                (W, {"a": Link("u1"), "b": Link("v1")}, {"c": Link("u2"), "d": Link("v2")}),
+                (W, {"a": Link("u1"), "b": Link("v1")}, {"c": Link("u3"), "d": Link("v3")}),
+                (W, {"a": Link("u2"), "b": Link("v3")}, {"c": Out("i2"), "d": Out("s2")}),
+            ])
         self.input_spec = {"i1": int, "s1": str}
         self.output_spec = {"i2": int, "s2": str}
         self.invalid_id = "foo"
@@ -114,20 +110,17 @@ class Test_Fail(unittest.TestCase):
     def test_missing_input(self):
         b = Block([
             (W, {}, {}),
-        ],
-        inputs=[], outputs=[])
+        ])
         self.assertTrue(b.get_init_message().startswith("Missing inputs:"))
         
         b = Block([
-            (W, {"a": "aa"}, {}),
-        ],
-        inputs=[], outputs=[])
+            (W, {"a": In("aa")}, {}),
+        ])
         self.assertTrue(b.get_init_message().startswith("Missing inputs:"))
 
     def test_type_mismatch(self):
         b = Block([
-            (W, {"a": "a1", "b": "b1"}, {"c": "c1", "d": "d1"}),
-            (W, {"a": "d1", "b": "c1"}, {"c": "c2", "d": "d2"}),
-        ],
-        inputs=["a1", "b1"], outputs=["c2", "d2"])
+            (W, {"a": In("a1"), "b": In("b1")}, {"c": Link("c1"), "d": Link("d1")}),
+            (W, {"a": Link("d1"), "b": Link("c1")}, {"c": Out("c2"), "d": Out("d2")}),
+        ])
         self.assertTrue(b.get_init_message().startswith("Type mismatch:"))

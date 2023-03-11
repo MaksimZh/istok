@@ -5,8 +5,16 @@ from istok.solver.base import Solver, SolverFactory, DataContainer, is_subtype
 from istok.solver.graph import Node, chain_nodes, process_graph
 
 
-SolverNodeDescription = tuple[SolverFactory, dict[str, str], dict[str, str]]
+SolverNodeDescription = tuple[SolverFactory, dict[str, Any], dict[str, Any]]
 
+class In(str):
+    pass
+
+class Out(str):
+    pass
+
+class Link(str):
+    pass
 
 class BlockNode(Node):
 
@@ -220,17 +228,21 @@ class Block(SolverFactory):
 
     
     # CONSTRUCTOR
-    def __init__(self, description: list[SolverNodeDescription],
-            inputs: list[str], outputs: list[str]) -> None:
+    def __init__(self, description: list[SolverNodeDescription]) -> None:
         super().__init__()
         data = dict[str, Node]()
+        inputs = set[Any]()
+        outputs = set[Any]()
 
         def add_solver(description: SolverNodeDescription) -> None:
             solver, solver_inputs, solver_outputs = description
             solver_node = Node(solver)
             solver_input_spec = solver.get_input_spec().copy()
             solver_output_spec = solver.get_output_spec()
-            for slot_id, id in solver_inputs.items():
+            for slot_id, input in solver_inputs.items():
+                id = str(input)
+                if isinstance(input, In):
+                    inputs.add(id)
                 input_type = solver_input_spec[slot_id]
                 if id in data and not is_subtype(data[id].get_item(), input_type):
                     self.__init_message = f"Type mismatch: {id}"
@@ -242,7 +254,10 @@ class Block(SolverFactory):
             if len(solver_input_spec) > 0:
                 self.__init_message = f"Missing inputs: {str(set(solver_input_spec.keys()))}"
                 return
-            for slot_id, id in solver_outputs.items():
+            for slot_id, output in solver_outputs.items():
+                id = str(output)
+                if isinstance(output, Out):
+                    outputs.add(id)
                 output_type = solver_output_spec[slot_id]
                 if id in data and not is_subtype(output_type, data[id].get_item()):
                     self.__init_message = f"Type mismatch: {id}"
