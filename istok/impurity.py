@@ -511,4 +511,15 @@ def solve_radial_equation(
 
 
 def concat_tensors(a: Tensor, b: Tensor, axis: str) -> Tensor:
+    i = a.get_axis_names().index(axis)
+    c: NDArray[Any, Any] = np.concatenate(
+        (
+            a.get_array(),
+            b.get_array(*a.get_axis_names())
+        ),
+        axis=i)
+    return Tensor(c, a.get_axis_names())
+
+
+def modify_tensor(dest: Tensor, source: Tensor, axis: str, index: int) -> Tensor:
     return Tensor(np.array(None), ())

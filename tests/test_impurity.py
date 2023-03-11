@@ -405,6 +405,21 @@ class Test_solve_radial_equation(unittest.TestCase):
                 d * b * np.cos(b * r1),
             ]).reshape(2, 2, -1).transpose(2, 0, 1),
             decimal=3)
+        
+    
+class Test_tensor(unittest.TestCase):
+
+    def test_concat_tensors(self):
+        a = np.arange(1, 2 * 3 * 4 + 1).reshape(2, 3, 4)
+        b = np.arange(1, 5 * 4 * 2 + 1).reshape(5, 4, 2)
+        ta = Tensor(a, ("x", "y", "z"))
+        tb = Tensor(b, ("y", "z", "x"))
+        tc = imp.concat_tensors(ta, tb, "y")
+        self.assertEqual(tc.get_axis_names(), ("x", "y", "z"))
+        np.testing.assert_almost_equal(
+            tc.get_array(),
+            np.concatenate((a, b.transpose(2, 0, 1)), axis=1))
+
 
 """
 class Test_calc_initial_solutions(unittest.TestCase):
