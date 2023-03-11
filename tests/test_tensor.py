@@ -56,3 +56,13 @@ class Test_Status(unittest.TestCase):
         b = a.copy()
         a[0, 0, 0] = 42
         np.testing.assert_equal(t.get_array(), b)
+
+    def test_new_axes(self):
+        a = np.arange(1, 2 * 3 * 4 + 1).reshape(2, 3, 4)
+        t = Tensor(a, ("x", "y", "z"))
+        t1 = t.new_axes("u")
+        self.assertEqual(t1.get_axis_names(), ("u", "x", "y", "z"))
+        np.testing.assert_almost_equal(t1.get_array(), a[np.newaxis])
+        a[0, 0, 0] = 42
+        np.testing.assert_almost_equal(t1.get_array(), a[np.newaxis])
+

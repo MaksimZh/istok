@@ -65,3 +65,11 @@ class Tensor(Status):
     # Create copy of the tensor with shallow copy of the data
     def copy(self) -> "Tensor":
         return Tensor(self.__array.copy(), self.__axis_names)
+    
+    # Get new tensor with new axis
+    @status("OK", "ERR")
+    def new_axes(self, *axes: str) -> "Tensor":
+        if len(set(axes) & set(self.__axis_names)) > 0:
+            self._set_status("get_array", "ERR")
+            return Tensor(np.array(None), ())
+        return Tensor(self.__array[(np.newaxis,) * len(axes)], (*axes, *self.__axis_names))
