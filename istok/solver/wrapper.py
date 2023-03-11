@@ -175,18 +175,18 @@ class FuncSpec:
         self.__output_spec = dict()
         for id in arg_spec.args:
             self.__input_ids.append(id)
-            self.__input_spec[id] = arg_spec.annotations[id]
+            self.__input_spec[id] = _refine_type(arg_spec.annotations[id])
         if "return" not in arg_spec.annotations:
             assert len(output_ids) == 0
             return
         return_type = arg_spec.annotations["return"]
-        if get_origin(return_type) is not tuple:
-            assert len(output_ids) == 1
-            self.__output_spec[output_ids[0]] = return_type
+        assert len(output_ids) == 1 or get_origin(return_type) is tuple
+        if len(output_ids) == 1:
+            self.__output_spec[output_ids[0]] = _refine_type(return_type)
             return
         output_types = get_args(return_type)
         for i in range(len(output_ids)):
-            self.__output_spec[output_ids[i]] = output_types[i]
+            self.__output_spec[output_ids[i]] = _refine_type(output_types[i])
 
     def get_func(self) -> Func:
         return self.__func
@@ -202,3 +202,9 @@ class FuncSpec:
     
     def get_output_spec(self) -> dict[str, type]:
         return self.__output_spec
+
+def _refine_type(t: type) -> type:
+    r = get_origin(t)
+    if r is None:
+        return t
+    return r

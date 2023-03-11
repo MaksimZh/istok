@@ -466,7 +466,7 @@ def eval_frobenius_solutions(funcs: tuple[FrobeniusFunction, ...], x: float) -> 
     return Tensor(array, axis_names)
 
 
-def find_frobenius_solutions(theta_coefs: Tensor, lambda_roots: tuple[float, ...]
+def _find_frobenius_solutions(theta_coefs: Tensor, lambda_roots: tuple[float, ...]
         ) -> tuple[FrobeniusFunction, ...]:
     solutions: list[tuple[float, list[list[Any]]]] = \
         frobenius.solve(
@@ -481,8 +481,10 @@ def find_frobenius_solutions(theta_coefs: Tensor, lambda_roots: tuple[float, ...
                     pow))
     return tuple(funcs)
 
+FrobeniusSolver = Wrapper(_find_frobenius_solutions, ["result"])
 
-def solve_radial_equation(
+
+def _solve_radial_equation(
         equation: RadialEquation,
         initial: Tensor,
         radius_mesh: Tensor,
@@ -510,6 +512,8 @@ def solve_radial_equation(
         y.reshape(n_deriv, dim, -1).transpose(2, 0, 1),
         (*radius_mesh.get_axis_names(), "deriv", "f"))
 
+RadialEquationSolver = Wrapper(_solve_radial_equation, ["result"])
+
 
 def _concat_tensors(a: Tensor, b: Tensor, axis: str) -> Tensor:
     i = a.get_axis_names().index(axis)
@@ -524,9 +528,11 @@ def _concat_tensors(a: Tensor, b: Tensor, axis: str) -> Tensor:
 TensorConcat = Wrapper(_concat_tensors, ["result"])
 
 
-def modify_tensor(dest: Tensor, source: Tensor, axis: str, index: int) -> Tensor:
+def _modify_tensor(dest: Tensor, source: Tensor, axis: str, index: int) -> Tensor:
     i = dest.get_axis_names().index(axis)
     s = (slice(None),) * i + (slice(index, index + source.get_size(axis)),)
     c = dest.copy()
     c.get_array()[s] = source.get_array(*dest.get_axis_names())
     return c
+
+TensorModifier = Wrapper(_modify_tensor, ["result"])

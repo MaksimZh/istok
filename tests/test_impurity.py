@@ -325,7 +325,7 @@ class Test_FrobeniusFunction(unittest.TestCase):
             ])
 
 
-class Test_find_frobenius_solutions(unittest.TestCase):
+class Test_FrobeniusSolver(unittest.TestCase):
 
     def test(self):
         a = 3
@@ -340,7 +340,11 @@ class Test_find_frobenius_solutions(unittest.TestCase):
                 ],
             ]),
             ("theta", "pow", "eq", "f"))
-        sol = imp.find_frobenius_solutions(coefs, (0,))
+        solver = imp.FrobeniusSolver.create()
+        solver.put("theta_coefs", coefs)
+        solver.put("lambda_roots", (0,))
+        solver.run()
+        sol = solver.get("result")
         self.assertEqual(len(sol), 1)
         x = 0.7
         ax = a * x
@@ -349,7 +353,7 @@ class Test_find_frobenius_solutions(unittest.TestCase):
         np.testing.assert_almost_equal(v.get_array(), [1 + ax + ax**2/2])
 
 
-class Test_solve_radial_equation(unittest.TestCase):
+class Test_RadialEquationSolver(unittest.TestCase):
 
     def test(self):
         a = 3
@@ -379,7 +383,12 @@ class Test_solve_radial_equation(unittest.TestCase):
             ("deriv", "f"))
         
         rs = Tensor(np.linspace(0, 1, 5), ("r",))
-        sol = imp.solve_radial_equation(ode, f0, rs)
+        solver = imp.RadialEquationSolver.create()
+        solver.put("equation", ode)
+        solver.put("initial", f0)
+        solver.put("radius_mesh", rs)
+        solver.run()
+        sol = solver.get("result")
         self.assertEqual(sol.get_axis_names(), ("r", "deriv", "f"))
         r = rs.get_array()
         np.testing.assert_almost_equal(
@@ -393,11 +402,16 @@ class Test_solve_radial_equation(unittest.TestCase):
             decimal=3)
 
         rs1 = Tensor(-rs.get_array(), ("r",))
-        sol = imp.solve_radial_equation(ode, f0, rs1)
-        self.assertEqual(sol.get_axis_names(), ("r", "deriv", "f"))
+        solver1 = imp.RadialEquationSolver.create()
+        solver1.put("equation", ode)
+        solver1.put("initial", f0)
+        solver1.put("radius_mesh", rs1)
+        solver1.run()
+        sol1 = solver1.get("result")
+        self.assertEqual(sol1.get_axis_names(), ("r", "deriv", "f"))
         r1 = rs1.get_array()
         np.testing.assert_almost_equal(
-            sol.get_array(),
+            sol1.get_array(),
             np.array([
                 c * np.cos(a * r1),
                 d * np.sin(b * r1),
@@ -409,7 +423,7 @@ class Test_solve_radial_equation(unittest.TestCase):
     
 class Test_tensor(unittest.TestCase):
 
-    def test_concat_tensors(self):
+    def test_TensorConcat(self):
         a = np.arange(1, 2 * 3 * 4 + 1).reshape(2, 3, 4)
         b = np.arange(1, 5 * 4 * 2 + 1).reshape(5, 4, 2)
         ta = Tensor(a, ("x", "y", "z"))
@@ -425,14 +439,20 @@ class Test_tensor(unittest.TestCase):
             tc.get_array(),
             np.concatenate((a, b.transpose(2, 0, 1)), axis=1))
         
-    def test_modify_tensor(self):
+    def test_TensorModifier(self):
         a = np.arange(1, 2 * 5 * 4 + 1).reshape(2, 5, 4)
         b = np.arange(1, 3 * 4 * 2 + 1).reshape(3, 4, 2)
         ta = Tensor(a, ("x", "y", "z"))
         tb = Tensor(b, ("y", "z", "x"))
+        solver = imp.TensorModifier.create()
+        solver.put("dest", ta)
+        solver.put("source", tb)
+        solver.put("axis", "y")
+        solver.put("index", 1)
+        solver.run()
+        tc = solver.get("result")
         c = a.copy()
         c[:, 1:4, :] = b.transpose(2, 0, 1)
-        tc = imp.modify_tensor(ta, tb, "y", 1)
         self.assertEqual(tc.get_axis_names(), ("x", "y", "z"))
         np.testing.assert_almost_equal(tc.get_array(), c)
 
