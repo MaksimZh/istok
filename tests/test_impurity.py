@@ -414,7 +414,12 @@ class Test_tensor(unittest.TestCase):
         b = np.arange(1, 5 * 4 * 2 + 1).reshape(5, 4, 2)
         ta = Tensor(a, ("x", "y", "z"))
         tb = Tensor(b, ("y", "z", "x"))
-        tc = imp.concat_tensors(ta, tb, "y")
+        solver = imp.TensorConcat.create()
+        solver.put("a", ta)
+        solver.put("b", tb)
+        solver.put("axis", "y")
+        solver.run()
+        tc = solver.get("result")
         self.assertEqual(tc.get_axis_names(), ("x", "y", "z"))
         np.testing.assert_almost_equal(
             tc.get_array(),

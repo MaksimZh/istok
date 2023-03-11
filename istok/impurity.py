@@ -8,6 +8,7 @@ from scipy.integrate import solve_ivp #type: ignore
 import scipy.constants as const
 import frobenius
 
+from istok.solver import Wrapper
 from istok.tensor import Tensor
 
 
@@ -510,7 +511,7 @@ def solve_radial_equation(
         (*radius_mesh.get_axis_names(), "deriv", "f"))
 
 
-def concat_tensors(a: Tensor, b: Tensor, axis: str) -> Tensor:
+def _concat_tensors(a: Tensor, b: Tensor, axis: str) -> Tensor:
     i = a.get_axis_names().index(axis)
     c: NDArray[Any, Any] = np.concatenate(
         (
@@ -519,6 +520,8 @@ def concat_tensors(a: Tensor, b: Tensor, axis: str) -> Tensor:
         ),
         axis=i)
     return Tensor(c, a.get_axis_names())
+
+TensorConcat = Wrapper(_concat_tensors, ["result"])
 
 
 def modify_tensor(dest: Tensor, source: Tensor, axis: str, index: int) -> Tensor:

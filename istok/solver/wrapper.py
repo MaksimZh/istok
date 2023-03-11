@@ -61,7 +61,7 @@ class WrapperSolver(Solver):
         output_ids = self.__spec.get_output_ids()
         output_spec = self.__spec.get_output_spec()
         if len(output_ids) == 1:
-            result = tuple(result,)
+            result = (result,)
         for i in range(len(output_ids)):
             value = result[i]
             id = output_ids[i]
