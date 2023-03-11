@@ -124,3 +124,21 @@ class Test_Fail(unittest.TestCase):
             (W, {"a": Link("d1"), "b": Link("c1")}, {"c": Out("c2"), "d": Out("d2")}),
         ])
         self.assertTrue(b.get_init_message().startswith("Type mismatch:"))
+
+
+class Test_Preset(Test_Solver):
+    
+    def setUp(self):
+        self.factory = Block(
+            [(W, {"a": In("aa"), "b": "foo"}, {"c": Out("cc"), "d": Out("dd")})])
+        self.input_spec = {"aa": int}
+        self.output_spec = {"cc": int, "dd": str}
+        self.invalid_id = "foo"
+        self.invalid_put = ("aa", "foo")
+        self.valid_input = {"aa": 5}
+        self.valid_output = {"cc": 10, "dd": "foofoo"}
+        self.error_inputs = []
+
+    def test_init_factory(self):
+        assert isinstance(self.factory, Block)
+        self.assertEqual(self.factory.get_init_message(), "OK")

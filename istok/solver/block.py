@@ -16,6 +16,9 @@ class Out(str):
 class Link(str):
     pass
 
+class Slot(str):
+    pass
+
 class BlockNode(Node):
 
     __is_hot: bool
@@ -47,11 +50,13 @@ def _convert_node(node: Node) -> BlockNode:
     item = node.get_item()
     if type(item) is type:
         return BlockNode(DataContainer(item))
-    if type(item) is str:
-        return BlockNode(item)
+    if type(item) is Slot:
+        return BlockNode(str(item))
     if isinstance(item, SolverFactory):
         return BlockNode(item.create())
-    assert False
+    container = DataContainer(type(item))
+    container.put(item)
+    return BlockNode(container)
 
 
 class BlockSolver(Solver):
@@ -239,32 +244,74 @@ class Block(SolverFactory):
             solver_node = Node(solver)
             solver_input_spec = solver.get_input_spec().copy()
             solver_output_spec = solver.get_output_spec()
-            for slot_id, input in solver_inputs.items():
-                id = str(input)
-                if isinstance(input, In):
-                    inputs.add(id)
+
+            def add_in_link(slot_id: str, id: str) -> None:
                 input_type = solver_input_spec[slot_id]
                 if id in data and not is_subtype(data[id].get_item(), input_type):
                     self.__init_message = f"Type mismatch: {id}"
                     return
                 if id not in data:
                     data[id] = Node(input_type)
-                chain_nodes(data[id], Node(slot_id), solver_node)
+                chain_nodes(data[id], Node(Slot(slot_id)), solver_node)
                 del solver_input_spec[slot_id]
-            if len(solver_input_spec) > 0:
-                self.__init_message = f"Missing inputs: {str(set(solver_input_spec.keys()))}"
-                return
-            for slot_id, output in solver_outputs.items():
-                id = str(output)
-                if isinstance(output, Out):
-                    outputs.add(id)
+
+            def add_out_link(slot_id: str, id: str) -> None:
                 output_type = solver_output_spec[slot_id]
                 if id in data and not is_subtype(output_type, data[id].get_item()):
                     self.__init_message = f"Type mismatch: {id}"
                     return
                 if id not in data:
                     data[id] = Node(output_type)
-                chain_nodes(solver_node, Node(slot_id), data[id])
+                chain_nodes(solver_node, Node(Slot(slot_id)), data[id])
+
+            def add_in(slot_id: str, id: str) -> None:
+                add_in_link(slot_id, id)
+                if self.__init_message != "":
+                    return
+                inputs.add(id)
+
+            def add_out(slot_id: str, id: str) -> None:
+                add_out_link(slot_id, id)
+                if self.__init_message != "":
+                    return
+                outputs.add(id)
+
+            def add_in_value(slot_id: str, value: Any) -> None:
+                input_type = solver_input_spec[slot_id]
+                if not is_subtype(type(value), input_type):
+                    self.__init_message = f"Type mismatch: {id}"
+                    return
+                chain_nodes(Node(value), Node(Slot(slot_id)), solver_node)
+                del solver_input_spec[slot_id]
+
+            for slot_id, input in solver_inputs.items():
+                if isinstance(input, In):
+                    add_in(slot_id, str(input))
+                    if self.__init_message != "":
+                        return
+                    continue
+                if isinstance(input, Link):
+                    add_in_link(slot_id, str(input))
+                    if self.__init_message != "":
+                        return
+                    continue
+                add_in_value(slot_id, input)
+                if self.__init_message != "":
+                    return
+            if len(solver_input_spec) > 0:
+                self.__init_message = f"Missing inputs: {str(set(solver_input_spec.keys()))}"
+                return
+            for slot_id, output in solver_outputs.items():
+                if isinstance(output, Out):
+                    add_out(slot_id, str(output))
+                    if self.__init_message != "":
+                        return
+                    continue
+                if isinstance(output, Link):
+                    add_out_link(slot_id, str(output))
+                    if self.__init_message != "":
+                        return
+                    continue
         
         self.__init_message = ""
         for d in description:
