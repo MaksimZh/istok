@@ -522,4 +522,8 @@ def concat_tensors(a: Tensor, b: Tensor, axis: str) -> Tensor:
 
 
 def modify_tensor(dest: Tensor, source: Tensor, axis: str, index: int) -> Tensor:
-    return Tensor(np.array(None), ())
+    i = dest.get_axis_names().index(axis)
+    s = (slice(None),) * i + (slice(index, index + source.get_size(axis)),)
+    c = dest.copy()
+    c.get_array()[s] = source.get_array(*dest.get_axis_names())
+    return c

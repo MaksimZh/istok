@@ -419,6 +419,17 @@ class Test_tensor(unittest.TestCase):
         np.testing.assert_almost_equal(
             tc.get_array(),
             np.concatenate((a, b.transpose(2, 0, 1)), axis=1))
+        
+    def test_modify_tensor(self):
+        a = np.arange(1, 2 * 5 * 4 + 1).reshape(2, 5, 4)
+        b = np.arange(1, 3 * 4 * 2 + 1).reshape(3, 4, 2)
+        ta = Tensor(a, ("x", "y", "z"))
+        tb = Tensor(b, ("y", "z", "x"))
+        c = a.copy()
+        c[:, 1:4, :] = b.transpose(2, 0, 1)
+        tc = imp.modify_tensor(ta, tb, "y", 1)
+        self.assertEqual(tc.get_axis_names(), ("x", "y", "z"))
+        np.testing.assert_almost_equal(tc.get_array(), c)
 
 
 """
