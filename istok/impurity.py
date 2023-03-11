@@ -171,8 +171,11 @@ class SphericalHamiltonian:
         return self.__orbital_momentum
 
 
-def calc_spherical_bulk_hamiltonian(x: float,
-        j: AngularMomentum, l: AngularMomentum) -> SphericalHamiltonian:
+def _calc_spherical_bulk_hamiltonian(
+        x: float,
+        j: AngularMomentum,
+        l: AngularMomentum
+        ) -> SphericalHamiltonian:
     par = MaterialParams(x)
     ang = AngularCoefs(j, l)
     eg = par.eg
@@ -211,6 +214,10 @@ def calc_spherical_bulk_hamiltonian(x: float,
         ("f+", "f", "Ks+", "Ks"))
     return SphericalHamiltonian(tensor, (l, l + 1, l - 1))
 
+SphericalBulkHamiltonianBuilder = Wrapper(
+    _calc_spherical_bulk_hamiltonian,
+    ["hamiltonian"])
+
 
 # Holds the following linear ODE:
 # f^(n) = T * (f, f^(1), ..., f^(n-1))
@@ -247,7 +254,7 @@ class RadialEquation:
             (*r.get_axis_names(), "deriv", "eq", "f"))
 
 
-def build_radial_equation(
+def _build_radial_equation(
         bulk_hamiltonian: SphericalHamiltonian,
         radius_mesh: Tensor,
         potential_mesh: Tensor,
@@ -312,8 +319,10 @@ def build_radial_equation(
         radius_mesh,
         Tensor(normalized_tensor_mesh.data, ("r", "deriv", "eq", "f")))
 
+RadialEquationBuilder = Wrapper(_build_radial_equation, ["equation"])
 
-def build_frobenius_data(
+
+def _build_frobenius_data(
         bulk_hamiltonian: SphericalHamiltonian,
         potential_min_pow: int,
         potential_coefs: tuple[float, ...],
@@ -370,6 +379,10 @@ def build_frobenius_data(
             a[j, j] += shift[i]
     
     return coefs, tuple(l)
+
+FrobeniusDataBuilder = Wrapper(
+    _build_frobenius_data,
+    ["theta_coefs", "lambda_roots"])
 
 
 class FrobeniusFunction:

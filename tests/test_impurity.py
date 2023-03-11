@@ -7,11 +7,15 @@ from istok.tensor import Tensor
 import istok.impurity as imp
 
 
-class Test_calc_spherical_bulk_hamiltonian(unittest.TestCase):
+class Test_SphericalBulkHamiltonianBuilder(unittest.TestCase):
 
     def test(self):
-        h = imp.calc_spherical_bulk_hamiltonian(
-            0.2, imp.AngularMomentum(3/2), imp.AngularMomentum(2))
+        solver = imp.SphericalBulkHamiltonianBuilder.create()
+        solver.put("x", 0.2)
+        solver.put("j", imp.AngularMomentum(3/2))
+        solver.put("l", imp.AngularMomentum(2))
+        solver.run()
+        h = solver.get("hamiltonian")
         eg = 57.68
         p = 846.331281
         ac = 253.058032
@@ -122,7 +126,7 @@ def build_test_hamiltonian(
         imp.AngularMomentum(1)))
 
 
-class Test_build_radial_equation(unittest.TestCase):
+class Test_RadialEquationBuilder(unittest.TestCase):
 
     def test(self):
         a, b, c, d, e, f, g, h, u, v, x, y = 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13
@@ -132,7 +136,13 @@ class Test_build_radial_equation(unittest.TestCase):
         hamilt = build_test_hamiltonian(a, b, c, d, e, f, g, h, u, v, x, y)
         radius = np.linspace(0.1, 3, 30)
         potential = Tensor(z / radius, ("r",))
-        eq = imp.build_radial_equation(hamilt, Tensor(radius, ("r",)), potential, energy)
+        solver = imp.RadialEquationBuilder.create()
+        solver.put("bulk_hamiltonian", hamilt)
+        solver.put("radius_mesh", Tensor(radius, ("r",)))
+        solver.put("potential_mesh", potential)
+        solver.put("energy", energy)
+        solver.run()
+        eq = solver.get("equation")
         self.assertAlmostEqual(eq.get_max_radius(), radius[-1])
         r = np.linspace(1, 2, 11)
         t = eq.get_tensor(Tensor(r, ("r",)))
@@ -181,7 +191,7 @@ class Test_build_radial_equation(unittest.TestCase):
         ])
 
 
-class Test_build_frobenius_data(unittest.TestCase):
+class Test_FrobeniusDataBuilder(unittest.TestCase):
 
     def test(self):
         a, b, c, d, e, f, g, h, u, v, x, y = 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13
@@ -190,7 +200,14 @@ class Test_build_frobenius_data(unittest.TestCase):
         energy = 16
 
         hamilt = build_test_hamiltonian(a, b, c, d, e, f, g, h, u, v, x, y)
-        mxA, lam = imp.build_frobenius_data(hamilt, pow, (p1, p2), energy)
+        solver = imp.FrobeniusDataBuilder.create()
+        solver.put("bulk_hamiltonian", hamilt)
+        solver.put("potential_min_pow", pow)
+        solver.put("potential_coefs", (p1, p2))
+        solver.put("energy", energy)
+        solver.run()
+        mxA = solver.get("theta_coefs")
+        lam = solver.get("lambda_roots")
         self.assertEqual(mxA.get_axis_names(), ("theta", "pow", "eq", "f"))
         self.assertEqual(lam, (2, 3, 1))
         np.testing.assert_almost_equal(mxA.get_array(), [
