@@ -219,6 +219,35 @@ SphericalBulkHamiltonianBuilder = Wrapper(
     ["hamiltonian"])
 
 
+class RadialPotential:
+    
+    __radius_mesh: Tensor
+    __mesh: Tensor
+    __zero_min_pow: int
+    __zero_coefs: tuple[float, ...]
+    
+    def __init__(self,
+            radius_mesh: Tensor, mesh: Tensor,
+            zero_min_pow: int, zero_coefs: tuple[float, ...]
+            ) -> None:
+        self.__radius_mesh = radius_mesh
+        self.__mesh = mesh
+        self.__zero_min_pow = zero_min_pow
+        self.__zero_coefs = zero_coefs
+
+    def get_radius_mesh(self) -> Tensor:
+        return self.__radius_mesh
+    
+    def get_mesh(self) -> Tensor:
+        return self.__mesh
+    
+    def get_zero_min_pow(self) -> int:
+        return self.__zero_min_pow
+    
+    def get_zero_coefs(self) -> tuple[float, ...]:
+        return self.__zero_coefs
+
+
 # Holds the following linear ODE:
 # f^(n) = T * (f, f^(1), ..., f^(n-1))
 # The dimensions of tensor T are: [r, deriv, eq, f]
@@ -256,11 +285,9 @@ class RadialEquation:
 
 def _build_radial_equation(
         bulk_hamiltonian: SphericalHamiltonian,
-        radius_mesh: Tensor,
-        potential_mesh: Tensor,
+        potential: RadialPotential,
         energy: float,
         ) -> RadialEquation:
-    assert radius_mesh.get_ndim() == 1
     hamiltonian_coefs = xr.DataArray(
         bulk_hamiltonian.get_tensor().get_array(),
         dims=("u+", "u", "Ks+", "Ks"))
@@ -301,14 +328,14 @@ def _build_radial_equation(
 
     equation_coefs = xr.dot(hamiltonian_coefs, pattern, dims=("Ks+", "Ks"))
     pows = xr.DataArray(range(0, 3), dims="pow")
-    radius = xr.DataArray(radius_mesh.get_array(), dims="r")
+    radius = xr.DataArray(potential.get_radius_mesh().get_array(), dims="r")
     radius_pow = radius ** pows
     tensor_mesh = (equation_coefs * radius_pow).sum("pow").transpose("deriv", "r", "u+", "u")
-    potential = radius_pow[{"pow": 2}] * (
-        xr.DataArray(potential_mesh.get_array(), dims="r") - \
+    potential_array = radius_pow[{"pow": 2}] * (
+        xr.DataArray(potential.get_mesh().get_array(), dims="r") - \
         energy)
     for i in range(tensor_mesh.sizes["u"]):
-        tensor_mesh[{"deriv": 0, "u+": i, "u": i}] += potential
+        tensor_mesh[{"deriv": 0, "u+": i, "u": i}] += potential_array
     d2_matrix_mesh = tensor_mesh[{"deriv": 2}]
     inv_d2_matrix_mesh = xr.DataArray(np.linalg.inv(d2_matrix_mesh.data), dims=("r", "u+", "u*"))
     lo_tensor_mesh = tensor_mesh[{"deriv": slice(0, 2)}].rename({"u+": "u*"})
@@ -316,7 +343,7 @@ def _build_radial_equation(
         .transpose("r", "deriv", "u+", "u")
     
     return RadialEquation(
-        radius_mesh,
+        potential.get_radius_mesh(),
         Tensor(normalized_tensor_mesh.data, ("r", "deriv", "eq", "f")))
 
 RadialEquationBuilder = Wrapper(_build_radial_equation, ["equation"])
@@ -324,12 +351,11 @@ RadialEquationBuilder = Wrapper(_build_radial_equation, ["equation"])
 
 def _build_frobenius_data(
         bulk_hamiltonian: SphericalHamiltonian,
-        potential_min_pow: int,
-        potential_coefs: tuple[float, ...],
+        potential: RadialPotential,
         energy: float,
         ) -> tuple[Tensor, tuple[int, ...]]:
-    assert potential_min_pow >= -2
-    assert potential_min_pow + len(potential_coefs) - 1 <= 2
+    assert potential.get_zero_min_pow() >= -2
+    assert potential.get_zero_min_pow() + len(potential.get_zero_coefs()) - 1 <= 2
     l = np.array([int(v) for v in bulk_hamiltonian.get_orbital_momentum()])
     one = np.ones_like(l)
     zero = np.zeros_like(l)
@@ -369,12 +395,12 @@ def _build_frobenius_data(
             axis=(0, 1)),
         ("theta", "pow", "eq", "f"))
     
-    shift = list(potential_coefs)
-    shift[potential_min_pow + 2] -= energy
+    shift = list(potential.get_zero_coefs())
+    shift[potential.get_zero_min_pow() + 2] -= energy
 
-    for i in range(len(potential_coefs)):
+    for i in range(len(potential.get_zero_coefs())):
         a = coefs.get_array(
-            ("theta", 0), ("pow", potential_min_pow + i + 2), "eq", "f")
+            ("theta", 0), ("pow", potential.get_zero_min_pow() + i + 2), "eq", "f")
         for j in range(dim):
             a[j, j] += shift[i]
     

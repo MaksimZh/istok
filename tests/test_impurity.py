@@ -136,11 +136,11 @@ class Test_RadialEquationBuilder(unittest.TestCase):
 
         hamilt = build_test_hamiltonian(a, b, c, d, e, f, g, h, u, v, x, y)
         radius = np.linspace(0.1, 3, 30)
-        potential = Tensor(z / radius, ("r",))
+        potential = imp.RadialPotential(
+            Tensor(radius, ("r",)), Tensor(z / radius, ("r",)), 0, (0,))
         solver = imp.RadialEquationBuilder.create()
         solver.put("bulk_hamiltonian", hamilt)
-        solver.put("radius_mesh", Tensor(radius, ("r",)))
-        solver.put("potential_mesh", potential)
+        solver.put("potential", potential)
         solver.put("energy", energy)
         solver.run()
         self.assertTrue(solver.is_status("run", "OK"))
@@ -202,10 +202,12 @@ class Test_FrobeniusDataBuilder(unittest.TestCase):
         energy = 16
 
         hamilt = build_test_hamiltonian(a, b, c, d, e, f, g, h, u, v, x, y)
+        potential = imp.RadialPotential(
+            Tensor(np.array(None), ()), Tensor(np.array(None), ()),
+            pow, (p1, p2))
         solver = imp.FrobeniusDataBuilder.create()
         solver.put("bulk_hamiltonian", hamilt)
-        solver.put("potential_min_pow", pow)
-        solver.put("potential_coefs", (p1, p2))
+        solver.put("potential", potential)
         solver.put("energy", energy)
         solver.run()
         self.assertTrue(solver.is_status("run", "OK"))
