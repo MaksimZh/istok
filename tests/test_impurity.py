@@ -500,6 +500,105 @@ class Test_RadialEquationSolver(unittest.TestCase):
                 -d * b * np.sin(b * r),
             ]).reshape(2, 2, 2, -1).transpose(0, 3, 1, 2),
             decimal=3)
+        
+    def test_multi_2(self):
+        a = 3
+        b = 5
+        c = 2
+        d = 4
+        ri = Tensor(np.linspace(-2 * np.pi, 4 * np.pi, 11), ("r",))
+        one = np.ones_like(ri.get_array())
+        ode_tensor = Tensor(
+            np.array([
+                [
+                    [-a**2 * one, 0 * one],
+                    [0 * one, -b**2 * one],
+                ],
+                [
+                    [0 * one, 0 * one],
+                    [0 * one, 0 * one],
+                ]
+            ]), #type: ignore
+            ("deriv", "eq", "f", "r"))
+        ode = imp.RadialEquation(ri, ode_tensor)
+        f0 = Tensor(
+            np.array([
+                [
+                    [c, 0],
+                    [0, d * b],
+                ],
+                [
+                    [0, d],
+                    [c * a, 0],
+                ],
+            ]),
+            ("sol", "deriv", "f"))
+        
+        rs = Tensor(
+            np.array([
+                np.linspace(0, np.pi, 5),
+                np.linspace(np.pi, 2 * np.pi, 5),
+            ]),
+            ("r0", "r"))
+        solver = imp.RadialEquationMulti2Solver.create()
+        solver.put("equation", ode)
+        solver.put("initial", f0)
+        solver.put("radius_mesh", rs)
+        solver.run()
+        self.assertTrue(solver.is_status("run", "OK"))
+        sol = solver.get("result")
+        self.assertEqual(sol.get_axis_names(), ("sol", "r0", "r", "deriv", "f"))
+        r1 = rs.get_array()[0]
+        r2 = rs.get_array()[1]
+        np.testing.assert_almost_equal(
+            sol.get_array(),
+            np.array([
+                [
+                    [
+                        [
+                            c * np.cos(a * r1),
+                            d * np.sin(b * r1),
+                        ],
+                        [
+                            -c * a * np.sin(a * r1),
+                            d * b * np.cos(b * r1),
+                        ],
+                    ],
+                    [
+                        [
+                            -c * np.cos(a * r2),
+                            -d * np.sin(b * r2),
+                        ],
+                        [
+                            c * a * np.sin(a * r2),
+                            -d * b * np.cos(b * r2),
+                        ],
+                    ],
+                ],
+                [
+                    [
+                        [
+                            c * np.sin(a * r1),
+                            d * np.cos(b * r1),
+                        ],
+                        [
+                            c * a * np.cos(a * r1),
+                            -d * b * np.sin(b * r1),
+                        ],
+                    ],
+                    [
+                        [
+                            -c * np.sin(a * r2),
+                            -d * np.cos(b * r2),
+                        ],
+                        [
+                            -c * a * np.cos(a * r2),
+                            d * b * np.sin(b * r2),
+                        ],
+                    ],
+                ],
+            ]).transpose(0, 1, 4, 2, 3), #type: ignore
+            decimal=3)
 
     
 class Test_tensor(unittest.TestCase):

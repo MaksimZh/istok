@@ -576,6 +576,29 @@ def _solve_radial_equation_multi(
 RadialEquationMultiSolver = Wrapper(_solve_radial_equation_multi, ["result"])
 
 
+def _solve_radial_equation_multi_2(
+        equation: RadialEquation,
+        initial: Tensor,
+        radius_mesh: Tensor,
+        ) -> Tensor:
+    solver = RadialEquationSolver.create()
+    solver.put("equation", equation)
+    initial_array = initial.get_array("sol", "deriv", "f")
+    radius_array = radius_mesh.get_array("r0", "r")
+    results = []
+    for initial_value in initial_array:
+        row = []
+        solver.put("initial", Tensor(initial_value, ("deriv", "f")))
+        for radius in radius_array:
+            solver.put("radius_mesh", Tensor(radius, ("r",)))
+            solver.run()
+            row.append(solver.get("result").get_array("r", "deriv", "f"))
+        results.append(row)
+    return Tensor(np.array(results), ("sol", "r0", "r", "deriv", "f"))
+
+RadialEquationMulti2Solver = Wrapper(_solve_radial_equation_multi_2, ["result"])
+
+
 def _concat_tensors(a: Tensor, b: Tensor, axis: str) -> Tensor:
     i = a.get_axis_names().index(axis)
     c: NDArray[Any, Any] = np.concatenate(
