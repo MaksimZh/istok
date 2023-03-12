@@ -145,6 +145,7 @@ class Test_RadialEquationBuilder(unittest.TestCase):
         solver.run()
         self.assertTrue(solver.is_status("run", "OK"))
         eq = solver.get("equation")
+        self.assertEqual(eq.get_dim(), 3)
         self.assertAlmostEqual(eq.get_max_radius(), radius[-1])
         r = np.linspace(1, 2, 11)
         t = eq.get_tensor(Tensor(r, ("r",)))
@@ -299,7 +300,7 @@ class Test_FrobeniusFunction(unittest.TestCase):
                 x**(p + 2) * (15 + 18 * log(x)) + \
                 x**(p + 3) * (21 + 24 * log(x)),
             ])
-        
+
     def test_get_deriv(self):
         t = Tensor(
             np.arange(1, 4 * 2 * 3 + 1).reshape(4, 2, 3),
@@ -317,12 +318,12 @@ class Test_FrobeniusFunction(unittest.TestCase):
                     x**(p + 1) * (7 + 10 * log(x)) + \
                     x**(p + 2) * (13 + 16 * log(x)) + \
                     x**(p + 3) * (19 + 22 * log(x)),
-                    
+
                     x**p * (2 + 5 * log(x)) + \
                     x**(p + 1) * (8 + 11 * log(x)) + \
                     x**(p + 2) * (14 + 17 * log(x)) + \
                     x**(p + 3) * (20 + 23 * log(x)),
-                    
+
                     x**p * (3 + 6 * log(x)) + \
                     x**(p + 1) * (9 + 12 * log(x)) + \
                     x**(p + 2) * (15 + 18 * log(x)) + \
@@ -333,12 +334,12 @@ class Test_FrobeniusFunction(unittest.TestCase):
                     x**p * (7 * (p + 1) + 10 * (1 + (p + 1) * log(x))) + \
                     x**(p + 1) * (13 * (p + 2) + 16 * (1 + (p + 2) * log(x))) + \
                     x**(p + 2) * (19 * (p + 3) + 22 * (1 + (p + 3) * log(x))),
-                    
+
                     x**(p - 1) * (2 * p + 5 * (1 +p *  log(x))) + \
                     x**p * (8 * (p + 1) + 11 * (1 +(p + 1) *  log(x))) + \
                     x**(p + 1) * (14 * (p + 2) + 17 * (1 +(p + 2) *  log(x))) + \
                     x**(p + 2) * (20 * (p + 3) + 23 * (1 + (p + 3) * log(x))),
-                    
+
                     x**(p - 1) * (3 * p + 6 * (1 + p * log(x))) + \
                     x**p * (9 * (p + 1) + 12 * (1 + (p + 1) * log(x))) + \
                     x**(p + 1) * (15 * (p + 2) + 18 * (1 + (p + 2) * log(x))) + \
@@ -404,7 +405,7 @@ class Test_RadialEquationSolver(unittest.TestCase):
                 [0, d * b],
             ]),
             ("deriv", "f"))
-        
+
         rs = Tensor(np.linspace(0, 1, 5), ("r",))
         solver = imp.RadialEquationSolver.create()
         solver.put("equation", ode)
@@ -443,7 +444,7 @@ class Test_RadialEquationSolver(unittest.TestCase):
                 d * b * np.cos(b * r1),
             ]).reshape(2, 2, -1).transpose(2, 0, 1),
             decimal=3)
-        
+
     def test_multi(self):
         a = 3
         b = 5
@@ -476,7 +477,7 @@ class Test_RadialEquationSolver(unittest.TestCase):
                 ],
             ]),
             ("sol", "deriv", "f"))
-        
+
         rs = Tensor(np.linspace(0, 1, 5), ("r",))
         solver = imp.RadialEquationMultiSolver.create()
         solver.put("equation", ode)
@@ -500,7 +501,7 @@ class Test_RadialEquationSolver(unittest.TestCase):
                 -d * b * np.sin(b * r),
             ]).reshape(2, 2, 2, -1).transpose(0, 3, 1, 2),
             decimal=3)
-        
+
     def test_multi_2(self):
         a = 3
         b = 5
@@ -533,7 +534,7 @@ class Test_RadialEquationSolver(unittest.TestCase):
                 ],
             ]),
             ("sol", "deriv", "f"))
-        
+
         rs = Tensor(
             np.array([
                 np.linspace(0, np.pi, 5),
@@ -600,7 +601,7 @@ class Test_RadialEquationSolver(unittest.TestCase):
             ]).transpose(0, 1, 4, 2, 3), #type: ignore
             decimal=3)
 
-    
+
 class Test_tensor(unittest.TestCase):
 
     def test_TensorConcat(self):
@@ -619,7 +620,7 @@ class Test_tensor(unittest.TestCase):
         np.testing.assert_almost_equal(
             tc.get_array(),
             np.concatenate((a, b.transpose(2, 0, 1)), axis=1))
-        
+
     def test_TensorModifier(self):
         a = np.arange(1, 2 * 5 * 4 + 1).reshape(2, 5, 4)
         b = np.arange(1, 3 * 4 * 2 + 1).reshape(3, 4, 2)
@@ -639,7 +640,7 @@ class Test_tensor(unittest.TestCase):
         np.testing.assert_almost_equal(tc.get_array(), c)
 
 
-class Test_InitialSolutionsCalculator(unittest.TestCase):
+class Test_NearSolutionsCalculator(unittest.TestCase):
 
     def test(self):
         a = 3
@@ -706,7 +707,7 @@ class Test_InitialSolutionsCalculator(unittest.TestCase):
             ]),
             ("theta", "pow", "eq", "f"))
         rs = Tensor(np.linspace(0, 1, 5), ("r",))
-        solver = imp.InitialSolutionsCalculator.create()
+        solver = imp.NearSolutionsCalculator.create()
         solver.put("theta_coefs", frobenius_tensor)
         solver.put("lambda_roots", (0, 1))
         solver.put("equation", ode)
@@ -738,3 +739,74 @@ class Test_InitialSolutionsCalculator(unittest.TestCase):
                 ],
             ]).transpose(0, 3, 1, 2), #type: ignore
             decimal=3)
+
+
+class Test_RadiusTensorBuilder(unittest.TestCase):
+
+    def test(self):
+        z = 2
+        r = np.geomspace(1e-4, 100, 101)
+        potential = imp.RadialPotential(
+            Tensor(r, ("r",)),
+            Tensor(z / r, ("r",)),
+            0, (0,)
+        )
+        solver = imp.RadiusTensorBuilder.create()
+        solver.put("potential", potential)
+        solver.put("segment", 10)
+        solver.put("split", 100)
+        solver.run()
+        self.assertTrue(solver.is_status("run", "OK"))
+
+        r_near = solver.get("r_near")
+        self.assertEqual(r_near.get_axis_names(), ("r",))
+        np.testing.assert_almost_equal(
+            r_near.get_array(),
+            np.linspace(0, 10, 101))
+
+        r_mid = solver.get("r_mid")
+        self.assertEqual(r_mid.get_axis_names(), ("r0", "r"))
+        np.testing.assert_almost_equal(
+            r_mid.get_array(),
+            np.arange(1, 10)[:, np.newaxis] * 10 + \
+                np.linspace(0, 10, 101)[np.newaxis, :])
+
+        r_far = solver.get("r_far")
+        self.assertAlmostEqual(r_far, 100)
+
+
+class Test_SegmentFuncCalculator(unittest.TestCase):
+
+    def make_hamiltonian(self):
+        solver = imp.SphericalBulkHamiltonianBuilder.create()
+        solver.put("x", 0.2)
+        solver.put("j", imp.AngularMomentum(3/2))
+        solver.put("l", imp.AngularMomentum(2))
+        solver.run()
+        self.assertTrue(solver.is_status("run", "OK"))
+        return solver.get("hamiltonian")
+
+    def test(self):
+        hamilt = self.make_hamiltonian()
+        z = 2
+        r = np.geomspace(1e-4, 100, 101)
+        energy = 100
+        potential = imp.RadialPotential(
+            Tensor(r, ("r",)),
+            Tensor(z / r, ("r",)),
+            -1, (z,)
+        )
+        solver = imp.SegmentFuncCalculator.create()
+        solver.put("bulk_hamiltonian", hamilt)
+        solver.put("potential", potential)
+        solver.put("energy", energy)
+        print("#####")
+        solver.run()
+        print("#####")
+        self.assertTrue(solver.is_status("run", "OK"))
+        print(solver.get("f_near").get_axis_names())
+        print(solver.get("f_near").get_array().shape)
+        print(solver.get("f_mid").get_axis_names())
+        print(solver.get("f_mid").get_array().shape)
+        print(solver.get("f_far").get_axis_names())
+        print(solver.get("f_far").get_array().shape)

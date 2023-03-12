@@ -5,8 +5,10 @@ from nptyping import NDArray
 import xarray as xr
 from scipy.interpolate import Akima1DInterpolator
 from scipy.integrate import solve_ivp #type: ignore
+from scipy.special import hankel1 #type: ignore
 import scipy.constants as const
 import frobenius
+import frobenius.apoly as apoly
 
 from istok.solver import Wrapper, Block, In, Out, Link
 from istok.tensor import Tensor
@@ -220,12 +222,12 @@ SphericalBulkHamiltonianBuilder = Wrapper(
 
 
 class RadialPotential:
-    
+
     __radius_mesh: Tensor
     __mesh: Tensor
     __zero_min_pow: int
     __zero_coefs: tuple[float, ...]
-    
+
     def __init__(self,
             radius_mesh: Tensor, mesh: Tensor,
             zero_min_pow: int, zero_coefs: tuple[float, ...]
@@ -237,13 +239,13 @@ class RadialPotential:
 
     def get_radius_mesh(self) -> Tensor:
         return self.__radius_mesh
-    
+
     def get_mesh(self) -> Tensor:
         return self.__mesh
-    
+
     def get_zero_min_pow(self) -> int:
         return self.__zero_min_pow
-    
+
     def get_zero_coefs(self) -> tuple[float, ...]:
         return self.__zero_coefs
 
@@ -254,6 +256,7 @@ class RadialPotential:
 class RadialEquation:
 
     __max_radius: float
+    __dim: int
     __tensor_interpolator: Akima1DInterpolator
 
     # CONSTRUCTOR
@@ -262,6 +265,7 @@ class RadialEquation:
         assert radius_mesh.get_ndim() == 1
         assert tensor_mesh.get_ndim() == 4
         self.__max_radius = radius_mesh.get_array()[-1]
+        self.__dim = tensor_mesh.get_size("f")
         self.__tensor_interpolator = Akima1DInterpolator(
             radius_mesh.get_array(),
             tensor_mesh.get_array(
@@ -269,6 +273,10 @@ class RadialEquation:
                 "deriv", "eq", "f"))
 
     # QUERIES
+
+    # Get number of equations
+    def get_dim(self) -> int:
+        return self.__dim
 
     # Get maximal radius where the ODE is defined
     def get_max_radius(self) -> float:
@@ -292,7 +300,7 @@ def _build_radial_equation(
         bulk_hamiltonian.get_tensor().get_array(),
         dims=("u+", "u", "Ks+", "Ks"))
     l = xr.DataArray([int(j) for j in bulk_hamiltonian.get_orbital_momentum()], dims="u")
-    
+
     pattern = xr.DataArray(np.zeros((hamiltonian_coefs.sizes["u"], 3, 3, 3, 3)),
         dims=("u", "Ks+", "Ks", "deriv", "pow"))
 
@@ -341,7 +349,7 @@ def _build_radial_equation(
     lo_tensor_mesh = tensor_mesh[{"deriv": slice(0, 2)}].rename({"u+": "u*"})
     normalized_tensor_mesh = -xr.dot(inv_d2_matrix_mesh, lo_tensor_mesh, dims=("u*")) \
         .transpose("r", "deriv", "u+", "u")
-    
+
     return RadialEquation(
         potential.get_radius_mesh(),
         Tensor(normalized_tensor_mesh.data, ("r", "deriv", "eq", "f")))
@@ -360,32 +368,32 @@ def _build_frobenius_data(
     one = np.ones_like(l)
     zero = np.zeros_like(l)
     dim = len(l)
-    
+
     pattern = Tensor(
         np.zeros((dim, 3, 3, 3, 3)),
         ("f", "Ks+", "Ks", "theta", "pow"))
-    
+
     pattern.get_array(("Ks+", 0), ("Ks", 0), "theta", ("pow", 2), "f")[...] = \
         np.array([one, zero, zero])
     pattern.get_array(("Ks+", 0), ("Ks", 1), "theta", ("pow", 1), "f")[...] = \
         np.array([l, -one, zero])
     pattern.get_array(("Ks+", 0), ("Ks", 2), "theta", ("pow", 1), "f")[...] = \
         np.array([l + 1, one, zero])
-    
+
     pattern.get_array(("Ks+", 1), ("Ks", 0), "theta", ("pow", 1), "f")[...] = \
         np.array([l + 1, one, zero])
     pattern.get_array(("Ks+", 1), ("Ks", 1), "theta", ("pow", 0), "f")[...] = \
         np.array([l * (l + 1), -one, -one])
     pattern.get_array(("Ks+", 1), ("Ks", 2), "theta", ("pow", 0), "f")[...] = \
         np.array([(l - 1) * (l + 1), 2 * l, one])
-    
+
     pattern.get_array(("Ks+", 2), ("Ks", 0), "theta", ("pow", 1), "f")[...] = \
         np.array([l, -one, zero])
     pattern.get_array(("Ks+", 2), ("Ks", 1), "theta", ("pow", 0), "f")[...] = \
         np.array([l * (l + 2), -2 * (l + 1), one])
     pattern.get_array(("Ks+", 2), ("Ks", 2), "theta", ("pow", 0), "f")[...] = \
         np.array([l * (l + 1), -one, -one])
-    
+
     coefs = Tensor(
         np.sum(
             pattern.get_array(
@@ -394,16 +402,20 @@ def _build_frobenius_data(
                 "Ks+", "Ks", "*theta", "*pow", "f+", "f"),
             axis=(0, 1)),
         ("theta", "pow", "eq", "f"))
-    
+
     shift = list(potential.get_zero_coefs())
-    shift[potential.get_zero_min_pow() + 2] -= energy
 
     for i in range(len(potential.get_zero_coefs())):
         a = coefs.get_array(
             ("theta", 0), ("pow", potential.get_zero_min_pow() + i + 2), "eq", "f")
         for j in range(dim):
             a[j, j] += shift[i]
-    
+
+    a = coefs.get_array(("theta", 0), ("pow", 2), "eq", "f")
+    for j in range(dim):
+        a[j, j] -= energy
+
+
     return coefs, tuple(l)
 
 FrobeniusDataBuilder = Wrapper(
@@ -450,7 +462,7 @@ class FrobeniusFunction:
                 self.__coefs.get_array("pow", "log", *self.__rest_axes),
                 axis=(0, 1)),
             self.__rest_axes)
-    
+
     def get_deriv(self, x: float, max_deriv: int) -> Tensor:
         self.__prepare_deriv(max_deriv)
         log_x = np.log(x)
@@ -465,7 +477,7 @@ class FrobeniusFunction:
                 axis=(0, 1)),
             ("deriv", *self.__rest_axes))
 
-    
+
     def __prepare_deriv(self, max_deriv: int) -> None:
 
         if max_deriv < self.__deriv_coefs.get_size("deriv"):
@@ -533,7 +545,7 @@ def _solve_radial_equation(
     t = equation.get_tensor(1)
     n_deriv = t.get_size("deriv")
     dim = t.get_size("eq")
-    
+
     def func(r: float, y: Any):
         d = equation.get_tensor(r).get_array("deriv", "eq", "f")
         y1 = y.reshape(n_deriv, dim)
@@ -541,14 +553,14 @@ def _solve_radial_equation(
         y2[:-1] = y1[1:]
         y2[-1] = np.sum(d * y1[:, np.newaxis, :], axis=(0, 2))
         return y2.reshape(-1)
-    
+
     r = radius_mesh.get_array()
     y: NDArray[Any, Any] = \
         solve_ivp(
             func, (r[0], r[-1]), initial.get_array().reshape(-1), t_eval=r,
             rtol=1e-5, atol=1e-5,
             ).y #type: ignore
-    
+
     return Tensor(
         y.reshape(n_deriv, dim, -1).transpose(2, 0, 1),
         (*radius_mesh.get_axis_names(), "deriv", "f"))
@@ -655,7 +667,7 @@ InitialRadiusCalc = Wrapper(
     _calc_initial_radius,
     ["frobenius_radius", "rest_radius_mesh"])
 
-InitialSolutionsCalculator = Block([
+NearSolutionsCalculator = Block([
     (InitialRadiusCalc, {
         "radius_mesh": In("radius_mesh")
     }, {
@@ -683,6 +695,185 @@ InitialSolutionsCalculator = Block([
         "axis": "r",
         "index": 0,
     }, {
-       "result": Out("result") 
+       "result": Out("result")
+    })
+])
+
+
+def _build_radius_tensors(
+        potential: RadialPotential,
+        segment: float,
+        split: int,
+        ) -> tuple[Tensor, Tensor, float]:
+    r = potential.get_radius_mesh().get_array()
+    r_max = r[-1]
+    n_segments = int(r_max / segment)
+    r_segment = np.linspace(0, segment, split + 1)
+    r_near = Tensor(r_segment, ("r",))
+    r_mid = Tensor(
+        np.arange(1, n_segments)[:, np.newaxis] * segment + r_segment[np.newaxis, :],
+        ("r0", "r"))
+    r_far = r_mid.get_array()[-1, -1]
+    return r_near, r_mid, r_far
+
+RadiusTensorBuilder = Wrapper(_build_radius_tensors, ["r_near", "r_mid", "r_far"])
+
+
+def _build_middle_initials(equation: RadialEquation) -> Tensor:
+    dim = equation.get_dim()
+    return Tensor(
+        np.array([
+            np.eye(dim),
+            1j * np.eye(dim),
+        ]),
+        ("deriv", "f", "sol"))
+
+MiddleInitialBuilder = Wrapper(_build_middle_initials, ["initial"])
+
+
+def _build_middle_radius_mesh(radius_mesh: Tensor) -> Tensor:
+    r = radius_mesh.get_array("r0", "r")
+    return Tensor(
+        np.array([
+            r[:, ::-1],
+            r,
+        ]).reshape(r.shape[0] * 2, r.shape[1]),
+        ("r0", "r"))
+
+MiddleRadiusMeshBuilder = Wrapper(_build_middle_radius_mesh, ["result"])
+
+
+def _reshape_middle_solutions(source: Tensor) -> Tensor:
+    n_sol = source.get_size("sol")
+    n_r0 = source.get_size("r0")
+    n_r = source.get_size("r")
+    n_deriv = source.get_size("deriv")
+    n_f = source.get_size("f")
+    return Tensor(
+        source.get_array("sol", "r0", "r", "deriv", "f").reshape(
+            n_sol, 2, n_r0 // 2, n_r, n_deriv, n_f),
+        ("sol", "dir", "r0", "r", "deriv", "f"))
+
+MiddleSolutionsReshape = Wrapper(_reshape_middle_solutions, ["result"])
+
+
+MiddleSolutionsCalculator = Block([
+    (MiddleInitialBuilder, {
+        "equation": In("equation"),
+    }, {
+        "initial": Link("initial"),
+    }),
+    (MiddleRadiusMeshBuilder, {
+        "radius_mesh": In("radius_mesh"),
+    }, {
+        "result": Link("radius_meshes"),
+    }),
+    (RadialEquationMulti2Solver, {
+        "equation": In("equation"),
+        "initial": Link("initial"),
+        "radius_mesh": Link("radius_meshes"),
+    }, {
+        "result": Link("solutions"),
+    }),
+    (MiddleSolutionsReshape, {
+        "source": Link("solutions"),
+    }, {
+        "result": Out("result")
+    })
+])
+
+
+def _calc_far_solutions(
+        bulk_hamiltonian: SphericalHamiltonian,
+        energy: float,
+        radius: float,
+        ) -> Tensor:
+    h = bulk_hamiltonian.get_tensor().get_array("Ks+", "Ks", "f+", "f")
+    dim = bulk_hamiltonian.get_tensor().get_size("f")
+    hkE = apoly.ArrayPoly([
+        h[0, 0] - np.eye(dim) * energy,
+        h[0, 1] + h[0, 2] + h[1, 0] + h[2, 0],
+        h[1, 1] + h[1, 2] + h[1, 1] + h[2, 1],
+    ])
+    d = apoly.det(hkE) #type: ignore
+    kk = np.roots(d.coefs[::-1]) #type: ignore
+    k2 = np.sort(np.real(kk**2))[::2]
+    ks = np.sqrt(0j + k2)
+    k = Tensor(np.array([-ks, ks]), ("dir", "sol"))
+    mx = hkE(k.get_array())
+    u, s, vh = np.linalg.svd(mx) #type: ignore
+    assert np.sum(np.abs(s[:, :, -1])) < 1e-6 #type: ignore
+    coefs = Tensor(np.conj(vh[:, :, -1]), ("dir", "sol", "f")) #type: ignore
+    l_tensor = Tensor(
+        np.array([int(v) for v in bulk_hamiltonian.get_orbital_momentum()]),
+        ("f",))
+    waves = Tensor(
+        np.array(_wave_deriv(
+            l_tensor.get_array("*dir", "*sol", "f"),
+            k.get_array("dir", "sol", "*f"),
+            radius)),
+        ("deriv", "dir", "sol", "f"))
+    solutions = Tensor(
+        waves.get_array() * coefs.get_array("*deriv", "dir", "sol", "f"),
+        ("deriv", "dir", "sol", "f"))
+    return solutions
+
+FarSolutionsCalculator = Wrapper(_calc_far_solutions, ["result"])
+
+
+def _wave(l: Any, k: Any, r: float) -> complex:
+    return np.sqrt(np.pi / ((2 + 0j) * k * r)) * hankel1(l + 1/2, k * r)
+
+def _wave_deriv(l: Any, k: Any, r: float) -> tuple[complex, complex]:
+    w0 = _wave(l, k, r)
+    w1 = _wave(l + 1, k, r)
+    return w0, (l / r) * w0 - k * w1
+
+
+SegmentFuncCalculator = Block([
+    (FrobeniusDataBuilder, {
+        "bulk_hamiltonian": In("bulk_hamiltonian"),
+        "potential": In("potential"),
+        "energy": In("energy"),
+    }, {
+        "theta_coefs": Link("frobenius_coefs"),
+        "lambda_roots": Link("frobenius_pows"),
+    }),
+    (RadialEquationBuilder, {
+        "bulk_hamiltonian": In("bulk_hamiltonian"),
+        "potential": In("potential"),
+        "energy": In("energy"),
+    }, {
+        "equation": Link("equation")
+    }),
+    (RadiusTensorBuilder, {
+        "potential": In("potential"),
+        "segment": 5,
+        "split": 50,
+    }, {
+        "r_near": Link("r_near"),
+        "r_mid": Link("r_mid"),
+        "r_far": Link("r_far"),
+    }),
+    (NearSolutionsCalculator, {
+        "radius_mesh": Link("r_near"),
+        "theta_coefs": Link("frobenius_coefs"),
+        "lambda_roots": Link("frobenius_pows"),
+        "equation": Link("equation"),
+    }, {
+        "result": Out("f_near"),
+    }),
+    (MiddleSolutionsCalculator, {
+        "equation": Link("equation"),
+        "radius_mesh": Link("r_mid"),
+    }, {
+        "result": Out("f_mid")
+    }),
+    (FarSolutionsCalculator, {
+        "bulk_hamiltonian": In("bulk_hamiltonian"),
+        "energy": In("energy"),
+        "radius": Link("r_far"),
+    }, {
+        "result": Out("f_far")
     })
 ])
