@@ -48,9 +48,9 @@ def _make_tree_hot(root: BlockNode) -> None:
 
 def _convert_node(node: Node) -> BlockNode:
     item = node.get_item()
-    if type(item) is type:
+    if isinstance(item, type):
         return BlockNode(DataContainer(item))
-    if type(item) is Slot:
+    if isinstance(item, Slot):
         return BlockNode(str(item))
     if isinstance(item, SolverFactory):
         return BlockNode(item.create())
@@ -215,7 +215,7 @@ class BlockSolver(Solver):
         if id in self.__outputs:
             return self.__get_value(self.__outputs[id].get_item())
         self._set_status("get", "INVALID_ID")
-        return False
+        return None
     
     def __get_value(self, slot: DataContainer) -> Any:
         if not slot.has_value():

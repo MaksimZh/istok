@@ -8,7 +8,7 @@ from scipy.integrate import solve_ivp #type: ignore
 import scipy.constants as const
 import frobenius
 
-from istok.solver import Wrapper
+from istok.solver import Wrapper, Block, In, Out, Link
 from istok.tensor import Tensor
 
 
@@ -472,11 +472,13 @@ class FrobeniusFunction:
         self.__prepare_deriv(max_deriv)
 
 
-def eval_frobenius_solutions(funcs: tuple[FrobeniusFunction, ...], x: float) -> Tensor:
+def _eval_frobenius_solutions(funcs: tuple[FrobeniusFunction, ...], x: float) -> Tensor:
     values = tuple(f.get_deriv(x, 1) for f in funcs)
     axis_names = ("sol", *values[0].get_axis_names())
     array = np.array([v.get_array() for v in values])
     return Tensor(array, axis_names)
+
+FrobeniusSolutionEval = Wrapper(_eval_frobenius_solutions, ["result"])
 
 
 def _find_frobenius_solutions(theta_coefs: Tensor, lambda_roots: tuple[float, ...]
@@ -528,6 +530,26 @@ def _solve_radial_equation(
 RadialEquationSolver = Wrapper(_solve_radial_equation, ["result"])
 
 
+def _solve_radial_equation_multi(
+        equation: RadialEquation,
+        initial: Tensor,
+        radius_mesh: Tensor,
+        ) -> Tensor:
+    solver = RadialEquationSolver.create()
+    solver.put("equation", equation)
+    solver.put("radius_mesh", radius_mesh)
+    initial_array = initial.get_array("sol", "deriv", "f")
+    results = []
+    r_name = radius_mesh.get_axis_names()[0]
+    for initial_value in initial_array:
+        solver.put("initial", Tensor(initial_value, ("deriv", "f")))
+        solver.run()
+        results.append(solver.get("result").get_array(r_name, "deriv", "f"))
+    return Tensor(np.array(results), ("sol", r_name, "deriv", "f"))
+
+RadialEquationMultiSolver = Wrapper(_solve_radial_equation_multi, ["result"])
+
+
 def _concat_tensors(a: Tensor, b: Tensor, axis: str) -> Tensor:
     i = a.get_axis_names().index(axis)
     c: NDArray[Any, Any] = np.concatenate(
@@ -542,6 +564,8 @@ TensorConcat = Wrapper(_concat_tensors, ["result"])
 
 
 def _modify_tensor(dest: Tensor, source: Tensor, axis: str, index: int) -> Tensor:
+    if not axis in source.get_axis_names():
+        source = Tensor(source.get_array()[np.newaxis], (axis, *source.get_axis_names()))
     i = dest.get_axis_names().index(axis)
     s = (slice(None),) * i + (slice(index, index + source.get_size(axis)),)
     c = dest.copy()
@@ -549,3 +573,67 @@ def _modify_tensor(dest: Tensor, source: Tensor, axis: str, index: int) -> Tenso
     return c
 
 TensorModifier = Wrapper(_modify_tensor, ["result"])
+
+
+FrobeniusPointSolver = Block([
+    (FrobeniusSolver, {
+        "theta_coefs": In("theta_coefs"),
+        "lambda_roots": In("lambda_roots"),
+    }, {
+        "result": Link("funcs"),
+    }),
+    (FrobeniusSolutionEval, {
+        "funcs": Link("funcs"),
+        "x": 1e-9,
+    }, {
+        "result": Out("f0"),
+    }),
+    (FrobeniusSolutionEval, {
+        "funcs": Link("funcs"),
+        "x": In("point"),
+    }, {
+        "result": Out("fp"),
+    })
+])
+
+
+def _calc_initial_radius(radius_mesh: Tensor) -> tuple[float, Tensor]:
+    r = radius_mesh.get_array().copy()
+    r[0] = r[1] * 1e-2
+    return r[0], Tensor(r, radius_mesh.get_axis_names())
+
+InitialRadiusCalc = Wrapper(
+    _calc_initial_radius,
+    ["frobenius_radius", "rest_radius_mesh"])
+
+InitialSolutionsCalculator = Block([
+    (InitialRadiusCalc, {
+        "radius_mesh": In("radius_mesh")
+    }, {
+        "frobenius_radius": Link("frobenius_radius"),
+        "rest_radius_mesh": Link("ode_radius_mesh"),
+    }),
+    (FrobeniusPointSolver, {
+        "theta_coefs": In("theta_coefs"),
+        "lambda_roots": In("lambda_roots"),
+        "point": Link("frobenius_radius"),
+    }, {
+        "f0": Link("f0"),
+        "fp": Link("ff"),
+    }),
+    (RadialEquationMultiSolver, {
+        "equation": In("equation"),
+        "initial": Link("ff"),
+        "radius_mesh": Link("ode_radius_mesh"),
+    }, {
+        "result": Link("sol_f"),
+    }),
+    (TensorModifier, {
+        "dest": Link("sol_f"),
+        "source": Link("f0"),
+        "axis": "r",
+        "index": 0,
+    }, {
+       "result": Out("result") 
+    })
+])

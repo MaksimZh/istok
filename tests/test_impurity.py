@@ -15,6 +15,7 @@ class Test_SphericalBulkHamiltonianBuilder(unittest.TestCase):
         solver.put("j", imp.AngularMomentum(3/2))
         solver.put("l", imp.AngularMomentum(2))
         solver.run()
+        self.assertTrue(solver.is_status("run", "OK"))
         h = solver.get("hamiltonian")
         eg = 57.68
         p = 846.331281
@@ -142,6 +143,7 @@ class Test_RadialEquationBuilder(unittest.TestCase):
         solver.put("potential_mesh", potential)
         solver.put("energy", energy)
         solver.run()
+        self.assertTrue(solver.is_status("run", "OK"))
         eq = solver.get("equation")
         self.assertAlmostEqual(eq.get_max_radius(), radius[-1])
         r = np.linspace(1, 2, 11)
@@ -206,6 +208,7 @@ class Test_FrobeniusDataBuilder(unittest.TestCase):
         solver.put("potential_coefs", (p1, p2))
         solver.put("energy", energy)
         solver.run()
+        self.assertTrue(solver.is_status("run", "OK"))
         mxA = solver.get("theta_coefs")
         lam = solver.get("lambda_roots")
         self.assertEqual(mxA.get_axis_names(), ("theta", "pow", "eq", "f"))
@@ -361,6 +364,7 @@ class Test_FrobeniusSolver(unittest.TestCase):
         solver.put("theta_coefs", coefs)
         solver.put("lambda_roots", (0,))
         solver.run()
+        self.assertTrue(solver.is_status("run", "OK"))
         sol = solver.get("result")
         self.assertEqual(len(sol), 1)
         x = 0.7
@@ -405,6 +409,7 @@ class Test_RadialEquationSolver(unittest.TestCase):
         solver.put("initial", f0)
         solver.put("radius_mesh", rs)
         solver.run()
+        self.assertTrue(solver.is_status("run", "OK"))
         sol = solver.get("result")
         self.assertEqual(sol.get_axis_names(), ("r", "deriv", "f"))
         r = rs.get_array()
@@ -437,6 +442,63 @@ class Test_RadialEquationSolver(unittest.TestCase):
             ]).reshape(2, 2, -1).transpose(2, 0, 1),
             decimal=3)
         
+    def test_multi(self):
+        a = 3
+        b = 5
+        c = 2
+        d = 4
+        ri = Tensor(np.linspace(-2, 2, 11), ("r",))
+        one = np.ones_like(ri.get_array())
+        ode_tensor = Tensor(
+            np.array([
+                [
+                    [-a**2 * one, 0 * one],
+                    [0 * one, -b**2 * one],
+                ],
+                [
+                    [0 * one, 0 * one],
+                    [0 * one, 0 * one],
+                ]
+            ]), #type: ignore
+            ("deriv", "eq", "f", "r"))
+        ode = imp.RadialEquation(ri, ode_tensor)
+        f0 = Tensor(
+            np.array([
+                [
+                    [c, 0],
+                    [0, d * b],
+                ],
+                [
+                    [0, d],
+                    [c * a, 0],
+                ],
+            ]),
+            ("sol", "deriv", "f"))
+        
+        rs = Tensor(np.linspace(0, 1, 5), ("r",))
+        solver = imp.RadialEquationMultiSolver.create()
+        solver.put("equation", ode)
+        solver.put("initial", f0)
+        solver.put("radius_mesh", rs)
+        solver.run()
+        self.assertTrue(solver.is_status("run", "OK"))
+        sol = solver.get("result")
+        self.assertEqual(sol.get_axis_names(), ("sol", "r", "deriv", "f"))
+        r = rs.get_array()
+        np.testing.assert_almost_equal(
+            sol.get_array(),
+            np.array([
+                c * np.cos(a * r),
+                d * np.sin(b * r),
+                -c * a * np.sin(a * r),
+                d * b * np.cos(b * r),
+                c * np.sin(a * r),
+                d * np.cos(b * r),
+                c * a * np.cos(a * r),
+                -d * b * np.sin(b * r),
+            ]).reshape(2, 2, 2, -1).transpose(0, 3, 1, 2),
+            decimal=3)
+
     
 class Test_tensor(unittest.TestCase):
 
@@ -450,6 +512,7 @@ class Test_tensor(unittest.TestCase):
         solver.put("b", tb)
         solver.put("axis", "y")
         solver.run()
+        self.assertTrue(solver.is_status("run", "OK"))
         tc = solver.get("result")
         self.assertEqual(tc.get_axis_names(), ("x", "y", "z"))
         np.testing.assert_almost_equal(
@@ -467,6 +530,7 @@ class Test_tensor(unittest.TestCase):
         solver.put("axis", "y")
         solver.put("index", 1)
         solver.run()
+        self.assertTrue(solver.is_status("run", "OK"))
         tc = solver.get("result")
         c = a.copy()
         c[:, 1:4, :] = b.transpose(2, 0, 1)
@@ -474,13 +538,12 @@ class Test_tensor(unittest.TestCase):
         np.testing.assert_almost_equal(tc.get_array(), c)
 
 
-"""
-class Test_calc_initial_solutions(unittest.TestCase):
+class Test_InitialSolutionsCalculator(unittest.TestCase):
 
     def test(self):
         a = 3
         b = 5
-        ri = Tensor(np.linspace(-2, 2, 2), ("r",))
+        ri = Tensor(np.linspace(-2, 2, 11), ("r",))
         one = np.ones_like(ri.get_array())
         ode_tensor = Tensor(
             np.array([
@@ -542,5 +605,35 @@ class Test_calc_initial_solutions(unittest.TestCase):
             ]),
             ("theta", "pow", "eq", "f"))
         rs = Tensor(np.linspace(0, 1, 5), ("r",))
-        #sol = imp.calc_initial_solutions(frobenius_tensor, (0, 1), ode, rs)
-"""
+        solver = imp.InitialSolutionsCalculator.create()
+        solver.put("theta_coefs", frobenius_tensor)
+        solver.put("lambda_roots", (0, 1))
+        solver.put("equation", ode)
+        solver.put("radius_mesh", rs)
+        solver.run()
+        self.assertTrue(solver.is_status("run", "OK"))
+        sol = solver.get("result")
+        self.assertEqual(sol.get_axis_names(), ("sol", "r", "deriv", "f"))
+        r = rs.get_array()
+        zero = np.zeros_like(r)
+        np.testing.assert_almost_equal(
+            sol.get_array(),
+            np.array([
+                [
+                    [np.cos(a * r), zero],
+                    [-a * np.sin(a * r), zero],
+                ],
+                [
+                    [zero, np.cos(b * r)],
+                    [zero, -b * np.sin(b * r)],
+                ],
+                [
+                    [1/a *np.sin(a * r), zero],
+                    [np.cos(a * r), zero],
+                ],
+                [
+                    [zero, 1/b * np.sin(b * r)],
+                    [zero, np.cos(b * r)],
+                ],
+            ]).transpose(0, 3, 1, 2), #type: ignore
+            decimal=3)
