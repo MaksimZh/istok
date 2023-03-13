@@ -901,7 +901,7 @@ class Test_matrices(unittest.TestCase):
         solver.run()
         self.assertTrue(solver.is_status("run", "OK"))
         t: Tensor = solver.get("boundary_matrices")
-        self.assertEqual(set(t.get_axis_names()), {"r0", "deriv-f", "dir-sol"})
+        self.assertEqual(set(t.get_axis_names()), {"r0", "dir-sol+", "dir-sol"})
         f0: Callable[[float], Any] = lambda r: np.array([
             [a * np.exp(1j * k0 * r), 0, 0, 0],
             [0, b * np.exp(1j * k0 * r), 0, 0],
@@ -927,9 +927,57 @@ class Test_matrices(unittest.TestCase):
             [1j * k3 * a * np.exp(1j * k3 * r), 0, -1j * k3 * a * np.exp(-1j * k3 * r), 0],
         ])
         np.testing.assert_almost_equal(
-            t.get_array("r0", "deriv-f", "dir-sol"),
+            t.get_array("r0", "dir-sol+", "dir-sol"),
             [
                 np.linalg.inv(f1(r1)) @ f0(r1),
                 np.linalg.inv(f2(r2)) @ f1(r2),
                 np.linalg.inv(f3(r3)) @ f2(r3),
             ])
+
+    
+    def test_ScatteringMatrixCalculator(self):
+        t1 = np.array([
+            [12, 13, 22, 23],
+            [14, 15, 24, 25],
+            [32, 33, 42, 43],
+            [34, 35, 44, 45]])
+        t2 = np.array([
+            [13, 14, 23, 24],
+            [15, 16, 25, 26],
+            [33, 34, 43, 44],
+            [35, 36, 45, 46]])
+        t3 = np.array([
+            [14, 15, 24, 25],
+            [16, 17, 26, 27],
+            [34, 35, 44, 45],
+            [36, 37, 46, 47]])
+        t = Tensor(np.array([t1, t2, t3]), ("r0", "dir-sol+", "dir-sol"))
+        solver = imp.ScatteringMatricesCalculator.create()
+        solver.put("boundary_matrices", t)
+        solver.run()
+        self.assertTrue(solver.is_status("run", "OK"))
+        s: Tensor = solver.get("scattering_matrices")
+        self.assertEqual(
+            set(s.get_axis_names()),
+            {"side", "r0", "dir-sol+", "dir-sol"})
+        sa = s.get_array("side", "r0", "dir-sol+", "dir-sol")
+        sl = sa[0]
+        sr = sa[1]
+        self.assert_scatter(np.eye(4), sl[0])
+        self.assert_scatter(t1, sl[1])
+        self.assert_scatter(t2 @ t1, sl[2])
+        self.assert_scatter(t3 @ t2 @ t1, sl[3])
+        self.assert_scatter(np.eye(4), sr[3])
+        self.assert_scatter(t3, sr[2])
+        self.assert_scatter(t3 @ t2, sr[1])
+        self.assert_scatter(t3 @ t2 @ t1, sr[0])
+        
+    def assert_scatter(self, t: Any, s: Any):
+        dim = s.shape[-1] // 2
+        for a0b0 in np.eye(dim * 2):
+            a1b1 = t @ a0b0
+            a0b1 = np.concatenate((a0b0[:dim], a1b1[dim:]))
+            np.testing.assert_allclose(
+                s @ a0b1,
+                np.concatenate((a1b1[:dim], a0b0[dim:])),
+                atol=1e-6)

@@ -1,7 +1,7 @@
 from typing import Iterable, Any
 from dataclasses import dataclass
 import numpy as np
-from nptyping import NDArray
+from nptyping import NDArray, Complex
 import xarray as xr
 from scipy.interpolate import Akima1DInterpolator
 from scipy.integrate import solve_ivp #type: ignore
@@ -948,11 +948,76 @@ def _calc_boundary_matrices(segment_solutions: SegmentSolutions) -> Tensor:
         segment_solutions.get_far().get_array("deriv", "f", "dir", "sol")
     t = np.linalg.inv(fr.get_array().reshape(-1, 2 * dim, 2 * dim)) @ \
         fl.get_array().reshape(-1, 2 * dim, 2 * dim)
-    return Tensor(t, ("r0", "deriv-f", "dir-sol"))
+    return Tensor(t, ("r0", "dir-sol+", "dir-sol"))
 
 BoundaryMatricesCalculator = Wrapper(
     _calc_boundary_matrices,
     ["boundary_matrices"])
+
+
+def _calc_scattering_matrices(boundary_matrices: Tensor) -> Tensor:
+    dim = boundary_matrices.get_size("dir-sol")
+    sl: list[NDArray[Any, Complex]] = [np.eye(dim, dtype=complex)]
+    for t in boundary_matrices.get_array():
+        sl.append(_scat_trans(sl[-1], t))
+    sr: list[NDArray[Any, Complex]] = [np.eye(dim, dtype=complex)]
+    for t in boundary_matrices.get_array()[::-1]:
+        sr.append(_trans_scat(t, sr[-1]))
+    return Tensor(
+        np.array([sl, sr[::-1]], dtype=complex),
+        ("side", "r0", "dir-sol+", "dir-sol"))
+
+ScatteringMatricesCalculator = Wrapper(
+    _calc_scattering_matrices,
+    ["scattering_matrices"])
+
+
+def _scat_trans(
+        s: NDArray[Any, Complex],
+        t: NDArray[Any, Complex]
+        ) -> NDArray[Any, Complex]:
+    dim = s.shape[-1] // 2
+    a = slice(None, dim)
+    b = slice(dim, None)
+
+    x = np.linalg.inv(t[b, a] @ s[a, b] + t[b, b])
+    xa = (t[a, a] @ s[a, b] + t[a, b]) @ x
+    xb = s[b, b] @ x
+
+    return np.block([
+        [
+            (t[a, a] - xa @ t[b, a]) @ s[a, a],
+            xa
+        ],
+        [
+            s[b, a] - xb @ t[b, a] @ s[a, a],
+            xb
+        ],
+    ]) #type: ignore
+
+
+def _trans_scat(
+        t: NDArray[Any, Complex],
+        s: NDArray[Any, Complex]
+        ) -> NDArray[Any, Complex]:
+    dim = s.shape[-1] // 2
+    a = slice(None, dim)
+    b = slice(dim, None)
+
+    x = np.linalg.inv(t[b, b] - s[b, a] @ t[a, b])
+    xa = x @ (s[b, a] @ t[a, a] - t[b, a])
+    xb = x @ s[b, b]
+
+    return np.block([
+        [
+            s[a, a] @ (t[a, a] + t[a, b] @ xa),
+            s[a, b] + s[a, a] @ t[a, b] @ xb
+        ],
+        [
+            xa,
+            xb
+        ],
+    ]) #type: ignore
 
 
 """
