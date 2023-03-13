@@ -787,7 +787,7 @@ def _calc_far_solutions(
         bulk_hamiltonian: SphericalHamiltonian,
         energy: float,
         radius: float,
-        ) -> Tensor:
+        ) -> tuple[Tensor, Tensor]:
     h = bulk_hamiltonian.get_tensor().get_array("Ks+", "Ks", "f+", "f")
     dim = bulk_hamiltonian.get_tensor().get_size("f")
     hkE = apoly.ArrayPoly([
@@ -799,7 +799,7 @@ def _calc_far_solutions(
     kk = np.roots(d.coefs[::-1]) #type: ignore
     k2 = np.sort(np.real(kk**2))[::2]
     ks = np.sqrt(0j + k2)
-    k = Tensor(np.array([-ks, ks]), ("dir", "sol"))
+    k = Tensor(np.array([ks, -ks]), ("dir", "sol"))
     mx = hkE(k.get_array())
     u, s, vh = np.linalg.svd(mx) #type: ignore
     assert np.sum(np.abs(s[:, :, -1])) < 1e-6 #type: ignore
@@ -816,9 +816,10 @@ def _calc_far_solutions(
     solutions = Tensor(
         waves.get_array() * coefs.get_array("*deriv", "dir", "sol", "f"),
         ("deriv", "dir", "sol", "f"))
-    return solutions
+    sqr_k = Tensor(k2, ("sol",))
+    return solutions, sqr_k
 
-FarSolutionsCalculator = Wrapper(_calc_far_solutions, ["result"])
+FarSolutionsCalculator = Wrapper(_calc_far_solutions, ["funcs", "sqr_k"])
 
 
 def _wave(l: Any, k: Any, r: float) -> complex:
@@ -828,6 +829,45 @@ def _wave_deriv(l: Any, k: Any, r: float) -> tuple[complex, complex]:
     w0 = _wave(l, k, r)
     w1 = _wave(l + 1, k, r)
     return w0, (l / r) * w0 - k * w1
+
+
+class SegmentSolutions:
+
+    __near: Tensor
+    __mid: Tensor
+    __far: Tensor
+    __sqr_k: Tensor
+
+    def __init__(self,
+            near: Tensor,
+            mid: Tensor,
+            far: Tensor,
+            sqr_k: Tensor
+            ) -> None:
+        self.__near = near
+        self.__mid = mid
+        self.__far = far
+        self.__sqr_k = sqr_k
+
+    def get_near(self) -> Tensor:
+        return self.__near
+
+    def get_mid(self) -> Tensor:
+        return self.__mid
+
+    def get_far(self) -> Tensor:
+        return self.__far
+    
+    def get_sqr_k(self) -> Tensor:
+        return self.__sqr_k
+    
+
+def _pack_segment_solutions(
+        near: Tensor, mid: Tensor, far: Tensor, sqr_k: Tensor,
+        ) -> SegmentSolutions:
+    return SegmentSolutions(near, mid, far, sqr_k)
+
+SegmentSolutionsPacker = Wrapper(_pack_segment_solutions, ["result"])
 
 
 SegmentFuncCalculator = Block([
@@ -861,19 +901,93 @@ SegmentFuncCalculator = Block([
         "lambda_roots": Link("frobenius_pows"),
         "equation": Link("equation"),
     }, {
-        "result": Out("f_near"),
+        "result": Link("f_near"),
     }),
     (MiddleSolutionsCalculator, {
         "equation": Link("equation"),
         "radius_mesh": Link("r_mid"),
     }, {
-        "result": Out("f_mid")
+        "result": Link("f_mid")
     }),
     (FarSolutionsCalculator, {
         "bulk_hamiltonian": In("bulk_hamiltonian"),
         "energy": In("energy"),
         "radius": Link("r_far"),
     }, {
-        "result": Out("f_far")
+        "funcs": Link("f_far"),
+        "sqr_k": Link("sqr_k")
+    }),
+    (SegmentSolutionsPacker, {
+        "near": Link("f_near"),
+        "mid": Link("f_mid"),
+        "far": Link("f_far"),
+        "sqr_k": Link("sqr_k"),
+    }, {
+        "result": Out("result")
     })
 ])
+
+
+def _calc_boundary_matrices(segment_solutions: SegmentSolutions) -> Tensor:
+    n_bound = segment_solutions.get_mid().get_size("r0") + 1
+    dim = segment_solutions.get_mid().get_size("sol")
+    assert segment_solutions.get_mid().get_size("dir") == 2
+    assert segment_solutions.get_mid().get_size("deriv") == 2
+    assert segment_solutions.get_mid().get_size("f") == dim
+    fl = Tensor(
+        np.zeros((n_bound, 2, dim, 2, dim), dtype=complex),
+        ("r0", "deriv", "f", "dir", "sol"))
+    fr = fl.copy()
+    fl.get_array(("r0", 0), "deriv", "f", ("dir", 0), "sol")[...] = \
+        segment_solutions.get_near().get_array("deriv", "f", "sol", ("r", -1))
+    fl.get_array("r0", "deriv", "f", "dir", "sol")[1:] = \
+        segment_solutions.get_mid().get_array("r0", "deriv", "f", "dir", "sol", ("r", -1))
+    fr.get_array("r0", "deriv", "f", "dir", "sol")[:-1] = \
+        segment_solutions.get_mid().get_array("r0", "deriv", "f", "dir", "sol", ("r", 0))
+    fr.get_array(("r0", -1), "deriv", "f", "dir", "sol")[...] = \
+        segment_solutions.get_far().get_array("deriv", "f", "dir", "sol")
+    t = np.linalg.inv(fr.get_array().reshape(-1, 2 * dim, 2 * dim)) @ \
+        fl.get_array().reshape(-1, 2 * dim, 2 * dim)
+    return Tensor(t, ("r0", "deriv-f", "dir-sol"))
+
+BoundaryMatricesCalculator = Wrapper(
+    _calc_boundary_matrices,
+    ["boundary_matrices"])
+
+
+"""
+WavefuncCalculator = Block([
+    (BoundaryMatricesCalculator, {
+        "segment_solutions": In("segment_solutions"),
+    }, {
+        "boundary_matrices": Link("boundary_matrices"),
+    }),
+    (ScatteringMatricesCalculator, {
+         "boundary_matrices": Link("boundary_matrices"),
+    }, {
+        "scattering_matrices": Link("scattering_matrices"),
+    }),
+    (LocalizationRateCalculator, {
+        "scattering_matrices": Link("scattering_matrices"),
+    }, {
+        "result": Out("localization_rate"),
+    }),
+    (GetSqrK, {
+        "segment_solutions": In("segment_solutions"),
+    }, {
+        "sqr_k": Link("sqr_k"),
+    }),
+    (ScatteringCoefsCalculator, {
+        "scattering_matrices": Link("scattering_matrices"),
+        "sqr_k": Link("sqr_k"),
+    }, {
+        "coefs": Link("coefs"),
+    }),
+    (SegmentWavefuncBuilder, {
+        "segment_solutions": In("segment_solutions"),
+        "coefs": Link("coefs"),
+    }, {
+        "wavefunc": Out("wavefunc"),
+    })
+])
+"""

@@ -2,6 +2,7 @@ import unittest
 
 from math import log
 import numpy as np
+from typing import Any, Callable
 
 from istok.tensor import Tensor
 import istok.impurity as imp
@@ -789,7 +790,7 @@ class Test_SegmentFuncCalculator(unittest.TestCase):
     def test(self):
         hamilt = self.make_hamiltonian()
         z = 2
-        r = np.geomspace(1e-4, 100, 101)
+        r = np.geomspace(1e-4, 20, 51)
         energy = 100
         potential = imp.RadialPotential(
             Tensor(r, ("r",)),
@@ -800,13 +801,135 @@ class Test_SegmentFuncCalculator(unittest.TestCase):
         solver.put("bulk_hamiltonian", hamilt)
         solver.put("potential", potential)
         solver.put("energy", energy)
-        print("#####")
         solver.run()
-        print("#####")
         self.assertTrue(solver.is_status("run", "OK"))
-        print(solver.get("f_near").get_axis_names())
-        print(solver.get("f_near").get_array().shape)
-        print(solver.get("f_mid").get_axis_names())
-        print(solver.get("f_mid").get_array().shape)
-        print(solver.get("f_far").get_axis_names())
-        print(solver.get("f_far").get_array().shape)
+        s: imp.SegmentSolutions = solver.get("result")
+        self.assertEqual(
+            set(s.get_near().get_axis_names()),
+            {"sol", "r", "deriv", "f"})
+        self.assertEqual(
+            set(s.get_mid().get_axis_names()),
+            {"dir", "sol", "r0", "r", "deriv", "f"})
+        self.assertEqual(
+            set(s.get_far().get_axis_names()),
+            {"dir", "sol", "deriv", "f"})
+        self.assertEqual(
+            set(s.get_sqr_k().get_axis_names()),
+            {"sol"})
+
+
+class Test_matrices(unittest.TestCase):
+
+    def test_BoundaryMatricesCalculator(self):
+        k0 = 2
+        k1 = 3
+        k2 = 4
+        k3 = 5
+        r1 = 1
+        r2 = 2
+        r3 = 3
+        a = 2
+        b = 3
+        rn = Tensor(np.linspace(0, r1, 11), ("r",))
+        c0 = Tensor(
+            np.array([
+                [a, 0],
+                [0, b],
+            ]),
+            ("sol", "f"))
+        km = Tensor(
+            np.array([
+                [k1, -k1],
+                [k2, -k2],
+            ]),
+            ("r0", "dir"))
+        rm = Tensor(
+            np.array([
+                np.linspace(r1, r2, 11),
+                np.linspace(r2, r3, 11),
+            ]),
+            ("r0", "r"))
+        cm = Tensor(
+            np.array([
+                [
+                    [0, a],
+                    [b, 0],
+                ],
+                [
+                    [a, 0],
+                    [0, b],
+                ],
+            ]),
+            ("r0", "sol", "f"))
+        kf = Tensor(np.array([k3, -k3]), ("dir",))
+        rf = r3
+        cf = Tensor(
+            np.array([
+                [0, a],
+                [b, 0],
+            ]),
+            ("sol", "f"))
+        rna = rn.get_array("*sol", "*f", "r")
+        near = Tensor(
+            np.array([
+                np.exp(1j * k0 * rna),
+                1j * k0 * np.exp(1j * k0 * rna),
+            ]) * \
+            c0.get_array("*deriv", "sol", "f", "*r"),
+            ("deriv", "sol", "f", "r"))
+        kma = km.get_array("dir", "*sol", "*f", "r0", "*r")
+        rma = rm.get_array("*dir", "*sol", "*f", "r0", "r")
+        mid = Tensor(
+            np.array([
+                np.exp(1j * kma * rma),
+                1j * kma * np.exp(1j * kma * rma),
+            ]) * \
+            cm.get_array("*deriv", "*dir", "sol", "f", "r0", "*r"),
+            ("deriv", "dir", "sol", "f", "r0", "r"))
+        kfa = kf.get_array("dir", "*sol", "*f")
+        far = Tensor(
+            np.array([
+                np.exp(1j * kfa * rf),
+                1j * kfa * np.exp(1j * kfa * rf),
+            ]) * \
+            cf.get_array("*deriv", "*dir", "sol", "f"),
+            ("deriv", "dir", "sol", "f"))
+        sqr_k = Tensor(np.array([k3**2, k3**2]), ("sol",))
+        seg = imp.SegmentSolutions(near, mid, far, sqr_k)
+        solver = imp.BoundaryMatricesCalculator.create()
+        solver.put("segment_solutions", seg)
+        solver.run()
+        self.assertTrue(solver.is_status("run", "OK"))
+        t: Tensor = solver.get("boundary_matrices")
+        self.assertEqual(set(t.get_axis_names()), {"r0", "deriv-f", "dir-sol"})
+        f0: Callable[[float], Any] = lambda r: np.array([
+            [a * np.exp(1j * k0 * r), 0, 0, 0],
+            [0, b * np.exp(1j * k0 * r), 0, 0],
+            [1j * k0 * a * np.exp(1j * k0 * r), 0, 0, 0],
+            [0, 1j * k0 * b * np.exp(1j * k0 * r), 0, 0],
+        ])
+        f1: Callable[[float], Any] = lambda r: np.array([
+            [0, b * np.exp(1j * k1 * r), 0, b * np.exp(-1j * k1 * r)],
+            [a * np.exp(1j * k1 * r), 0, a * np.exp(-1j * k1 * r), 0],
+            [0, 1j * k1 * b * np.exp(1j * k1 * r), 0, -1j * k1 * b * np.exp(-1j * k1 * r)],
+            [1j * k1 * a * np.exp(1j * k1 * r), 0, -1j * k1 * a * np.exp(-1j * k1 * r), 0],
+        ])
+        f2: Callable[[float], Any] = lambda r: np.array([
+            [a * np.exp(1j * k2 * r), 0, a * np.exp(-1j * k2 * r), 0],
+            [0, b * np.exp(1j * k2 * r), 0, b * np.exp(-1j * k2 * r)],
+            [1j * k2 * a * np.exp(1j * k2 * r), 0, -1j * k2 * a * np.exp(-1j * k2 * r), 0],
+            [0, 1j * k2 * b * np.exp(1j * k2 * r), 0, -1j * k2 * b * np.exp(-1j * k2 * r)],
+        ])
+        f3: Callable[[float], Any] = lambda r: np.array([
+            [0, b * np.exp(1j * k3 * r), 0, b * np.exp(-1j * k3 * r)],
+            [a * np.exp(1j * k3 * r), 0, a * np.exp(-1j * k3 * r), 0],
+            [0, 1j * k3 * b * np.exp(1j * k3 * r), 0, -1j * k3 * b * np.exp(-1j * k3 * r)],
+            [1j * k3 * a * np.exp(1j * k3 * r), 0, -1j * k3 * a * np.exp(-1j * k3 * r), 0],
+        ])
+        np.testing.assert_almost_equal(
+            t.get_array("r0", "deriv-f", "dir-sol"),
+            [
+                np.linalg.inv(f1(r1)) @ f0(r1),
+                np.linalg.inv(f2(r2)) @ f1(r2),
+                np.linalg.inv(f3(r3)) @ f2(r3),
+            ])
