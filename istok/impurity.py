@@ -749,10 +749,12 @@ def _reshape_middle_solutions(source: Tensor) -> Tensor:
     n_r = source.get_size("r")
     n_deriv = source.get_size("deriv")
     n_f = source.get_size("f")
-    return Tensor(
+    f = Tensor(
         source.get_array("sol", "r0", "r", "deriv", "f").reshape(
             n_sol, 2, n_r0 // 2, n_r, n_deriv, n_f),
         ("sol", "dir", "r0", "r", "deriv", "f"))
+    f.get_array()[:, 0] = f.get_array()[:, 0, :, ::-1]
+    return f
 
 MiddleSolutionsReshape = Wrapper(_reshape_middle_solutions, ["result"])
 
@@ -888,8 +890,8 @@ SegmentFuncCalculator = Block([
     }),
     (RadiusTensorBuilder, {
         "potential": In("potential"),
-        "segment": 5,
-        "split": 50,
+        "segment": 1,
+        "split": 10,
     }, {
         "r_near": Link("r_near"),
         "r_mid": Link("r_mid"),
@@ -941,13 +943,18 @@ def _calc_boundary_matrices(segment_solutions: SegmentSolutions) -> Tensor:
     fl.get_array(("r0", 0), "deriv", "f", ("dir", 0), "sol")[...] = \
         segment_solutions.get_near().get_array("deriv", "f", "sol", ("r", -1))
     fl.get_array("r0", "deriv", "f", "dir", "sol")[1:] = \
-        segment_solutions.get_mid().get_array("r0", "deriv", "f", "dir", "sol", ("r", -1))
+        segment_solutions.get_mid().get_array(
+            "r0", "deriv", "f", "dir", "sol", ("r", -1))
     fr.get_array("r0", "deriv", "f", "dir", "sol")[:-1] = \
-        segment_solutions.get_mid().get_array("r0", "deriv", "f", "dir", "sol", ("r", 0))
+        segment_solutions.get_mid().get_array(
+            "r0", "deriv", "f", "dir", "sol", ("r", 0))
     fr.get_array(("r0", -1), "deriv", "f", "dir", "sol")[...] = \
         segment_solutions.get_far().get_array("deriv", "f", "dir", "sol")
-    t = np.linalg.inv(fr.get_array().reshape(-1, 2 * dim, 2 * dim)) @ \
-        fl.get_array().reshape(-1, 2 * dim, 2 * dim)
+    fla = fl.get_array("r0", "deriv", "f", "dir", "sol") \
+        .reshape(-1, 2 * dim, 2 * dim)
+    fra = fr.get_array("r0", "deriv", "f", "dir", "sol") \
+        .reshape(-1, 2 * dim, 2 * dim)
+    t = np.linalg.inv(fra) @ fla
     return Tensor(t, ("r0", "dir-sol+", "dir-sol"))
 
 BoundaryMatricesCalculator = Wrapper(
@@ -958,11 +965,21 @@ BoundaryMatricesCalculator = Wrapper(
 def _calc_scattering_matrices(boundary_matrices: Tensor) -> Tensor:
     dim = boundary_matrices.get_size("dir-sol")
     sl: list[NDArray[Any, Complex]] = [np.eye(dim, dtype=complex)]
-    for t in boundary_matrices.get_array():
+    t0 = boundary_matrices.get_array()[0]
+    special_zero = np.max(np.abs(t0[:, dim // 2 :])) < 1e-12
+    if special_zero:
+        sl.append(_scat_trans_special(t0))
+    else:
+        sl.append(_scat_trans(sl[-1], t0))
+    for t in boundary_matrices.get_array()[1:]:
         sl.append(_scat_trans(sl[-1], t))
     sr: list[NDArray[Any, Complex]] = [np.eye(dim, dtype=complex)]
-    for t in boundary_matrices.get_array()[::-1]:
+    for t in boundary_matrices.get_array()[1:][::-1]:
         sr.append(_trans_scat(t, sr[-1]))
+    if special_zero:
+        sr.append(_trans_scat_special(t0, sr[-1]))
+    else:
+        sr.append(_trans_scat(t0, sr[-1]))
     return Tensor(
         np.array([sl, sr[::-1]], dtype=complex),
         ("side", "r0", "dir-sol+", "dir-sol"))
@@ -995,6 +1012,22 @@ def _scat_trans(
         ],
     ]) #type: ignore
 
+def _scat_trans_special(t: NDArray[Any, Complex]) -> NDArray[Any, Complex]:
+    dim = t.shape[-1] // 2
+    a = slice(None, dim)
+    b = slice(dim, None)
+
+    return np.block([
+        [
+            t[a, a],
+            np.zeros((dim, dim)),
+        ],
+        [
+            -t[b, a],
+            np.eye(dim)
+        ],
+    ]) #type: ignore
+
 
 def _trans_scat(
         t: NDArray[Any, Complex],
@@ -1020,8 +1053,86 @@ def _trans_scat(
     ]) #type: ignore
 
 
-"""
-WavefuncCalculator = Block([
+def _trans_scat_special(
+        t: NDArray[Any, Complex],
+        s: NDArray[Any, Complex]
+        ) -> NDArray[Any, Complex]:
+    dim = s.shape[-1] // 2
+    a = slice(None, dim)
+    b = slice(dim, None)
+
+    return np.block([
+        [
+            s[a, a] @ t[a, a],
+            s[a, b],
+        ],
+        [
+            s[b, a] @ t[a, a] - t[b, a],
+            s[b, b],
+        ],
+    ]) #type: ignore
+
+
+def _calc_near_matrices(scattering_matrices: Tensor) -> Tensor:
+    dim = scattering_matrices.get_size("dir-sol") // 2
+    s = scattering_matrices.get_array(
+        "side", "r0", "dir-sol+", "dir-sol").reshape(2, -1, 2, dim, 2, dim)
+    return Tensor(s[0, -1, 1], ("sol+", "dir", "sol"))
+
+NearMatricesCalculator = Wrapper(_calc_near_matrices, ["result"])
+
+
+def _get_sqr_k(segment_solutions: SegmentSolutions) -> Tensor:
+    return segment_solutions.get_sqr_k()
+
+GetSqrK = Wrapper(_get_sqr_k, ["sqr_k"])
+
+
+def _calc_middle_matrices(
+        scattering_matrices: Tensor,
+        ) -> Tensor:
+    n_seg = scattering_matrices.get_size("r0")
+    dim = scattering_matrices.get_size("dir-sol") // 2
+    s = scattering_matrices.get_array("side", "r0", "dir-sol+", "dir-sol") \
+        .reshape(2, n_seg, 2, dim, 2, dim)
+    saa = s[:, :, 0, :, 0, :]
+    sab = s[:, :, 0, :, 1, :]
+    sba = s[:, :, 1, :, 0, :]
+    sbb = s[:, :, 1, :, 1, :]
+    zero = np.zeros_like(saa[0])
+    one = np.zeros_like(saa[0])
+    one[...] = np.eye(dim)
+    x = Tensor(
+        np.array([
+            [one, sab[0]],
+            [sba[1], one],
+        ]), #type: ignore
+        ("dir+", "dir", "r0", "sol+", "sol"))
+    y = Tensor(
+        np.array([
+            [one - sab[0] @ sba[1], zero],
+            [zero, one - sba[1] @ sab[0]],
+        ]), #type: ignore
+        ("dir+", "dir", "r0", "sol+", "sol"))
+    z = Tensor(
+        np.array([
+            [saa[0], zero],
+            [zero, sbb[1]],
+        ]), #type: ignore
+        ("dir+", "dir", "r0", "sol+", "sol"))
+    xa = x.get_array("r0", "dir+", "sol+", "dir", "sol") \
+        .reshape(-1, 2 * dim, 2 * dim)
+    ya = y.get_array("r0", "dir+", "sol+", "dir", "sol") \
+        .reshape(-1, 2 * dim, 2 * dim)
+    za = z.get_array("r0", "dir+", "sol+", "dir", "sol") \
+        .reshape(-1, 2 * dim, 2 * dim)
+    m = (xa @ np.linalg.inv(ya) @ za).reshape(-1, 2, dim, 2, dim)
+    return Tensor(m, ("r0", "dir+", "sol+", "dir", "sol"))
+
+MiddleMatricesCalculator = Wrapper(_calc_middle_matrices, ["result"])
+
+
+WavefuncMatricesCalculator = Block([
     (BoundaryMatricesCalculator, {
         "segment_solutions": In("segment_solutions"),
     }, {
@@ -1032,27 +1143,14 @@ WavefuncCalculator = Block([
     }, {
         "scattering_matrices": Link("scattering_matrices"),
     }),
-    (LocalizationRateCalculator, {
+    (NearMatricesCalculator, {
         "scattering_matrices": Link("scattering_matrices"),
     }, {
-        "result": Out("localization_rate"),
+        "result": Out("near_matrices"),
     }),
-    (GetSqrK, {
-        "segment_solutions": In("segment_solutions"),
-    }, {
-        "sqr_k": Link("sqr_k"),
-    }),
-    (ScatteringCoefsCalculator, {
+    (MiddleMatricesCalculator, {
         "scattering_matrices": Link("scattering_matrices"),
-        "sqr_k": Link("sqr_k"),
     }, {
-        "coefs": Link("coefs"),
+        "result": Out("middle_matrices"),
     }),
-    (SegmentWavefuncBuilder, {
-        "segment_solutions": In("segment_solutions"),
-        "coefs": Link("coefs"),
-    }, {
-        "wavefunc": Out("wavefunc"),
-    })
 ])
-"""

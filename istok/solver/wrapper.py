@@ -55,7 +55,8 @@ class WrapperSolver(Solver):
             args.append(self.__inputs[id])
         try:
             result = self.__spec.get_func()(*args)
-        except:
+        except Exception as e:
+            raise e
             self._set_status("run", "INTERNAL_ERROR")
             return
         output_ids = self.__spec.get_output_ids()
