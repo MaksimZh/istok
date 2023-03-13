@@ -29,21 +29,60 @@ potential = imp.RadialPotential(
     Tensor(va / r, ("r",)),
     -1, (va,)
 )
-seg_calc = imp.SegmentFuncCalculator.create()
-seg_calc.put("bulk_hamiltonian", hamilt)
-seg_calc.put("potential", potential)
-w_calc = imp.WavefuncMatricesCalculator.create()
+wf_calc = imp.WavefuncMatricesFactorCalculator.create()
+wf_calc.put("bulk_hamiltonian", hamilt)
+wf_calc.put("potential", potential)
 
-#for energy in np.linspace(1, 60, 296):
-for energy in [35]:
-    seg_calc.put("energy", energy)
-    seg_calc.run()
-    assert seg_calc.is_status("run", "OK")
-    seg: imp.SegmentSolutions = seg_calc.get("result")
+energy = 33
+d_energy = 1
+energy_tol = 0.1
 
-    w_calc.put("segment_solutions", seg)
-    w_calc.run()
-    assert w_calc.is_status("run", "OK")
-    s = w_calc.get("near_matrices")
-    q = np.linalg.det(s.get_array()[:, 0])
-    print(f"{energy:.1f}\t{np.real(q):.2e}\t{np.imag(q):.2e}")
+wf_calc.put("energy", energy)
+wf_calc.run()
+assert wf_calc.is_status("run", "OK")
+q = wf_calc.get("near_factor")
+q_im_sign_0 = np.sign(np.imag(q)) #type: ignore
+q_im_sign = q_im_sign_0
+while q_im_sign == q_im_sign_0:
+    energy -= d_energy
+    print(energy)
+    wf_calc.put("energy", energy)
+    wf_calc.run()
+    assert wf_calc.is_status("run", "OK")
+    q = wf_calc.get("near_factor")
+    q_im_sign = np.sign(np.imag(q)) #type: ignore
+
+energy_a = energy
+q_im_sign_a = q_im_sign
+energy_b = energy + d_energy
+q_im_sign_b = -q_im_sign
+while energy_b - energy_a > energy_tol:
+    energy = (energy_a + energy_b) / 2
+    print(energy)
+    wf_calc.put("energy", energy)
+    wf_calc.run()
+    assert wf_calc.is_status("run", "OK")
+    q = wf_calc.get("near_factor")
+    q_im_sign = np.sign(np.imag(q)) #type: ignore
+    if q_im_sign == q_im_sign_a:
+        energy_a = energy
+        q_im_sign_a = q_im_sign
+    else:
+        energy_b = energy
+        q_im_sign_b = q_im_sign
+
+seg: imp.SegmentSolutions = wf_calc.get("segment_solutions")
+s_near = wf_calc.get("near_matrices")
+s_mid = wf_calc.get("middle_matrices")
+sba = s_near.get_array()[:, 0]
+sbb = s_near.get_array()[:, 1]
+bn = np.array([0, 0, 1])
+a0 = -np.linalg.inv(sba) @ sbb @ bn
+a0bn = np.array([a0, bn]).reshape(-1)
+s_mid_mx = s_mid.get_array("r0", "dir+", "sol+", "dir", "sol").reshape(-1, 6, 6)
+ab = Tensor((s_mid_mx @ a0bn).reshape(-1, 2, 3), ("r0", "dir", "sol"))
+
+print(seg.get_mid().get_axis_names())
+print(seg.get_mid().get_array().shape)
+print(ab.get_axis_names())
+print(ab.get_array().shape)

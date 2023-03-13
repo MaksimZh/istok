@@ -1154,3 +1154,31 @@ WavefuncMatricesCalculator = Block([
         "result": Out("middle_matrices"),
     }),
 ])
+
+
+def _calc_matrix_near_factor(near_matrices: Tensor) -> complex:
+    return np.linalg.det(near_matrices.get_array()[:, 0])
+
+MatrixNearFactorCalculator = Wrapper(_calc_matrix_near_factor, ["result"])
+
+
+WavefuncMatricesFactorCalculator = Block([
+    (SegmentFuncCalculator, {
+        "bulk_hamiltonian": In("bulk_hamiltonian"),
+        "potential": In("potential"),
+        "energy": In("energy"),
+    }, {
+        "result": Out("segment_solutions"),
+    }),
+    (WavefuncMatricesCalculator, {
+        "segment_solutions": Link("segment_solutions"),
+    }, {
+        "near_matrices": Out("near_matrices"),
+        "middle_matrices": Out("middle_matrices"),
+    }),
+    (MatrixNearFactorCalculator, {
+        "near_matrices": Link("near_matrices"),
+    }, {
+        "result": Out("near_factor"),
+    })
+])
