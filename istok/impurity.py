@@ -835,21 +835,33 @@ def _wave_deriv(l: Any, k: Any, r: float) -> tuple[complex, complex]:
 
 class SegmentSolutions:
 
+    __r_near: Tensor
+    __r_mid: Tensor
     __near: Tensor
     __mid: Tensor
     __far: Tensor
     __sqr_k: Tensor
 
     def __init__(self,
+            r_near: Tensor,
+            r_mid: Tensor,
             near: Tensor,
             mid: Tensor,
             far: Tensor,
             sqr_k: Tensor
             ) -> None:
+        self.__r_near = r_near
+        self.__r_mid = r_mid
         self.__near = near
         self.__mid = mid
         self.__far = far
         self.__sqr_k = sqr_k
+
+    def get_r_near(self) -> Tensor:
+        return self.__r_near
+
+    def get_r_mid(self) -> Tensor:
+        return self.__r_mid
 
     def get_near(self) -> Tensor:
         return self.__near
@@ -865,9 +877,10 @@ class SegmentSolutions:
     
 
 def _pack_segment_solutions(
+        r_near: Tensor, r_mid: Tensor,
         near: Tensor, mid: Tensor, far: Tensor, sqr_k: Tensor,
         ) -> SegmentSolutions:
-    return SegmentSolutions(near, mid, far, sqr_k)
+    return SegmentSolutions(r_near, r_mid, near, mid, far, sqr_k)
 
 SegmentSolutionsPacker = Wrapper(_pack_segment_solutions, ["result"])
 
@@ -920,6 +933,8 @@ SegmentFuncCalculator = Block([
         "sqr_k": Link("sqr_k")
     }),
     (SegmentSolutionsPacker, {
+        "r_near": Link("r_near"),
+        "r_mid": Link("r_mid"),
         "near": Link("f_near"),
         "mid": Link("f_mid"),
         "far": Link("f_far"),
