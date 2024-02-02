@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, overload
 from abc import ABC, abstractmethod
 
 
@@ -17,44 +17,43 @@ class ProcNode(ABC):
 
 class DataNode(ABC):
     input: Optional[ProcNode]
-    outputs: list[ProcNode]
+    outputs: set[ProcNode]
 
     def __init__(self) -> None:
         self.inputs = None
-        self.outputs = []
+        self.outputs = set()
 
     @abstractmethod
     def code(self) -> str:
         assert False
 
 
-class VarNode(DataNode):
-    id: str
+@overload
+def link(source: DataNode, slot: str, dest: ProcNode) -> None:
+    ...
+@overload
+def link(source: ProcNode, slot: str, dest: DataNode) -> None:
+    ...
+def link(source: DataNode | ProcNode, slot: str, dest: ProcNode | DataNode) -> None:
+    if isinstance(source, DataNode):
+        assert isinstance(dest, ProcNode)
+        source.outputs.add(dest)
+        dest.inputs[slot] = source
+        return
+    assert isinstance(dest, DataNode)
+    source.outputs[slot] = dest
+    dest.input = source
 
-    def __init__(self, id: str) -> None:
+
+class ValueNode(DataNode):
+    repr: str
+
+    def __init__(self, repr: str) -> None:
         super().__init__()
-        self.id = id
+        self.repr = repr
 
     def code(self) -> str:
-        return self.id
-    
-
-class ConstNode(DataNode):
-    value: str
-
-    def __init__(self, value: str) -> None:
-        super().__init__()
-        self.value = value
-
-    def code(self) -> str:
-        return self.value
-
-
-class LazyNode(DataNode):
-    func: str
-
-    def code(self) -> str:
-        return f"{self.func}()"
+        return self.repr
 
 
 class IsZeroProc(ProcNode):
@@ -87,35 +86,26 @@ class IfProc(ProcNode):
         return [f"{out} = {true} if {cond} else {false}"]
 
 
-b = VarNode("b")
-tmp000 = VarNode("tmp000")
+b = ValueNode("b")
+tmp000 = ValueNode("tmp000")
 is_zero = IsZeroProc()
-b.outputs.append(is_zero)
-is_zero.inputs["in"] = b
-is_zero.outputs["out"] = tmp000
-tmp000.input = is_zero
+link(b, "in", is_zero)
+link(is_zero, "out", tmp000)
 
-c = VarNode("c")
-tmp001 = VarNode("tmp001")
+c = ValueNode("c")
+tmp001 = ValueNode("tmp001")
 div = DivProc()
-b.outputs.append(div)
-c.outputs.append(div)
-div.inputs["left"] = c
-div.inputs["right"] = b
-div.outputs["out"] = tmp001
-tmp001.input = div
+link(c, "left", div)
+link(b, "right", div)
+link(div, "out", tmp001)
 
-const000 = ConstNode("None")
+const000 = ValueNode("None")
 if_ = IfProc()
-result = VarNode("result")
-tmp000.outputs.append(if_)
-const000.outputs.append(if_)
-tmp001.outputs.append(if_)
-if_.inputs["cond"] = tmp000
-if_.inputs["true"] = const000
-if_.inputs["false"] = tmp001
-if_.outputs["out"] = result
-result.input = if_
+result = ValueNode("result")
+link(tmp000, "cond", if_)
+link(const000, "true", if_)
+link(tmp001, "false", if_)
+link(if_, "out", result)
 
 print(is_zero.code())
 print(div.code())
