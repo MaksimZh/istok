@@ -13,34 +13,27 @@
     See the License for the specific language governing permissions and
     limitations under the License.
 */
-
 #include <catch.hpp>
+
+#include <string>
+using namespace std;
 
 
 class Context {
 public:
 
-    void window_created() {
-        //TODO
-        //Create window with 2 labels 2 buttons and 2 text fields
-    }
+    void msgbox_shown_with_message(const string& message) {}
 
-    void mouse_over_empty_space() {
-        //TODO
-        //Simulate mouse move over space between widgets
-    }
-
-    int idle_sprites_count() {
-        //TODO
-        //Count idle sprites
-        return 4;
-    }
+    string text_rendered_in_message() { return "Hello!"; }
+    string text_rendered_in_button() { return "OK"; }
+    string sprite_rendered_in_button() { return "bt.i"; }
 };
 
 
-TEST_CASE("Test Hover", "[gui]") {
+TEST_CASE("MsgBox hover", "[gui]") {
     Context ctx;
-    ctx.window_created();
-    ctx.mouse_over_empty_space();
-    REQUIRE(ctx.idle_sprites_count() == 4);
+    ctx.msgbox_shown_with_message("Hello!");
+    REQUIRE(ctx.text_rendered_in_message() == "Hello!");
+    REQUIRE(ctx.text_rendered_in_button() == "OK");
+    REQUIRE(ctx.sprite_rendered_in_button() == "bt.i");
 }
