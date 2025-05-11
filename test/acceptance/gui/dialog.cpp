@@ -16,6 +16,36 @@
 
 #include <catch.hpp>
 
-TEST_CASE("Test", "[gui]") {
-    REQUIRE(true);
+#include <iostream>
+using namespace std;
+
+
+class Context {
+public:
+void dialog_created() {}
+void user_clicks_button(string id) {}
+bool dialog_closed() { return true; }
+bool dialog_returned(string value) { return true; }
+};
+
+
+TEST_CASE("Test OK", "[gui]") {
+    Context ctx;
+    ctx.dialog_created();
+    
+    ctx.user_clicks_button("OK");
+    
+    REQUIRE(ctx.dialog_closed());
+    REQUIRE(ctx.dialog_returned("OK"));
+}
+
+
+TEST_CASE("Test Cancel", "[gui]") {
+    Context ctx;
+    ctx.dialog_created();
+    
+    ctx.user_clicks_button("Cancel");
+    
+    REQUIRE(ctx.dialog_closed());
+    REQUIRE(ctx.dialog_returned("Cancel"));
 }
