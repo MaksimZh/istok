@@ -9,21 +9,65 @@
 #include <string>
 using namespace std;
 
+class MockSysWindow {
+public:
+    MockSysWindow(WindowEventListener& listener)
+    : listener(listener), decorActive(false) {}
+    
+    void emulateAppInactivate() {
+        listener.onAppInactivate();
+    }
+    
+    void emulateTrySetDecorActive(bool active) {
+        if (listener.onTryDecorActive) {
+            decorActive = active;
+        }
+    }
+    
+    bool isDecorActive() {
+        return decorActive;
+    }
+
+private:
+    WindowEventListener& listener;
+    bool decorActive;
+};
+
+class MockSysWindowFactory {
+    
+};
 
 class Context {
 public:
-    void app_initialized() {}
-    void app_deactivated() {}
-    void window_created(const string& id) {}
-    void window_activated(const string& id) {}
-    bool window_looks_active(const string& id) {}
+    Context() : windowManager(sysWindowFactory) {}
+
+    void app_deactivated() {
+        sysWindowFactory.getActiveWindow().emulateAppInactivate();
+    }
+
+    void window_created(const string& id) {
+        windowManager.create(???);
+        sysWindowFactory.setLastWindowId(id);
+    }
+
+    void window_activated(const string& id) {
+        sysWindowFactory.getActiveWindow().emulateTrySetDecorActive(false);
+        sysWindowFactory.getWindow(id).emulateTrySetDecorActive(true);
+    }
+
+    bool window_looks_active(const string& id) {
+        return sysWindowFactory.getWindow(id).isDecorActive();
+    }
+
+private:
+    MockSysWindowFactory sysWindowFactory;
+    WindowManager<MockSysWindowFactory> windowManager;
 };
 
 
 TEST_CASE("Single window activity", "[gui]") {
-    Context ctx;
     // Given
-    ctx.app_initialized();
+    Context ctx;
     // When
     ctx.window_created("main");
     // Then
@@ -40,9 +84,8 @@ TEST_CASE("Single window activity", "[gui]") {
 
 
 TEST_CASE("Two window activity", "[gui]") {
-    Context ctx;
     // Given
-    ctx.app_initialized();
+    Context ctx;
     // When
     ctx.window_created("main");
     ctx.window_created("tool");
