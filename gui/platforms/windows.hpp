@@ -9,9 +9,15 @@ public:
 
 
 template <typename SysWindow>
-class WinWindow : public Window<SysWindow> {
+class WinWindow : public Window, public WindowEventListener {
+public:
     WinWindow() {}
-};
+    
+    void setSysWindow()
+
+private:
+    unique_ptr<SysWindow> sysWindow;
+}
 
 
 template <typename SysWindowFactory>
@@ -21,7 +27,7 @@ public:
     : sysWindowFactory(sysWindowFactory) {}
     
     Window createWindow(const string& title, Rect<int> location) {
-        return ???;
+        return WinWindow;
     }
 
 private:
