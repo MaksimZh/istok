@@ -8,6 +8,7 @@
 
 #include <string>
 #include <cassert>
+#include <memory>
 
 #include "gui/window.hpp"
 #include "gui/platforms/windows.hpp"
@@ -17,7 +18,9 @@ using namespace std;
 
 class MockSysWindow {
 public:
-    MockSysWindow(WindowEventListener& listener)
+    MockSysWindow(
+        const string& title, Rect<int> location,
+        WindowEventListener& listener)
     : listener(listener), decorActive(false) {}
     
     void emulateAppInactivate() {
@@ -40,40 +43,36 @@ private:
 };
 
 
-class MockSysWindowFactory {
-    
-};
-
 class Context {
 public:
-    Context() : windowManager(sysWindowFactory) {}
+    Context() {}
 
     void app_deactivated() {
-        windows.at(activeId).getSysWindow().emulateAppInactivate();
+        windows.at(activeId)->getSysWindow().emulateAppInactivate();
         activeId = "";
     }
 
     void window_created(const string& id) {
         assert(id != "");
         assert(!windows.contains(id));
-        windows[id] = windowManager.createWindow(id, {0, 0, 100, 100});
-        windows[id].show();
+        windows[id] = move(windowManager.createWindow(id, {0, 0, 100, 100}));
+        windows[id]->show();
         activeId = id;
     }
 
     void window_activated(const string& id) {
-        windows.at(activeId).getSysWindow().emulateTrySetDecorActive(false);
-        windows.at(id).getSysWindow().emulateTrySetDecorActive(true);
+        windows.at(activeId)->getSysWindow().emulateTrySetDecorActive(false);
+        windows.at(id)->getSysWindow().emulateTrySetDecorActive(true);
+        activeId = id;
     }
 
     bool window_looks_active(const string& id) {
-        return windows.at(activeId).getSysWindow().isDecorActive();
+        return windows.at(activeId)->getSysWindow().isDecorActive();
     }
 
 private:
-    MockSysWindowFactory sysWindowFactory;
-    WindowManager<MockSysWindowFactory> windowManager;
-    map<string, WinWindow<MockSysWindow>> windows;
+    WindowManager<MockSysWindow> windowManager;
+    map<string, unique_ptr<Window<MockSysWindow>>> windows;
     string activeId;
 };
 

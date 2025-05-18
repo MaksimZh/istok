@@ -16,4 +16,9 @@ public:
 };
 
 
-class Window {};
+template <typename SysWindow>
+class Window {
+public:
+    virtual SysWindow& getSysWindow() = 0;
+    virtual void show() = 0;
+};
