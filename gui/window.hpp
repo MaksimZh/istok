@@ -1,0 +1,14 @@
+#pragma once
+
+template <typename T>
+struct Rect {
+    T left;
+    T top; 
+    T right;
+    T bottom;
+};
+
+class WindowEventListener {
+    virtual void onAppInactivate() = 0;
+    virtual bool onTryDecorActive(bool active) = 0;
+};

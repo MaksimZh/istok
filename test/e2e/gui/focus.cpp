@@ -19,7 +19,7 @@ public:
     }
     
     void emulateTrySetDecorActive(bool active) {
-        if (listener.onTryDecorActive) {
+        if (listener.onTryDecorActive(active)) {
             decorActive = active;
         }
     }
@@ -46,8 +46,7 @@ public:
     }
 
     void window_created(const string& id) {
-        windowManager.create(???);
-        sysWindowFactory.setLastWindowId(id);
+        windowManager.createWindow(id, {0, 0, 100, 100});
     }
 
     void window_activated(const string& id) {
