@@ -42,25 +42,31 @@ public:
     Context() : windowManager(sysWindowFactory) {}
 
     void app_deactivated() {
-        sysWindowFactory.getActiveWindow().emulateAppInactivate();
+        windows.at(activeId).getSysWindow() emulateAppInactivate();
+        activeId = "";
     }
 
     void window_created(const string& id) {
-        windowManager.createWindow(id, {0, 0, 100, 100});
+        assert id != "";
+        assert !windows.contains(id);
+        windows[id] = windowManager.createWindow(id, {0, 0, 100, 100});
+        windows[id].show();
+        activeId = id;
     }
 
     void window_activated(const string& id) {
-        sysWindowFactory.getActiveWindow().emulateTrySetDecorActive(false);
-        sysWindowFactory.getWindow(id).emulateTrySetDecorActive(true);
+        windows.at(activeId).getSysWindow().emulateTrySetDecorActive(false);
+        windows.at(id).getSysWindow().emulateTrySetDecorActive(true);
     }
 
     bool window_looks_active(const string& id) {
-        return sysWindowFactory.getWindow(id).isDecorActive();
+        return windows.at(activeId).getSysWindow().isDecorActive();
     }
 
 private:
     MockSysWindowFactory sysWindowFactory;
     WindowManager<MockSysWindowFactory> windowManager;
+    map<string, WinWindow> windows;
 };
 
 
