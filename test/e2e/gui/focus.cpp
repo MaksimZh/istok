@@ -7,7 +7,13 @@
 */
 
 #include <string>
+#include <cassert>
+
+#include "gui/window.hpp"
+#include "gui/platforms/windows.hpp"
+
 using namespace std;
+
 
 class MockSysWindow {
 public:
@@ -33,6 +39,7 @@ private:
     bool decorActive;
 };
 
+
 class MockSysWindowFactory {
     
 };
@@ -42,13 +49,13 @@ public:
     Context() : windowManager(sysWindowFactory) {}
 
     void app_deactivated() {
-        windows.at(activeId).getSysWindow() emulateAppInactivate();
+        windows.at(activeId).getSysWindow().emulateAppInactivate();
         activeId = "";
     }
 
     void window_created(const string& id) {
-        assert id != "";
-        assert !windows.contains(id);
+        assert(id != "");
+        assert(!windows.contains(id));
         windows[id] = windowManager.createWindow(id, {0, 0, 100, 100});
         windows[id].show();
         activeId = id;
@@ -66,7 +73,8 @@ public:
 private:
     MockSysWindowFactory sysWindowFactory;
     WindowManager<MockSysWindowFactory> windowManager;
-    map<string, WinWindow> windows;
+    map<string, WinWindow<MockSysWindow>> windows;
+    string activeId;
 };
 
 

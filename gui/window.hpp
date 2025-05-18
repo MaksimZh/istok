@@ -9,6 +9,7 @@ struct Rect {
 };
 
 class WindowEventListener {
+public:
     virtual void onAppInactivate() = 0;
     virtual bool onTryDecorActive(bool active) = 0;
 };

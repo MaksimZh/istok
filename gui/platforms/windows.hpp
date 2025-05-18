@@ -9,9 +9,9 @@ public:
 
 
 template <typename SysWindow>
-class WinWindow {
-    WinWindow(SysWindow)
-}
+class WinWindow : public Window<SysWindow> {
+    WinWindow() {}
+};
 
 
 template <typename SysWindowFactory>
