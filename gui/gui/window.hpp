@@ -2,6 +2,8 @@
 
 #include <string>
 #include <concepts>
+#include <mutex>
+#include <set>
 
 using namespace std;
 
@@ -32,8 +34,9 @@ concept SysWindow = requires(T sw) {
 template <typename WindowType>
 class WindowActivityManager {
 public:
-    virtual bool isAppActive() = 0;
-    virtual void remove(WindowType* window) = 0;
+    virtual bool getAppActive() = 0;
+    virtual void setAppActive(bool active) = 0;
+    virtual void removeWindow(WindowType* window) = 0;
 };
 
 
@@ -51,10 +54,16 @@ public:
     WinWindow(WindowActivityManager<WinWindow>& activityManager)
     : activityManager(activityManager) {}
 
-    void onSetAppActive(bool active) override {}
+    ~WinWindow() {
+        activityManager.removeWindow(this);
+    }
+
+    void onSetAppActive(bool active) override {
+        activityManager.setAppActive(active);
+    }
 
     bool onTrySetDecorActive(bool active) override {
-        return true;
+        return activityManager.getAppActive() == active;
     }
 
     SW& getSysWindow() override {
@@ -83,12 +92,34 @@ public:
             const string& title, Rect<int> location) {
         auto window = make_unique<WinWindow<SW>>(*this);
         window->setSysWindow(make_unique<SW>(title, location, *window, nullptr));
+        {
+            lock_guard lock(windowMutex);
+            windows.insert(window.get());
+        }
         return move(window);
     }
 
-    bool isAppActive() override {
-        return true;
+    bool getAppActive() override {
+        return appActive;
     }
-    
-    void remove(WinWindow<SW>* window) {}
+
+    void setAppActive(bool active) override {
+        if (appActive == active)
+            return;
+        appActive = active;
+        lock_guard lock(windowMutex);
+        for (WinWindow<SW>* window: windows) {
+            window->getSysWindow().sendTrySetDecorActive(active);
+        }
+    }
+
+    void removeWindow(WinWindow<SW>* window) override {
+        lock_guard lock(windowMutex);
+        windows.erase(window);
+    }
+
+private:
+    bool appActive;
+    set<WinWindow<SW>*> windows;
+    mutex windowMutex;
 };
