@@ -15,7 +15,7 @@
 using namespace std;
 
 
-class MockSysWindow {
+class MockSysWindow final {
 public:
     MockSysWindow(
         const string& title, Rect<int> location,
@@ -47,7 +47,7 @@ private:
 };
 
 
-class Context {
+class Context final {
 public:
     Context() {}
 

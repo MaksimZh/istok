@@ -7,6 +7,11 @@
 
 using namespace std;
 
+#define DISABLE_COPY_MOVE(ClassName) \
+    ClassName(const ClassName&) = delete; \
+    ClassName& operator=(const ClassName&) = delete; \
+    ClassName(const ClassName&&) = delete; \
+    ClassName& operator=(const ClassName&&) = delete;
 
 template <typename T>
 struct Rect {
@@ -19,6 +24,10 @@ struct Rect {
 
 class WindowEventListener {
 public:
+    WindowEventListener() = default;
+    virtual ~WindowEventListener() = default;
+    DISABLE_COPY_MOVE(WindowEventListener)
+    
     virtual void onSetAppActive(bool active) = 0;
     virtual bool onTrySetDecorActive(bool active) = 0;
 };
@@ -34,6 +43,10 @@ concept SysWindow = requires(T sw) {
 template <typename WindowType>
 class WindowActivityManager {
 public:
+    WindowActivityManager() = default;
+    virtual ~WindowActivityManager() = default;
+    DISABLE_COPY_MOVE(WindowActivityManager)
+
     virtual bool getAppActive() = 0;
     virtual void setAppActive(bool active) = 0;
     virtual void removeWindow(WindowType* window) = 0;
@@ -43,13 +56,17 @@ public:
 template <SysWindow SW>
 class Window {
 public:
+    Window() {}
+    virtual ~Window() = default;
+    DISABLE_COPY_MOVE(Window)
+
     virtual SW& getSysWindow() = 0;
     virtual void show() = 0;
 };
 
 
 template <SysWindow SW>
-class WinWindow : public Window<SW>, public WindowEventListener {
+class WinWindow final : public Window<SW>, public WindowEventListener {
 public:
     WinWindow(WindowActivityManager<WinWindow>& activityManager)
     : activityManager(activityManager) {}
@@ -57,6 +74,8 @@ public:
     ~WinWindow() {
         activityManager.removeWindow(this);
     }
+
+    DISABLE_COPY_MOVE(WinWindow)
 
     void onSetAppActive(bool active) override {
         activityManager.setAppActive(active);
@@ -84,9 +103,11 @@ private:
 
 
 template <SysWindow SW>
-class WindowManager : public WindowActivityManager<WinWindow<SW>> {
+class WindowManager final : public WindowActivityManager<WinWindow<SW>> {
 public:
     WindowManager() {}
+
+    DISABLE_COPY_MOVE(WindowManager)
     
     unique_ptr<Window<SW>> createWindow(
             const string& title, Rect<int> location) {
