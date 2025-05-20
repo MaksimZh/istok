@@ -11,7 +11,6 @@
 #include <memory>
 
 #include "gui/window.hpp"
-#include "gui/platforms/windows.hpp"
 
 using namespace std;
 
@@ -20,17 +19,22 @@ class MockSysWindow {
 public:
     MockSysWindow(
         const string& title, Rect<int> location,
-        WindowEventListener& listener)
+        WindowEventListener& listener,
+        MockSysWindow* parent)
     : listener(listener), decorActive(false) {}
     
-    void emulateAppInactivate() {
-        listener.onAppInactivate();
+    void emulateSetAppActive(bool active) {
+        listener.onSetAppActive(active);
     }
     
     void emulateTrySetDecorActive(bool active) {
-        if (listener.onTryDecorActive(active)) {
+        if (listener.onTrySetDecorActive(active)) {
             decorActive = active;
         }
+    }
+
+    void sendTrySetDecorActive(bool active) {
+        emulateTrySetDecorActive(active);
     }
     
     bool isDecorActive() {
@@ -48,7 +52,7 @@ public:
     Context() {}
 
     void app_deactivated() {
-        windows.at(activeId)->getSysWindow().emulateAppInactivate();
+        windows.at(activeId)->getSysWindow().emulateSetAppActive(false);
         activeId = "";
     }
 
@@ -57,17 +61,22 @@ public:
         assert(!windows.contains(id));
         windows[id] = move(windowManager.createWindow(id, {0, 0, 100, 100}));
         windows[id]->show();
-        activeId = id;
+        window_activated(id);
     }
 
     void window_activated(const string& id) {
-        windows.at(activeId)->getSysWindow().emulateTrySetDecorActive(false);
+        if (activeId != "") {
+            windows.at(activeId)->getSysWindow().emulateTrySetDecorActive(false);
+        }
+        if (activeId == "") {
+            windows.at(id)->getSysWindow().emulateSetAppActive(true);
+        }
         windows.at(id)->getSysWindow().emulateTrySetDecorActive(true);
         activeId = id;
     }
 
     bool window_looks_active(const string& id) {
-        return windows.at(activeId)->getSysWindow().isDecorActive();
+        return windows.at(id)->getSysWindow().isDecorActive();
     }
 
 private:
