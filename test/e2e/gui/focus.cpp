@@ -86,7 +86,7 @@ private:
 };
 
 
-TEST_CASE("Single window activity", "[gui]") {
+TEST_CASE("Single window activity", "[e2e][gui]") {
     // Given
     Context ctx;
     // When
@@ -104,7 +104,7 @@ TEST_CASE("Single window activity", "[gui]") {
 }
 
 
-TEST_CASE("Two window activity", "[gui]") {
+TEST_CASE("Two window activity", "[e2e][gui]") {
     // Given
     Context ctx;
     // When
