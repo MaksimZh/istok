@@ -3,6 +3,12 @@
 
 #include "gui/window.hpp"
 
+#include <vector>
+#include <string>
+#include <format>
+
+using namespace std;
+
 
 class MockSysWindow {
 public:
@@ -18,7 +24,7 @@ public:
 class MockActivityManager:
     public WindowActivityManager<WinWindow<MockSysWindow>> {
 public:
-    MockActivityManager() {}
+    MockActivityManager(vector<string>& log) : log(log) {}
     
     bool getAppActive() override {
         return true;
@@ -26,11 +32,29 @@ public:
 
     void setAppActive(bool active) override {}
 
-    void removeWindow(WinWindow<MockSysWindow>* window) override {}
+    void removeWindow(WinWindow<MockSysWindow>* window) override {
+        log.push_back(logRemove(window));
+    }
+    
+    static string logRemove(WinWindow<MockSysWindow>* window) {
+        return format("WAM.remove {:p}", (void*)window);
+    }
+
+private:
+    vector<string>& log;
 };
 
 
-TEST_CASE("WinWindow activity", "[unit][gui]") {
-    MockActivityManager activityManager;
-    WinWindow<MockSysWindow> window(activityManager);
+TEST_CASE("WinWindow remove from manager", "[unit][gui]") {
+    vector<string> log;
+    MockActivityManager activityManager(log);
+    WinWindow<MockSysWindow>* windowPtr;
+    {
+        WinWindow<MockSysWindow> window(activityManager);
+        windowPtr = &window;
+        REQUIRE(log.size() == 0);
+    }
+    REQUIRE(log == vector<string>{
+        MockActivityManager::logRemove(windowPtr)
+    });
 }
