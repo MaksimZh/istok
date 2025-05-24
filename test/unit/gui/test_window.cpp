@@ -10,29 +10,38 @@
 
 using namespace std;
 
-vector<string> fakeLog;
 
 class MockSysWindow {
 public:
-    MockSysWindow(
-        const string& title, Rect<int> location,
-        WindowEventListener& listener,
-        MockSysWindow* parent) : log(fakeLog) {}
-
-    MockSysWindow(
-        vector<string>& log,
-        const string& title, Rect<int> location,
-        WindowEventListener& listener,
-        MockSysWindow* parent) : log(log) {}
+    MockSysWindow(const string& title, vector<string>& log)
+        : title(title), log(log) {}
 
     ~MockSysWindow() {
-        log.push_back(logDestroy(this));
+        log.push_back(logDestroy(title));
     }
 
     void sendTrySetDecorActive(bool active) {}
 
-    static string logDestroy(MockSysWindow* sysWindow) {
-        return format("SW.destroy {:p}", (void*)sysWindow);
+    const string& getTitle() { return title; }
+
+    static string logDestroy(const string& title) {
+        return format("SysWindow(\"{}\").destroy()", title);
+    }
+
+private:
+    string title;
+    vector<string>& log;
+};
+
+
+class MockSysWindowFactory {
+public:
+    MockSysWindowFactory(vector<string>& log) : log(log) {}
+    
+    unique_ptr<MockSysWindow> createSysWindow(
+            const string& title, Rect<int> location,
+            WindowEventListener& listener) {
+        return make_unique<MockSysWindow>(title, log);
     }
 
 private:
@@ -54,11 +63,13 @@ public:
     }
 
     void removeWindow(WinWindow<MockSysWindow>* window) override {
-        log.push_back(logRemove(window));
+        auto sw = window->getSysWindow();
+        string title = sw ? sw->getTitle() : "<null>";
+        log.push_back(logRemove(title));
     }
 
-    static string logRemove(WinWindow<MockSysWindow>* window) {
-        return format("WAM.remove {:p}", (void*)window);
+    static string logRemove(const string& title) {
+        return format("Manager.remove(\"{}\")", title);
     }
 
 private:
@@ -83,21 +94,29 @@ TEST_CASE("WinWindow activity", "[unit][gui]") {
 
 TEST_CASE("WinWindow destruction", "[unit][gui]") {
     vector<string> log;
+    MockSysWindowFactory factory(log);
     MockActivityManager manager(log);
     WinWindow<MockSysWindow>* windowPtr;
-    MockSysWindow* sysWindowPtr;
     {
         WinWindow<MockSysWindow> window(manager);
-        windowPtr = &window;
-        auto sysWindow = make_unique<MockSysWindow>(
-            log,
-            "main", Rect<int>{0, 0, 100, 100}, window, nullptr);
-        sysWindowPtr = sysWindow.get();
-        window.setSysWindow(move(sysWindow));
-        REQUIRE(&window.getSysWindow() == sysWindowPtr);
+        window.setSysWindow(
+            factory.createSysWindow(
+                "main", Rect<int>{0, 0, 100, 100}, window));
+        REQUIRE(window.getSysWindow()->getTitle() == "main");
     }
     REQUIRE(log == vector<string>{
-        MockActivityManager::logRemove(windowPtr),
-        MockSysWindow::logDestroy(sysWindowPtr),
+        MockActivityManager::logRemove("main"),
+        MockSysWindow::logDestroy("main"),
     });
+}
+
+
+TEST_CASE("WindowManager activity", "[unit][gui]") {
+    vector<string> log;
+    MockSysWindowFactory factory(log);
+    WindowManager<MockSysWindow, MockSysWindowFactory> manager(factory);
+    unique_ptr<Window<MockSysWindow>> w1 =
+        manager.createWindow("first", Rect<int>{0, 0, 100, 100});
+    unique_ptr<Window<MockSysWindow>> w2 =
+        manager.createWindow("second", Rect<int>{0, 0, 100, 100});
 }

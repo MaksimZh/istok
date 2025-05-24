@@ -35,8 +35,16 @@ public:
 
 template <typename T>
 concept SysWindow = requires(T sw) {
-    T(string{}, Rect<int>{}, declval<WindowEventListener&>(), &sw);
     { sw.sendTrySetDecorActive(bool{}) } -> same_as<void>;
+};
+
+
+template <typename T, typename W>
+concept SysWindowFactory = SysWindow<W> and requires(T f, W w) {
+    {
+        f.createSysWindow(
+            string{}, Rect<int>{}, declval<WindowEventListener&>())
+    } -> same_as<unique_ptr<W>>;
 };
 
 
@@ -60,7 +68,7 @@ public:
     virtual ~Window() = default;
     DISABLE_COPY_MOVE(Window)
 
-    virtual SW& getSysWindow() = 0;
+    virtual SW* getSysWindow() = 0;
     virtual void show() = 0;
 };
 
@@ -85,8 +93,8 @@ public:
         return activityManager.getAppActive() == active;
     }
 
-    SW& getSysWindow() override {
-        return *sysWindow;
+    SW* getSysWindow() override {
+        return sysWindow.get();
     }
 
     void show() override {}
@@ -102,17 +110,18 @@ private:
 };
 
 
-template <SysWindow SW>
+template <SysWindow SW, SysWindowFactory<SW> SWF>
 class WindowManager final : public WindowActivityManager<WinWindow<SW>> {
 public:
-    WindowManager() {}
+    WindowManager(SWF& sysWindowFactory) : sysWindowFactory(sysWindowFactory) {}
 
     DISABLE_COPY_MOVE(WindowManager)
     
     unique_ptr<Window<SW>> createWindow(
             const string& title, Rect<int> location) {
         auto window = make_unique<WinWindow<SW>>(*this);
-        window->setSysWindow(make_unique<SW>(title, location, *window, nullptr));
+        window->setSysWindow(
+            sysWindowFactory.createSysWindow(title, location, *window));
         {
             lock_guard lock(windowMutex);
             windows.insert(window.get());
@@ -130,7 +139,7 @@ public:
         appActive = active;
         lock_guard lock(windowMutex);
         for (WinWindow<SW>* window: windows) {
-            window->getSysWindow().sendTrySetDecorActive(active);
+            window->getSysWindow()->sendTrySetDecorActive(active);
         }
     }
 
@@ -141,6 +150,7 @@ public:
 
 private:
     bool appActive;
+    SWF& sysWindowFactory;
     set<WinWindow<SW>*> windows;
     mutex windowMutex;
 };
