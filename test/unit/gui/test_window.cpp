@@ -20,12 +20,19 @@ public:
         log.push_back(logDestroy(title));
     }
 
-    void sendTrySetDecorActive(bool active) {}
+    void sendTrySetDecorActive(bool active) {
+        log.push_back(logSendTrySetDecorActive(title, active));
+    }
 
     const string& getTitle() { return title; }
 
     static string logDestroy(const string& title) {
         return format("SysWindow(\"{}\").destroy()", title);
+    }
+
+    static string logSendTrySetDecorActive(const string& title, bool active) {
+        return format(
+            "SysWindow(\"{}\").sendTrySetDecorActive({:b})", title, active);
     }
 
 private:
@@ -111,7 +118,7 @@ TEST_CASE("WinWindow destruction", "[unit][gui]") {
 }
 
 
-TEST_CASE("WindowManager activity", "[unit][gui]") {
+TEST_CASE("WindowManager activity broadcast", "[unit][gui]") {
     vector<string> log;
     MockSysWindowFactory factory(log);
     WindowManager<MockSysWindow, MockSysWindowFactory> manager(factory);
@@ -119,4 +126,41 @@ TEST_CASE("WindowManager activity", "[unit][gui]") {
         manager.createWindow("first", Rect<int>{0, 0, 100, 100});
     unique_ptr<Window<MockSysWindow>> w2 =
         manager.createWindow("second", Rect<int>{0, 0, 100, 100});
+    REQUIRE(manager.getAppActive() == false);
+    log.clear();
+    manager.setAppActive(false);
+    REQUIRE(log == vector<string>{});
+    manager.setAppActive(true);
+    REQUIRE((
+        log == vector<string>{
+            MockSysWindow::logSendTrySetDecorActive("first", true),
+            MockSysWindow::logSendTrySetDecorActive("second", true),
+        }
+        ||
+        log == vector<string>{
+            MockSysWindow::logSendTrySetDecorActive("second", true),
+            MockSysWindow::logSendTrySetDecorActive("first", true),
+        }
+    ));
+    log.clear();
+    manager.setAppActive(true);
+    REQUIRE(log == vector<string>{});
+    manager.setAppActive(false);
+    REQUIRE((
+        log == vector<string>{
+            MockSysWindow::logSendTrySetDecorActive("first", false),
+            MockSysWindow::logSendTrySetDecorActive("second", false),
+        }
+        ||
+        log == vector<string>{
+            MockSysWindow::logSendTrySetDecorActive("second", false),
+            MockSysWindow::logSendTrySetDecorActive("first", false),
+        }
+    ));
+    w2.reset();
+    log.clear();
+    manager.setAppActive(true);
+    REQUIRE(log == vector<string>{
+        MockSysWindow::logSendTrySetDecorActive("first", true)
+    });
 }

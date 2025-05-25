@@ -113,7 +113,8 @@ private:
 template <SysWindow SW, SysWindowFactory<SW> SWF>
 class WindowManager final : public WindowActivityManager<WinWindow<SW>> {
 public:
-    WindowManager(SWF& sysWindowFactory) : sysWindowFactory(sysWindowFactory) {}
+    WindowManager(SWF& sysWindowFactory)
+        : appActive(false), sysWindowFactory(sysWindowFactory) {}
 
     DISABLE_COPY_MOVE(WindowManager)
     
