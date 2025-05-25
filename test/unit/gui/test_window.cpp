@@ -96,14 +96,14 @@ TEST_CASE("WinWindow destruction", "[unit][gui]") {
     vector<string> log;
     MockSysWindowFactory factory(log);
     MockActivityManager manager(log);
-    WinWindow<MockSysWindow>* windowPtr;
-    {
-        WinWindow<MockSysWindow> window(manager);
-        window.setSysWindow(
-            factory.createSysWindow(
-                "main", Rect<int>{0, 0, 100, 100}, window));
-        REQUIRE(window.getSysWindow()->getTitle() == "main");
-    }
+    unique_ptr<WinWindow<MockSysWindow>> window =
+        make_unique<WinWindow<MockSysWindow>>(manager);
+    window->setSysWindow(
+        factory.createSysWindow(
+            "main", Rect<int>{0, 0, 100, 100}, *window));
+    REQUIRE(window->getSysWindow()->getTitle() == "main");
+    REQUIRE(log == vector<string>{});
+    window.reset();
     REQUIRE(log == vector<string>{
         MockActivityManager::logRemove("main"),
         MockSysWindow::logDestroy("main"),
