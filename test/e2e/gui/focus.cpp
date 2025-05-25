@@ -19,8 +19,7 @@ class MockSysWindow final {
 public:
     MockSysWindow(
         const string& title, Rect<int> location,
-        WindowEventListener& listener,
-        MockSysWindow* parent)
+        WindowEventListener& listener)
     : listener(listener), decorActive(false) {}
     
     void emulateSetAppActive(bool active) {
@@ -47,12 +46,24 @@ private:
 };
 
 
+class MockSysWindowFactory final {
+public:
+    MockSysWindowFactory() {}
+    
+    unique_ptr<MockSysWindow> createSysWindow(
+            const string& title, Rect<int> location,
+            WindowEventListener& listener) {
+        return make_unique<MockSysWindow>(title, location, listener);
+    }
+};
+
+
 class Context final {
 public:
-    Context() {}
+    Context() : windowManager(sysWindowFactory) {}
 
     void app_deactivated() {
-        windows.at(activeId)->getSysWindow().emulateSetAppActive(false);
+        windows.at(activeId)->getSysWindow()->emulateSetAppActive(false);
         activeId = "";
     }
 
@@ -66,21 +77,22 @@ public:
 
     void window_activated(const string& id) {
         if (activeId != "") {
-            windows.at(activeId)->getSysWindow().emulateTrySetDecorActive(false);
+            windows.at(activeId)->getSysWindow()->emulateTrySetDecorActive(false);
         }
         if (activeId == "") {
-            windows.at(id)->getSysWindow().emulateSetAppActive(true);
+            windows.at(id)->getSysWindow()->emulateSetAppActive(true);
         }
-        windows.at(id)->getSysWindow().emulateTrySetDecorActive(true);
+        windows.at(id)->getSysWindow()->emulateTrySetDecorActive(true);
         activeId = id;
     }
 
     bool window_looks_active(const string& id) {
-        return windows.at(id)->getSysWindow().isDecorActive();
+        return windows.at(id)->getSysWindow()->isDecorActive();
     }
 
 private:
-    WindowManager<MockSysWindow> windowManager;
+    MockSysWindowFactory sysWindowFactory;
+    WindowManager<MockSysWindow, MockSysWindowFactory> windowManager;
     map<string, unique_ptr<Window<MockSysWindow>>> windows;
     string activeId;
 };

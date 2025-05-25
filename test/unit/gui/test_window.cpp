@@ -11,7 +11,7 @@
 using namespace std;
 
 
-class MockSysWindow {
+class MockSysWindow final {
 public:
     MockSysWindow(const string& title, vector<string>& log)
         : title(title), log(log) {}
@@ -41,7 +41,7 @@ private:
 };
 
 
-class MockSysWindowFactory {
+class MockSysWindowFactory final {
 public:
     MockSysWindowFactory(vector<string>& log) : log(log) {}
     
@@ -56,8 +56,8 @@ private:
 };
 
 
-class MockActivityManager:
-    public WindowActivityManager<WinWindow<MockSysWindow>> {
+class MockActivityManager final
+    : public WindowActivityManager<WinWindow<MockSysWindow>> {
 public:
     MockActivityManager(vector<string>& log) : log(log) {}
     
