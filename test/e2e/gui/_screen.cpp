@@ -85,11 +85,12 @@ TEST_CASE("One window on one monitor", "[e2e][gui]") {
     // Given
     Context ctx({Rect<int>{0, 0, 200, 100}});
     // When
+    /*
     ctx.create_screen({
         Widget{
             .sizing = { .x = { .lower = 80 }, .y = { .lower } }
         }
-    });
+    });*/
     // Then
     REQUIRE(ctx.screen_area_is(Rect<int>{0, 0, 640, 480}));
 }

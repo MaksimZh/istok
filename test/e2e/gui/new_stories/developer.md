@@ -10,10 +10,6 @@ As a developer
 I want the library to include a FlexBox widget for grouping and laying out elements
 So that I can create responsive and adaptive UIs without manual positioning
 
-As a desktop developer
-I want to create regular windows, tool panels, menus, and tooltips as child widgets of the root Screen widget
-So that all UI elements are part of a unified hierarchy and can be managed consistently
-
 As a developer
 I want to start the main event loop and rendering with a single command
 So that I can focus on building the UI without boilerplate setup code
