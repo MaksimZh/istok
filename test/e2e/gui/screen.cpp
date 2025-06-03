@@ -13,6 +13,7 @@
 
 using namespace std;
 
+namespace {
 class Context {
 public:
     Context() {}
@@ -23,7 +24,7 @@ public:
         return true;
     }
 };
-
+}
 
 TEST_CASE("Adding a window to the Screen", "[e2e][gui]") {
     // Given empty screen created
