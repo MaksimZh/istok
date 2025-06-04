@@ -1,44 +1,23 @@
 // Copyright 2025 Maksim Sergeevich Zholudev. All rights reserved
 #include <catch.hpp>
 /*
-    As a desktop developer
+    As a developer
     I want to create regular windows, tool panels, menus, and tooltips
         as child widgets of the root Screen widget
     So that all UI elements are part of a unified hierarchy
         and can be managed consistently
 */
 
-#include <string>
-#include <map>
-
 using namespace std;
 
-namespace {
-class Context {
-public:
-    Context() {}
-
-    void create_window_with_id(const string& id) {}
-    
-    bool screen_children_kinds_are(const map<string, string>& children) const {
-        return true;
-    }
-};
-}
-
-TEST_CASE("Adding a window to the Screen", "[e2e][gui]") {
-    // Given empty screen created
-    Context ctx;
-    // When
-    //ctx.create_window_with_id("main");
-    // Then
-    //REQUIRE(true);
-    /*
-    REQUIRE(ctx.screen_children_kinds_are({
-        {"main", "window"}
-    }));*/
-}
-
+/*
+Scenario: Adding a window to the screen
+  Given I have empty screen 800x600 units
+  When I create window with id="main", title="Main editor", leftTop={10, 20}, size={100, 80}
+  Then the screen contains exactly one window with id="main"
+    And window ["main"] has title="Main editor", leftTop={10, 20}, size={100, 80}
+    And system window of ["main"] has title="Main editor", leftTop={10, 20}, size={100, 80}
+*/
 
 /*
 Scenario: Adding a tool panel to the Screen
