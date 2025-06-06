@@ -1,6 +1,7 @@
 #include <windows.h>
 #include <stdexcept>
 #include <string>
+#include <optional>
 
 using namespace std;
 
@@ -179,7 +180,13 @@ private:
 
 class DCHandler {
 public:
-    DCHandler(HDC hdc) : hDC(hdc) {}
+    DCHandler() = default;
+    
+    DCHandler(HWND hWnd) : hDC(GetWindowDC(hWnd)) {
+        if (!hDC) {
+            throw runtime_error("Failed to get window device context");
+        }
+    }
 
     ~DCHandler() {
         clean();
@@ -230,15 +237,105 @@ private:
 };
 
 
+template <typename T>
+struct Position {
+    T x;
+    T y;
+};
+
+
+template <typename T>
+struct Size {
+    T width;
+    T height;
+};
+
+
+wstring toUTF16(const string& source) {
+    int size = MultiByteToWideChar(CP_UTF8, 0, source.c_str(), -1, nullptr, 0);
+    if (size == 0) {
+        throw runtime_error("UTF-8 to UTF-16 conversion failed");
+    }
+    wstring result(size, L'\0');
+    MultiByteToWideChar(CP_UTF8, 0, source.c_str(), -1, &result[0], size);
+    return result;
+}
+
+
+class SysWindow {
+public:
+    SysWindow() = default;
+    
+    SysWindow(const string& title, Position<int> position, Size<int> size)
+        : wnd(
+            NULL,
+            getWndClass(),
+            toUTF16(title).c_str(),
+            WS_OVERLAPPEDWINDOW,
+            position.x, position.y,
+            size.width, size.height,
+            NULL, NULL, getHInstance(), nullptr),
+        dc(wnd)
+    {}
+    
+    SysWindow(const SysWindow&) = delete;
+    SysWindow& operator=(const SysWindow&) = delete;
+
+    SysWindow(SysWindow&& other) noexcept
+        : wnd(move(other.wnd)), dc(move(other.dc))
+    {}
+
+    SysWindow& operator=(SysWindow&& other) noexcept {
+        wnd = move(other.wnd);
+        dc = move(other.dc);
+        return *this;
+    }
+
+    operator bool() const {
+        return wnd && dc;
+    }
+
+    void show() {
+        ShowWindow(wnd, SW_SHOW);
+    }
+
+private:
+
+    static HINSTANCE getHInstance() {
+        static HINSTANCE hInstance =
+            reinterpret_cast<HINSTANCE>(GetModuleHandle(NULL));
+        return hInstance;
+    }
+    
+    static WndClassHandler& getWndClass() {
+        static WndClassHandler wc(
+            CS_OWNDC,
+            windowProc,
+            getHInstance(),
+            L"Istok");
+        return wc;
+    }
+
+    WndHandler wnd;
+    DCHandler dc;
+};
+
+
+class Widget {
+public:
+    Widget getParent() {}
+    void setParent(optional<Widget> target) {}
+private:
+};
+
+class Window: public Widget {};
+
+class Screen: public Widget {};
+
+
 int main() {
-    HINSTANCE hInstance = reinterpret_cast<HINSTANCE>(GetModuleHandle(NULL));
-        
-    WndClassHandler wc(CS_OWNDC, windowProc, hInstance, L"Istok");
-    WndHandler wnd(
-        NULL, wc, L"Istok Demo", WS_OVERLAPPEDWINDOW,
-        100, 200, 400, 300,
-        NULL, NULL, hInstance, nullptr);
-    ShowWindow(wnd, SW_SHOW);
+    SysWindow w("Istok Demo", {100, 200}, {400, 300});
+    w.show();
     
     while (true) {
         MSG msg;
