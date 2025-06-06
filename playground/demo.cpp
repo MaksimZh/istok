@@ -1,8 +1,6 @@
-#include <iostream>
-#include <memory>
 #include <windows.h>
-#include <optional>
-
+#include <stdexcept>
+#include <string>
 
 using namespace std;
 
@@ -17,65 +15,217 @@ LRESULT CALLBACK windowProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     }
 }
 
-template <typename T>
-class Handler {
+class WndClassHandler {
 public:
-    Handler() : val(nullopt) {}
-    Handler(T src) : val(src) {}
+    WndClassHandler() = default;
 
-    Handler(const Handler&) = delete;
-    Handler& operator=(const Handler&) = delete;
-
-    Handler& operator=(T src) {
-        if (val.has_value()) {
-            throw runtime_error("Handler rewrite is forbidden");
+    WndClassHandler(
+        UINT style,
+        WNDPROC lpfnWndProc,
+        HINSTANCE hInstance,
+        LPCWSTR className,
+        int cbClsExtra = 0,
+        int cbWndExtra = 0,
+        HICON hIcon = nullptr,
+        HCURSOR hCursor = nullptr,
+        HBRUSH hbrBackground = nullptr,
+        LPCWSTR lpszMenuName = nullptr,
+        HICON hIconSm = nullptr
+    ) : hInstance(hInstance), name(className) {
+        WNDCLASSEX wcex{};
+        wcex.cbSize = sizeof(WNDCLASSEX);
+        wcex.style = style;
+        wcex.lpfnWndProc = lpfnWndProc;
+        wcex.cbClsExtra = cbClsExtra;
+        wcex.cbWndExtra = cbWndExtra;
+        wcex.hInstance = hInstance;
+        wcex.hIcon = hIcon;
+        wcex.hCursor = hCursor;
+        wcex.hbrBackground = hbrBackground;
+        wcex.lpszMenuName = lpszMenuName;
+        wcex.lpszClassName = className;
+        wcex.hIconSm = hIconSm;
+        if (!RegisterClassEx(&wcex)) {
+            throw std::runtime_error("Failed to register window class.");
         }
-        val = src;
+    }
+
+    WndClassHandler(const WndClassHandler&) = delete;
+    WndClassHandler& operator=(const WndClassHandler&) = delete;
+
+    WndClassHandler(WndClassHandler&& other) noexcept
+        : hInstance(other.hInstance), name(other.name) {
+        other.drop();
+    }
+
+    WndClassHandler& operator=(WndClassHandler&& other) noexcept {
+        if (this != &other) {
+            clean();
+            hInstance = other.hInstance;
+            name = other.name;
+            other.drop();
+        }
         return *this;
     }
 
-    bool has_value() const {
-        return val.has_value();
+    ~WndClassHandler() {
+        clean();
     }
 
-    T value() {
-        return val.value();
+    operator bool() const {
+        return name != nullptr;
     }
+
+    LPCWSTR get() const {
+        return name;
+    }
+
+    operator LPCWSTR() const {
+        return name;
+    }
+
 
 private:
-    optional<T> val;
+    HINSTANCE hInstance = nullptr;
+    LPCWSTR name = nullptr;
+
+    void drop() {
+        hInstance = nullptr;
+        name = nullptr;
+    }
+
+    void clean() {
+        if (!*this) return;
+        UnregisterClass(name, hInstance);
+        drop();
+    }
 };
 
 
-class WCHandler : public Handler<LPCWSTR> {
+class WndHandler {
 public:
-    WCHandler(HINSTANCE hInstance) : hInstance(hInstance) {}
-    WCHandler(LPCWSTR src, HINSTANCE hInstance)
-        : Handler(src), hInstance(hInstance) {}
-    using Handler::operator=;
+    WndHandler() = default;
 
-    ~WCHandler() {
-        if (!has_value() || !value()) {
-            return;
+    WndHandler(
+        DWORD dwExStyle,
+        LPCWSTR lpClassName,
+        LPCWSTR lpWindowName,
+        DWORD dwStyle,
+        int x,
+        int y,
+        int nWidth,
+        int nHeight,
+        HWND hWndParent,
+        HMENU hMenu,
+        HINSTANCE hInstance,
+        LPVOID lpParam
+    ) : hWnd(CreateWindowEx(
+                dwExStyle, lpClassName, lpWindowName, dwStyle,
+                x, y, nWidth, nHeight,
+                hWndParent, hMenu, hInstance, lpParam)) {
+        if (!hWnd) {
+            throw std::runtime_error("Failed to create window.");
         }
-        UnregisterClass(value(), hInstance);
     }
 
+    ~WndHandler() {
+        clean();
+    }
+
+    WndHandler(const WndHandler&) = delete;
+    WndHandler& operator=(const WndHandler&) = delete;
+
+    WndHandler(WndHandler&& other) noexcept
+        : hWnd(other.hWnd) {
+        other.drop();
+    }
+
+    WndHandler& operator=(WndHandler&& other) noexcept {
+        if (this != &other) {
+            clean();
+            hWnd = other.hWnd;
+            other.drop();
+        }
+        return *this;
+    }
+
+    operator bool() const {
+        return hWnd != nullptr;
+    }
+
+    HWND get() const {
+        return hWnd;
+    }
+
+    operator HWND() const {
+        return hWnd;
+    }
+
+
 private:
-    HINSTANCE hInstance;
+    HWND hWnd = nullptr;
+
+    void drop() {
+        hWnd = nullptr;
+    }
+
+    void clean() {
+        if (!*this) return;
+        DestroyWindow(hWnd);
+        drop();
+    }
 };
 
 
-class HWNDHandler : public Handler<HWND> {
+class DCHandler {
 public:
-    HWNDHandler(HWND src) : Handler(src) {}
-    using Handler::operator=;
+    DCHandler(HDC hdc) : hDC(hdc) {}
 
-    ~HWNDHandler() {
-        if (!has_value() || !value()) {
-            return;
+    ~DCHandler() {
+        clean();
+    }
+
+    DCHandler(const DCHandler&) = delete;
+    DCHandler& operator=(const DCHandler&) = delete;
+
+    DCHandler(DCHandler&& other) noexcept
+        : hDC(other.hDC) {
+        other.drop();
+    }
+
+    DCHandler& operator=(DCHandler&& other) noexcept {
+        if (this != &other) {
+            clean();
+            hDC = other.hDC;
+            other.drop();
         }
-        DestroyWindow(value());
+        return *this;
+    }
+
+    operator bool() const {
+        return hDC != nullptr;
+    }
+
+    HDC get() const {
+        return hDC;
+    }
+
+    operator HDC() const {
+        return hDC;
+    }
+
+private:
+    HDC hDC = nullptr;
+
+    void drop() {
+        hDC = nullptr;
+    }
+
+    void clean() {
+        if (*this) {
+            ReleaseDC(WindowFromDC(hDC), hDC);
+        }
+        drop();
     }
 };
 
@@ -83,36 +233,12 @@ public:
 int main() {
     HINSTANCE hInstance = reinterpret_cast<HINSTANCE>(GetModuleHandle(NULL));
         
-    WNDCLASSEX wc = {};
-    wc.cbSize = sizeof(WNDCLASSEX);
-    wc.style = CS_OWNDC;
-    wc.lpfnWndProc = windowProc;
-    wc.hInstance = hInstance;
-    wc.lpszClassName = L"Istok";
-    wc.hCursor = LoadCursor(NULL, IDC_ARROW);
-
-    WCHandler windowClass(MAKEINTATOM(RegisterClassEx(&wc)), hInstance);
-    if (!windowClass.value()) {
-        throw runtime_error("Failed to register window class");
-    }
-
-    HWND hWnd = CreateWindowEx(
-        0,
-        windowClass.value(),
-        L"Istok Demo",
-        WS_OVERLAPPEDWINDOW,
+    WndClassHandler wc(CS_OWNDC, windowProc, hInstance, L"Istok");
+    WndHandler wnd(
+        NULL, wc, L"Istok Demo", WS_OVERLAPPEDWINDOW,
         100, 200, 400, 300,
-        NULL,
-        NULL,
-        hInstance,
-        nullptr
-    );
-
-    if (!hWnd) {
-        throw runtime_error("Failed to create window");
-    }
-
-    ShowWindow(hWnd, SW_SHOW);
+        NULL, NULL, hInstance, nullptr);
+    ShowWindow(wnd, SW_SHOW);
     
     while (true) {
         MSG msg;
