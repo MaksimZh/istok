@@ -108,3 +108,28 @@ TEST_CASE("WidgetVisitor simple composite", "[unit][gui]") {
         "Composite outer finish",
     });
 }
+
+
+TEST_CASE("WidgetVisitor nested composite", "[unit][gui]") {
+    MockVisitor visitor;
+    uptrvector<Widget> children;
+    children.push_back(move(std::make_unique<ImageWidget>("button")));
+    children.push_back(move(std::make_unique<TextWidget>("caption")));
+    std::unique_ptr<FakeComposite> inner =
+        std::make_unique<FakeComposite>("inner", move(children));
+    children.push_back(move(std::make_unique<ImageWidget>("field")));
+    children.push_back(move(inner));
+    children.push_back(move(std::make_unique<TextWidget>("label")));
+    FakeComposite composite("outer", move(children));
+    composite.accept(visitor);
+    REQUIRE(visitor.log == std::vector<std::string>{
+        "Composite outer start",
+        "Image field",
+        "Composite inner start",
+        "Image button",
+        "Text caption",
+        "Composite inner finish",
+        "Text label",
+        "Composite outer finish",
+    });
+}
