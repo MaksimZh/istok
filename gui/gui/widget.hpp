@@ -2,10 +2,14 @@
 
 #include <string>
 #include <vector>
+#include <memory>
 
 
 template <typename T>
 using refvector = std::vector<std::reference_wrapper<T>>;
+
+template <typename T>
+using uptrvector = std::vector<std::unique_ptr<T>>;
 
 
 class Widget;
@@ -24,15 +28,18 @@ public:
 };
 
 
-class Widget {};
-
-
-class ImageWidget {
+class Widget {
 public:
-    ImageWidget(const std::string& id) : id(id) {}
+    virtual void accept(WidgetVisitor& visitor) = 0;
+};
 
-    const std::string& getId() const {
-        return id;
+
+class ImageWidget: public Widget {
+public:
+    ImageWidget(const std::string& key) : key(key) {}
+
+    const std::string& getKey() const {
+        return key;
     }
 
     void accept(WidgetVisitor& visitor) {
@@ -40,11 +47,11 @@ public:
     }
 
 private:
-    std::string id;
+    std::string key;
 };
 
 
-class TextWidget {
+class TextWidget: public Widget {
 public:
     TextWidget(const std::string& text) : text(text) {}
 
