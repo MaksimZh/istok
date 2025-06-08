@@ -70,4 +70,4 @@ private:
 
 class CompositeWidget: public Widget {};
 
-class WindowWidget {};
+class WindowWidget: public Widget {};

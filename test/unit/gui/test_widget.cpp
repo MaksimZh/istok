@@ -44,6 +44,26 @@ namespace {
         uptrvector<Widget> children;
     };
 
+
+    class FakeWindow : public WindowWidget {
+    public:
+        FakeWindow(const std::string& title, std::unique_ptr<Widget>&& child)
+            : titleBar(title), child(move(child)) {}
+        
+        void accept(WidgetVisitor& visitor) override {
+            visitor.visit(*this, {titleBar, std::ref(*child)});
+        }
+
+        const std::string& getTitle() const {
+            return titleBar.getText();
+        }
+
+    private:
+        TextWidget titleBar;
+        std::unique_ptr<Widget> child;
+    };
+
+
     class MockVisitor : public WidgetVisitor {
     public:
         std::vector<std::string> log;
@@ -65,7 +85,14 @@ namespace {
             log.push_back(std::format("Composite {} finish", name));
         }
         
-        void visit(WindowWidget& widget, refvector<Widget> children) override {}
+        void visit(WindowWidget& widget, refvector<Widget> children) override {
+            const std::string& title = (dynamic_cast<FakeWindow*>(&widget))->getTitle();
+            log.push_back(std::format("Window {} start", title));
+            for (auto& w: children) {
+                w.get().accept(*this);
+            }
+            log.push_back(std::format("Window {} finish", title));
+        }
     };
 
 }
@@ -131,5 +158,26 @@ TEST_CASE("WidgetVisitor nested composite", "[unit][gui]") {
         "Composite inner finish",
         "Text label",
         "Composite outer finish",
+    });
+}
+
+
+TEST_CASE("WidgetVisitor window", "[unit][gui]") {
+    MockVisitor visitor;
+    uptrvector<Widget> children;
+    children.push_back(move(std::make_unique<ImageWidget>("button")));
+    children.push_back(move(std::make_unique<TextWidget>("caption")));
+    std::unique_ptr<FakeComposite> composite =
+        std::make_unique<FakeComposite>("panel", move(children));
+    FakeWindow window("main", move(composite));
+    window.accept(visitor);
+    REQUIRE(visitor.log == std::vector<std::string>{
+        "Window main start",
+        "Text main",
+        "Composite panel start",
+        "Image button",
+        "Text caption",
+        "Composite panel finish",
+        "Window main finish",
     });
 }
