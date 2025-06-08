@@ -87,11 +87,9 @@ TEST_CASE("WidgetVisitor empty composite", "[unit][gui]") {
 
 TEST_CASE("WidgetVisitor simple composite", "[unit][gui]") {
     MockVisitor visitor;
-    auto img = std::make_unique<ImageWidget>("button");
-    auto text = std::make_unique<TextWidget>("caption");
     uptrvector<Widget> children;
-    children.push_back(move(img));
-    children.push_back(move(text));
+    children.push_back(move(std::make_unique<ImageWidget>("button")));
+    children.push_back(move(std::make_unique<TextWidget>("caption")));
     FakeComposite composite(move(children));
     composite.accept(visitor);
     REQUIRE(visitor.log == std::vector<std::string>{
