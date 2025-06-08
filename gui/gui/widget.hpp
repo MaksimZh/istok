@@ -42,7 +42,7 @@ public:
         return key;
     }
 
-    void accept(WidgetVisitor& visitor) {
+    void accept(WidgetVisitor& visitor) override {
         visitor.visit(*this);
     }
 
@@ -59,7 +59,7 @@ public:
         return text;
     }
 
-    void accept(WidgetVisitor& visitor) {
+    void accept(WidgetVisitor& visitor) override {
         visitor.visit(*this);
     }
 
@@ -68,6 +68,6 @@ private:
 };
 
 
-class CompositeWidget {};
+class CompositeWidget: public Widget {};
 
 class WindowWidget {};

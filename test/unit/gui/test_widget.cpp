@@ -22,17 +22,25 @@ namespace {
 
     class FakeComposite : public CompositeWidget {
     public:
-        FakeComposite(uptrvector<Widget>&& children) : children(move(children)) {}
+        FakeComposite(
+            const std::string& name,
+            uptrvector<Widget>&& children)
+            : name(name), children(move(children)) {}
 
-        void accept(WidgetVisitor& visitor) {
+        void accept(WidgetVisitor& visitor) override {
             refvector<Widget> rv;
             for (auto& c : children) {
                 rv.push_back(std::ref(*c));
             }
             visitor.visit(*this, rv);
         }
+
+        const std::string& getName() const {
+            return name;
+        }
     
     private:
+        std::string name;
         uptrvector<Widget> children;
     };
 
@@ -49,11 +57,12 @@ namespace {
         }
         
         void visit(CompositeWidget& widget, refvector<Widget> children) override {
-            log.push_back("Composite start");
+            const std::string& name = (dynamic_cast<FakeComposite*>(&widget))->getName();
+            log.push_back(std::format("Composite {} start", name));
             for (auto& w: children) {
                 w.get().accept(*this);
             }
-            log.push_back("Composite finish");
+            log.push_back(std::format("Composite {} finish", name));
         }
         
         void visit(WindowWidget& widget, refvector<Widget> children) override {}
@@ -77,11 +86,11 @@ TEST_CASE("WidgetVisitor elementary", "[unit][gui]") {
 
 TEST_CASE("WidgetVisitor empty composite", "[unit][gui]") {
     MockVisitor visitor;
-    FakeComposite composite(uptrvector<Widget>{});
+    FakeComposite composite("outer", uptrvector<Widget>{});
     composite.accept(visitor);
     REQUIRE(visitor.log == std::vector<std::string>{
-        "Composite start",
-        "Composite finish"});
+        "Composite outer start",
+        "Composite outer finish"});
 }
 
 
@@ -90,12 +99,12 @@ TEST_CASE("WidgetVisitor simple composite", "[unit][gui]") {
     uptrvector<Widget> children;
     children.push_back(move(std::make_unique<ImageWidget>("button")));
     children.push_back(move(std::make_unique<TextWidget>("caption")));
-    FakeComposite composite(move(children));
+    FakeComposite composite("outer", move(children));
     composite.accept(visitor);
     REQUIRE(visitor.log == std::vector<std::string>{
-        "Composite start",
+        "Composite outer start",
         "Image button",
         "Text caption",
-        "Composite finish",
+        "Composite outer finish",
     });
 }
