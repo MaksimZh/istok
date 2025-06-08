@@ -12,6 +12,12 @@ TEST_CASE("ImageWidget", "[unit][gui]") {
 }
 
 
+TEST_CASE("TextWidget", "[unit][gui]") {
+    TextWidget text("caption");
+    REQUIRE(text.getText() == "caption");
+}
+
+
 namespace {
     
     class MockVisitor : public WidgetVisitor {
@@ -22,7 +28,9 @@ namespace {
             log.push_back(std::format("Image {}", widget.getId()));
         }
         
-        void visit(TextWidget& widget) override {}
+        void visit(TextWidget& widget) override {
+            log.push_back(std::format("Text {}", widget.getText()));
+        }
         
         void visit(CompositeWidget& widget, refvector<Widget> children) override {}
         
@@ -32,9 +40,13 @@ namespace {
 }
 
 
-TEST_CASE("WidgetVisitor", "[unit][gui]") {
+TEST_CASE("WidgetVisitor elementary", "[unit][gui]") {
     MockVisitor visitor;
     ImageWidget img("button");
+    TextWidget text("caption");
     img.accept(visitor);
-    REQUIRE(visitor.log == std::vector<std::string>{"Image button"});
+    text.accept(visitor);
+    REQUIRE(visitor.log == std::vector<std::string>{
+        "Image button",
+        "Text caption"});
 }

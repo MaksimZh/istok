@@ -44,7 +44,22 @@ private:
 };
 
 
-class TextWidget {};
+class TextWidget {
+public:
+    TextWidget(const std::string& text) : text(text) {}
+
+    const std::string& getText() const {
+        return text;
+    }
+
+    void accept(WidgetVisitor& visitor) {
+        visitor.visit(*this);
+    }
+
+private:
+    std::string text;
+};
+
 
 class CompositeWidget {};
 
