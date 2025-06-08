@@ -321,12 +321,7 @@ private:
 };
 
 
-class Widget {
-public:
-    Widget getParent() {}
-    void setParent(optional<Widget> target) {}
-private:
-};
+class Widget {};
 
 class Window: public Widget {};
 
