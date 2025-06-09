@@ -25,7 +25,7 @@ namespace {
         FakeComposite(
             const std::string& name,
             uptrvector<Widget>&& children)
-            : name(name), children(move(children)) {}
+            : name(name), children(std::move(children)) {}
 
         void accept(WidgetVisitor& visitor) override {
             refvector<Widget> rv;
@@ -48,7 +48,7 @@ namespace {
     class FakeWindow : public WindowWidget {
     public:
         FakeWindow(const std::string& title, std::unique_ptr<Widget>&& child)
-            : titleBar(title), child(move(child)) {}
+            : titleBar(title), child(std::move(child)) {}
         
         void accept(WidgetVisitor& visitor) override {
             visitor.visit(*this, {titleBar, std::ref(*child)});
@@ -124,9 +124,9 @@ TEST_CASE("WidgetVisitor empty composite", "[unit][gui]") {
 TEST_CASE("WidgetVisitor simple composite", "[unit][gui]") {
     MockVisitor visitor;
     uptrvector<Widget> children;
-    children.push_back(move(std::make_unique<ImageWidget>("button")));
-    children.push_back(move(std::make_unique<TextWidget>("caption")));
-    FakeComposite composite("outer", move(children));
+    children.push_back(std::move(std::make_unique<ImageWidget>("button")));
+    children.push_back(std::move(std::make_unique<TextWidget>("caption")));
+    FakeComposite composite("outer", std::move(children));
     composite.accept(visitor);
     REQUIRE(visitor.log == std::vector<std::string>{
         "Composite outer start",
@@ -140,14 +140,14 @@ TEST_CASE("WidgetVisitor simple composite", "[unit][gui]") {
 TEST_CASE("WidgetVisitor nested composite", "[unit][gui]") {
     MockVisitor visitor;
     uptrvector<Widget> children;
-    children.push_back(move(std::make_unique<ImageWidget>("button")));
-    children.push_back(move(std::make_unique<TextWidget>("caption")));
+    children.push_back(std::move(std::make_unique<ImageWidget>("button")));
+    children.push_back(std::move(std::make_unique<TextWidget>("caption")));
     std::unique_ptr<FakeComposite> inner =
-        std::make_unique<FakeComposite>("inner", move(children));
-    children.push_back(move(std::make_unique<ImageWidget>("field")));
-    children.push_back(move(inner));
-    children.push_back(move(std::make_unique<TextWidget>("label")));
-    FakeComposite composite("outer", move(children));
+        std::make_unique<FakeComposite>("inner", std::move(children));
+    children.push_back(std::move(std::make_unique<ImageWidget>("field")));
+    children.push_back(std::move(inner));
+    children.push_back(std::move(std::make_unique<TextWidget>("label")));
+    FakeComposite composite("outer", std::move(children));
     composite.accept(visitor);
     REQUIRE(visitor.log == std::vector<std::string>{
         "Composite outer start",
@@ -165,11 +165,11 @@ TEST_CASE("WidgetVisitor nested composite", "[unit][gui]") {
 TEST_CASE("WidgetVisitor window", "[unit][gui]") {
     MockVisitor visitor;
     uptrvector<Widget> children;
-    children.push_back(move(std::make_unique<ImageWidget>("button")));
-    children.push_back(move(std::make_unique<TextWidget>("caption")));
+    children.push_back(std::move(std::make_unique<ImageWidget>("button")));
+    children.push_back(std::move(std::make_unique<TextWidget>("caption")));
     std::unique_ptr<FakeComposite> composite =
-        std::make_unique<FakeComposite>("panel", move(children));
-    FakeWindow window("main", move(composite));
+        std::make_unique<FakeComposite>("panel", std::move(children));
+    FakeWindow window("main", std::move(composite));
     window.accept(visitor);
     REQUIRE(visitor.log == std::vector<std::string>{
         "Window main start",

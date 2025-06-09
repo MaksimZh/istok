@@ -2,8 +2,10 @@
 #include <stdexcept>
 #include <string>
 #include <optional>
+#include <memory>
+#include <map>
 
-using namespace std;
+#include <gui/widget.hpp>
 
 
 LRESULT CALLBACK windowProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
@@ -184,7 +186,7 @@ public:
     
     DCHandler(HWND hWnd) : hDC(GetWindowDC(hWnd)) {
         if (!hDC) {
-            throw runtime_error("Failed to get window device context");
+            throw std::runtime_error("Failed to get window device context");
         }
     }
 
@@ -251,12 +253,12 @@ struct Size {
 };
 
 
-wstring toUTF16(const string& source) {
+std::wstring toUTF16(const std::string& source) {
     int size = MultiByteToWideChar(CP_UTF8, 0, source.c_str(), -1, nullptr, 0);
     if (size == 0) {
-        throw runtime_error("UTF-8 to UTF-16 conversion failed");
+        throw std::runtime_error("UTF-8 to UTF-16 conversion failed");
     }
-    wstring result(size, L'\0');
+    std::wstring result(size, L'\0');
     MultiByteToWideChar(CP_UTF8, 0, source.c_str(), -1, &result[0], size);
     return result;
 }
@@ -266,7 +268,7 @@ class SysWindow {
 public:
     SysWindow() = default;
     
-    SysWindow(const string& title, Position<int> position, Size<int> size)
+    SysWindow(const std::string& title, Position<int> position, Size<int> size)
         : wnd(
             NULL,
             getWndClass(),
@@ -282,12 +284,12 @@ public:
     SysWindow& operator=(const SysWindow&) = delete;
 
     SysWindow(SysWindow&& other) noexcept
-        : wnd(move(other.wnd)), dc(move(other.dc))
+        : wnd(std::move(other.wnd)), dc(std::move(other.dc))
     {}
 
     SysWindow& operator=(SysWindow&& other) noexcept {
-        wnd = move(other.wnd);
-        dc = move(other.dc);
+        wnd = std::move(other.wnd);
+        dc = std::move(other.dc);
         return *this;
     }
 
@@ -321,17 +323,44 @@ private:
 };
 
 
-class Widget {};
+class Screen {
+public:
+    Screen() {}
 
-class Window: public Widget {};
+    Screen(const Screen&) = delete;
+    Screen& operator=(const Screen&) = delete;
 
-class Screen: public Widget {};
+    Screen(Screen&& other) = delete;
+    Screen& operator=(Screen&& other) = delete;
+
+    void add(const std::string& id, std::unique_ptr<WindowWidget>&& window) {
+        if (windows.contains(id)) {
+            throw std::runtime_error("Window id is busy");
+        }
+        windows[id] = std::move(window);
+        sysWindows[id] = std::make_unique<SysWindow>(
+            id, Position<int>{100, 200}, Size<int>{400, 300});
+        sysWindows[id]->show();
+    }
+
+private:
+    std::map<std::string, std::unique_ptr<WindowWidget>> windows;
+    std::map<std::string, std::unique_ptr<SysWindow>> sysWindows;
+};
+
+
+class Window: public WindowWidget {
+public:
+    void accept(WidgetVisitor& visitor) override {
+        visitor.visit(*this, {});
+    }
+};
 
 
 int main() {
-    SysWindow w("Istok Demo", {100, 200}, {400, 300});
-    w.show();
-    
+    Screen screen;
+    screen.add("main", std::make_unique<Window>());
+
     while (true) {
         MSG msg;
         GetMessageW(&msg, NULL, 0, 0);
