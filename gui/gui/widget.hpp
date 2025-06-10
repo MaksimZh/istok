@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 #include <memory>
+#include <utility>
 
 
 template <typename T>
@@ -18,13 +19,19 @@ class TextWidget;
 class CompositeWidget;
 class WindowWidget;
 
+using IdWidget = std::pair<const std::string&, Widget&>;
+
 
 class WidgetVisitor {
 public:
     virtual void visit(ImageWidget& widget) = 0;
     virtual void visit(TextWidget& widget) = 0;
-    virtual void visit(CompositeWidget& widget, refvector<Widget> children) = 0;
-    virtual void visit(WindowWidget& widget, refvector<Widget> children) = 0;
+    virtual void visit(
+        CompositeWidget& widget,
+        std::vector<IdWidget> children) = 0;
+    virtual void visit(
+        WindowWidget& widget,
+        std::vector<IdWidget> children) = 0;
 };
 
 
