@@ -93,7 +93,7 @@ private:
 };
 
 
-class CompositeWidget: public Widget {
+class CompositeWidget: public Widget {/*
 public:
     Position<float> getChildPosition(const std::string& id) const {
         return childPositions.at(id);
@@ -106,6 +106,6 @@ protected:
 
 private:
     std::map<const std::string&, Position<float>> childPositions;
-};
+*/};
 
 class WindowWidget: public CompositeWidget {};
