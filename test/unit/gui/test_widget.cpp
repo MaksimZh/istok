@@ -160,7 +160,6 @@ TEST_CASE("WidgetVisitor nested composite", "[unit][gui]") {
 
 TEST_CASE("WidgetVisitor window", "[unit][gui]") {
     MockVisitor visitor;
-    uptrvector<Widget> children;
     ImageWidget img("button");
     TextWidget text("caption");
     FakeComposite composite("panel", {{"a", img}, {"b", text}});

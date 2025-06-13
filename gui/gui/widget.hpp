@@ -7,10 +7,17 @@
 
 
 template <typename T>
-using refvector = std::vector<std::reference_wrapper<T>>;
+struct Position {
+    T x;
+    T y;
+};
+
 
 template <typename T>
-using uptrvector = std::vector<std::unique_ptr<T>>;
+struct Size {
+    T width;
+    T height;
+};
 
 
 class Widget;
@@ -38,6 +45,17 @@ public:
 class Widget {
 public:
     virtual void accept(WidgetVisitor& visitor) = 0;
+    
+    Size<float> getSize() const {
+        return size;
+    }
+
+    void setSize(Size<float> value) {
+        size = value;
+    }
+
+private:
+    Size<float> size;
 };
 
 
@@ -75,6 +93,19 @@ private:
 };
 
 
-class CompositeWidget: public Widget {};
+class CompositeWidget: public Widget {
+public:
+    Position<float> getChildPosition(const std::string& id) const {
+        return childPositions.at(id);
+    }
 
-class WindowWidget: public Widget {};
+protected:
+    void setChildPosition(const std::string& id, Position<float> value) {
+        childPositions[id] = value;
+    }
+
+private:
+    std::map<const std::string&, Position<float>> childPositions;
+};
+
+class WindowWidget: public CompositeWidget {};

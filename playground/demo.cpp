@@ -239,20 +239,6 @@ private:
 };
 
 
-template <typename T>
-struct Position {
-    T x;
-    T y;
-};
-
-
-template <typename T>
-struct Size {
-    T width;
-    T height;
-};
-
-
 std::wstring toUTF16(const std::string& source) {
     int size = MultiByteToWideChar(CP_UTF8, 0, source.c_str(), -1, nullptr, 0);
     if (size == 0) {
