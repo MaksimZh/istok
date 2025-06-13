@@ -5,7 +5,6 @@
 
 
 #include <string>
-#include <memory>
 
 
 namespace {
@@ -21,9 +20,7 @@ namespace {
             if (handler) {
                 return;
             }
-            handler =
-                std::make_unique<VisitHandler<Visitor, A, MockVisitor1, A>>(
-                    &MockVisitor1::visitA);
+            registerHandler(&MockVisitor1::visitA);
         }
 
         void visitA(A& target) {

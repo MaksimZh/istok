@@ -5,6 +5,10 @@
 #include <memory>
 
 template <typename V, typename T>
+using VisitPtr = void (V::*)(T&);
+
+
+template <typename V, typename T>
 class BaseVisitHandler {
 public:
     virtual void operator()(V& visitor, T& target) = 0;
@@ -13,16 +17,14 @@ public:
 template <typename V, typename T, typename V1, typename T1>
 class VisitHandler : public BaseVisitHandler<V, T> {
 public:
-    using Method = void (V1::*)(T1&);
-    
-    VisitHandler(Method method) : method(method) {}
+    VisitHandler(VisitPtr<V1, T1> method) : method(method) {}
 
     void operator()(V& visitor, T& target) override {
         (static_cast<V1*>(&visitor)->*method)(*static_cast<T1*>(&target));
     }
 
 private:
-    Method method;
+    VisitPtr<V1, T1> method;
 };
 
 /*
@@ -50,6 +52,11 @@ public:
     }
 
 protected:
+    template <typename V1, typename T1>
+    void registerHandler(VisitPtr<V1, T1> method) {
+        handler = std::make_unique<VisitHandler<Visitor, T, V1, T1>>(method);
+    }
+
     static std::unique_ptr<BaseVisitHandler<Visitor, T>> handler;
 };
 
