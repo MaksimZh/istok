@@ -17,10 +17,7 @@ namespace {
     class MockVisitor1: public Visitor<A> {
     public:
         MockVisitor1() {
-            if (handler) {
-                return;
-            }
-            registerHandler(&MockVisitor1::visitA);
+            registerHandlers(&MockVisitor1::visitA);
         }
 
         void visitA(A& target) {

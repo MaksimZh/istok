@@ -3,6 +3,7 @@
 #include <unordered_map>
 #include <typeindex>
 #include <memory>
+#include <vector>
 
 template <typename V, typename T>
 using VisitPtr = void (V::*)(T&);
@@ -55,6 +56,12 @@ protected:
     template <typename V1, typename T1>
     void registerHandler(VisitPtr<V1, T1> method) {
         handler = std::make_unique<VisitHandler<Visitor, T, V1, T1>>(method);
+    }
+
+    template <typename... Args>
+    void registerHandlers(Args... args) {
+        if (handler) return;
+        (registerHandler(std::forward<Args>(args)), ...);
     }
 
     static std::unique_ptr<BaseVisitHandler<Visitor, T>> handler;
