@@ -17,7 +17,7 @@ namespace {
     class MockVisitor1: public Visitor<A> {
     public:
         MockVisitor1() {
-            registerHandlers(&MockVisitor1::visitA);
+            registerMethods(&MockVisitor1::visitA);
         }
 
         void visitA(A& target) {

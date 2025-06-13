@@ -10,15 +10,15 @@ using VisitPtr = void (V::*)(T&);
 
 
 template <typename V, typename T>
-class BaseVisitHandler {
+class BaseVisitCaller {
 public:
     virtual void operator()(V& visitor, T& target) = 0;
 };
 
 template <typename V, typename T, typename V1, typename T1>
-class VisitHandler : public BaseVisitHandler<V, T> {
+class VisitCaller : public BaseVisitCaller<V, T> {
 public:
-    VisitHandler(VisitPtr<V1, T1> method) : method(method) {}
+    VisitCaller(VisitPtr<V1, T1> method) : method(method) {}
 
     void operator()(V& visitor, T& target) override {
         (static_cast<V1*>(&visitor)->*method)(*static_cast<T1*>(&target));
@@ -28,44 +28,65 @@ private:
     VisitPtr<V1, T1> method;
 };
 
-/*
-template <typename V, typename T>
-using HandlerPtr = void (V::*)(T&);
 
 template <typename V, typename T>
-class TargetTable {
+class Dispatcher {
 public:
-    template <typename V1, typename T1>
-    void add(HandlerPtr<V1, T1> handler) {
+    Dispatcher() {}
 
+    template <typename... Args>
+    void add(Args... args) {
+        (addOne(std::forward<Args>(args)), ...);
     }
 
+    void operator()(V& visitor, T& target) {
+        std::type_index index = std::type_index(typeid(target));
+        if (caller_map.contains(index)) {
+            (*caller_map[index])(visitor, target);
+            return;
+        }
+    }
+
+
 private:
-    std::unordered_map<std::type_index, HandlerPtr<V, T>> handlers;
+    std::vector<std::unique_ptr<BaseVisitCaller<V, T>>> callers;
+    std::unordered_map<std::type_index, BaseVisitCaller<V, T>*> caller_map;
+
+    template <typename V1, typename T1>
+    void addOne(VisitPtr<V1, T1> method) {
+        callers.push_back(std::make_unique<VisitCaller<V, T, V1, T1>>(method));
+        std::type_index index = std::type_index(typeid(T1));
+        caller_map[index] = callers.back().get();
+    }
 };
-*/
+
 
 template <typename T>
 class Visitor {
 public:
-    void visit(T& target) {
-        (*handler)(*this, target);
+    virtual void visit(T& target) {
+        std::type_index index = std::type_index(typeid(*this));
+        (*dispatchers[index])(*this, target);
     }
 
 protected:
-    template <typename V1, typename T1>
-    void registerHandler(VisitPtr<V1, T1> method) {
-        handler = std::make_unique<VisitHandler<Visitor, T, V1, T1>>(method);
+    template <typename V1, typename T1, typename... Tail>
+    void registerMethods(VisitPtr<V1, T1> head, Tail... tail) {
+        std::type_index index = std::type_index(typeid(V1));
+        if (dispatchers.contains(index)) return;
+        dispatchers[index] = std::make_unique<Dispatcher<Visitor, T>>();
+        dispatchers[index]->add(head, tail...);
     }
 
-    template <typename... Args>
-    void registerHandlers(Args... args) {
-        if (handler) return;
-        (registerHandler(std::forward<Args>(args)), ...);
-    }
-
-    static std::unique_ptr<BaseVisitHandler<Visitor, T>> handler;
+private:
+    static std::unordered_map<
+            std::type_index,
+            std::unique_ptr<Dispatcher<Visitor, T>>>
+        dispatchers;
 };
 
 template <typename T>
-std::unique_ptr<BaseVisitHandler<Visitor<T>, T>> Visitor<T>::handler;
+std::unordered_map<
+        std::type_index,
+        std::unique_ptr<Dispatcher<Visitor<T>, T>>>
+    Visitor<T>::dispatchers;
