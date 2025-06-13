@@ -5,6 +5,7 @@
 
 
 #include <string>
+#include <memory>
 
 
 namespace {
@@ -17,10 +18,12 @@ namespace {
     class MockVisitor1: public Visitor<A> {
     public:
         MockVisitor1() {
-            if (method != nullptr) {
+            if (handler) {
                 return;
             }
-            method = reinterpret_cast<HandlerPtr>(&MockVisitor1::visitA);
+            handler =
+                std::make_unique<VisitHandler<Visitor, A, MockVisitor1, A>>(
+                    &MockVisitor1::visitA);
         }
 
         void visitA(A& target) {
