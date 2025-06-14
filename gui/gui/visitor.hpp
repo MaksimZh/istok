@@ -4,6 +4,8 @@
 #include <typeindex>
 #include <memory>
 #include <vector>
+#include <stdexcept>
+#include <iostream>
 
 template <typename V, typename T>
 using VisitPtr = void (V::*)(T&);
@@ -13,6 +15,7 @@ template <typename V, typename T>
 class BaseVisitCaller {
 public:
     virtual void operator()(V& visitor, T& target) = 0;
+    virtual bool fits(T& target) = 0;
 };
 
 template <typename V, typename T, typename V1, typename T1>
@@ -22,6 +25,10 @@ public:
 
     void operator()(V& visitor, T& target) override {
         (static_cast<V1*>(&visitor)->*method)(*static_cast<T1*>(&target));
+    }
+
+    bool fits(T& target) override {
+        return dynamic_cast<T1*>(&target);
     }
 
 private:
@@ -45,6 +52,14 @@ public:
             (*caller_map[index])(visitor, target);
             return;
         }
+        for (auto & caller : callers) {
+            if (caller->fits(target)) {
+                caller_map[index] = caller.get();
+                (*caller)(visitor, target);
+                return;
+            }
+        }
+        throw std::runtime_error("Visitor method not found");
     }
 
 
