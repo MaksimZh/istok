@@ -9,6 +9,10 @@
 
 
 template <typename T>
+using refvector = std::vector<std::reference_wrapper<T>>;
+
+
+template <typename T>
 struct Position {
     T x;
     T y;
@@ -67,19 +71,12 @@ private:
 };
 
 
-class CompositeWidget: public Widget {/*
+class CompositeWidget: public Widget {
 public:
-    Position<float> getChildPosition(const std::string& id) const {
-        return childPositions.at(id);
-    }
-
-protected:
-    void setChildPosition(const std::string& id, Position<float> value) {
-        childPositions[id] = value;
-    }
-
-private:
-    std::map<const std::string&, Position<float>> childPositions;
-*/};
+    virtual refvector<Widget> getChildren() = 0;
+    virtual Position<float> getPosition(Widget& child) = 0;
+    virtual void measure() = 0;
+    virtual void arrange() = 0;
+};
 
 class WindowWidget: public CompositeWidget {};
