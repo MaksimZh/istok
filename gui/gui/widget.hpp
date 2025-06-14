@@ -1,5 +1,7 @@
 #pragma once
 
+#include "visitor.hpp"
+
 #include <string>
 #include <vector>
 #include <memory>
@@ -20,32 +22,12 @@ struct Size {
 };
 
 
-class Widget;
-class ImageWidget;
-class TextWidget;
-class CompositeWidget;
-class WindowWidget;
-
-using IdWidget = std::pair<const std::string&, Widget&>;
-
-
-class WidgetVisitor {
-public:
-    virtual void visit(ImageWidget& widget) = 0;
-    virtual void visit(TextWidget& widget) = 0;
-    virtual void visit(
-        CompositeWidget& widget,
-        std::vector<IdWidget> children) = 0;
-    virtual void visit(
-        WindowWidget& widget,
-        std::vector<IdWidget> children) = 0;
-};
-
-
 class Widget {
 public:
-    virtual void accept(WidgetVisitor& visitor) = 0;
-    
+    virtual void accept(Visitor<Widget>& visitor) {
+        visitor.visit(*this);
+    }
+
     Size<float> getSize() const {
         return size;
     }
@@ -67,10 +49,6 @@ public:
         return key;
     }
 
-    void accept(WidgetVisitor& visitor) override {
-        visitor.visit(*this);
-    }
-
 private:
     std::string key;
 };
@@ -82,10 +60,6 @@ public:
 
     const std::string& getText() const {
         return text;
-    }
-
-    void accept(WidgetVisitor& visitor) override {
-        visitor.visit(*this);
     }
 
 private:
