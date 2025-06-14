@@ -65,17 +65,18 @@ template <typename T>
 class Visitor {
 public:
     virtual void visit(T& target) {
-        std::type_index index = std::type_index(typeid(*this));
-        (*dispatchers[index])(*this, target);
+        (*dispatcher)(*this, target);
     }
 
 protected:
     template <typename V1, typename T1, typename... Tail>
-    void registerMethods(VisitPtr<V1, T1> head, Tail... tail) {
+    void init(VisitPtr<V1, T1> head, Tail... tail) {
         std::type_index index = std::type_index(typeid(V1));
-        if (dispatchers.contains(index)) return;
-        dispatchers[index] = std::make_unique<Dispatcher<Visitor, T>>();
-        dispatchers[index]->add(head, tail...);
+        if (!dispatchers.contains(index)) {
+            dispatchers[index] = std::make_unique<Dispatcher<Visitor, T>>();
+            dispatchers[index]->add(head, tail...);
+        }
+        dispatcher = dispatchers[index].get();
     }
 
 private:
@@ -83,7 +84,10 @@ private:
             std::type_index,
             std::unique_ptr<Dispatcher<Visitor, T>>>
         dispatchers;
+    
+    Dispatcher<Visitor, T>* dispatcher;
 };
+
 
 template <typename T>
 std::unordered_map<
