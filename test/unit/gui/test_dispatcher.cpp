@@ -38,8 +38,7 @@ namespace {
 
     template<typename D1>
     std::unique_ptr<Caller<Dispatcher<T, FakeKeyFunc>, T>> caller(MethodPtr<D1, T> method) {
-        return std::unique_ptr<Caller<Dispatcher<T, FakeKeyFunc>, T>>(
-            new FakeCaller<D1>(method));
+        return std::make_unique<FakeCaller<D1>>(method);
     }
 
     
