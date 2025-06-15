@@ -28,14 +28,14 @@ namespace {
                 return true;
             }
         };
-        
+
         FakeDispatcher() : Dispatcher([](const T& v) { return v.id; }) {}
     };
     
     class FakeDispatcherSingle: public FakeDispatcher {
     public:
         FakeDispatcherSingle() {
-            init(FakeCaller<FakeDispatcherSingle>(&FakeDispatcherSingle::processA));
+            init(FakeCaller(&FakeDispatcherSingle::processA));
         }
         
         void processA(T& arg) {
