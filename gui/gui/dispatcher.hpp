@@ -30,11 +30,15 @@ public:
         MethodPtr<D1, T> method;
     };
 
-    Dispatcher(KF keyFunc, std::unique_ptr<Caller> method)
-        : method(std::move(method)) {}
+    Dispatcher(KF keyFunc) {}
 
     void operator()(T& arg) {
         (*method)(*this, arg);
+    }
+
+protected:
+    void init(std::unique_ptr<Caller> method) {
+        this->method = std::move(method);
     }
 
 private:

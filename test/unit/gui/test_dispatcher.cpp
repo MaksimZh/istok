@@ -29,19 +29,16 @@ namespace {
             }
         };
         
-        FakeDispatcher(std::unique_ptr<Caller> method)
-            : Dispatcher(
-                [](const T& v) { return v.id; },
-                std::move(method)
-            ) {}
+        FakeDispatcher() : Dispatcher([](const T& v) { return v.id; }) {}
     };
     
     class FakeDispatcherSingle: public FakeDispatcher {
     public:
-        FakeDispatcherSingle()
-            : FakeDispatcher(std::unique_ptr<Caller>(
+        FakeDispatcherSingle() {
+            init(std::unique_ptr<Caller>(
                 new FakeCaller<FakeDispatcherSingle>(
-                    &FakeDispatcherSingle::processA))) {}
+                    &FakeDispatcherSingle::processA)));
+        }
         
         void processA(T& arg) {
             arg.value = "a";
