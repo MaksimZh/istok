@@ -18,34 +18,30 @@ namespace {
     class FakeDispatcher:
         public Dispatcher<T, FakeKeyFunc> {
     public:
-        FakeDispatcher(std::unique_ptr<Caller<Dispatcher<T, FakeKeyFunc>, T>> method)
+        template<typename D1>
+        class FakeCaller: public SubCaller<D1> {
+        public:
+            FakeCaller(MethodPtr<D1, T> method)
+                : SubCaller<D1>(method) {}
+            
+            bool fits(T& target) override {
+                return true;
+            }
+        };
+        
+        FakeDispatcher(std::unique_ptr<Caller> method)
             : Dispatcher(
                 [](const T& v) { return v.id; },
                 std::move(method)
             ) {}
     };
-
-    template<typename D1>
-    class FakeCaller: public SubCaller<Dispatcher<T, FakeKeyFunc>, T, D1> {
-    public:
-        FakeCaller(MethodPtr<D1, T> method) 
-            : SubCaller<Dispatcher<T, FakeKeyFunc>, T, D1>(method) {}
-        
-        bool fits(T& target) override {
-            return true;
-        }
-    };
-
-    template<typename D1>
-    std::unique_ptr<Caller<Dispatcher<T, FakeKeyFunc>, T>> caller(MethodPtr<D1, T> method) {
-        return std::make_unique<FakeCaller<D1>>(method);
-    }
-
     
     class FakeDispatcherSingle: public FakeDispatcher {
     public:
         FakeDispatcherSingle()
-            : FakeDispatcher(caller(&FakeDispatcherSingle::processA)) {}
+            : FakeDispatcher(std::unique_ptr<Caller>(
+                new FakeCaller<FakeDispatcherSingle>(
+                    &FakeDispatcherSingle::processA))) {}
         
         void processA(T& arg) {
             arg.value = "a";
