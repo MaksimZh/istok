@@ -37,8 +37,9 @@ public:
     }
 
 protected:
-    void init(std::unique_ptr<Caller> method) {
-        this->method = std::move(method);
+    template <typename C>
+    void init(const C& caller) {
+        this->method = std::make_unique<C>(caller);
     }
 
 private:

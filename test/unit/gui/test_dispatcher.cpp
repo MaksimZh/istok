@@ -35,9 +35,7 @@ namespace {
     class FakeDispatcherSingle: public FakeDispatcher {
     public:
         FakeDispatcherSingle() {
-            init(std::unique_ptr<Caller>(
-                new FakeCaller<FakeDispatcherSingle>(
-                    &FakeDispatcherSingle::processA)));
+            init(FakeCaller<FakeDispatcherSingle>(&FakeDispatcherSingle::processA));
         }
         
         void processA(T& arg) {
