@@ -30,12 +30,17 @@ namespace {
         };
 
         FakeDispatcher() : Dispatcher([](const T& v) { return v.id; }) {}
+
+        template <typename D1>
+        void init(MethodPtr<D1, T> method) {
+            Dispatcher::init(FakeCaller(method));
+        }
     };
     
     class FakeDispatcherSingle: public FakeDispatcher {
     public:
         FakeDispatcherSingle() {
-            init(FakeCaller(&FakeDispatcherSingle::processA));
+            init(&FakeDispatcherSingle::processA);
         }
         
         void processA(T& arg) {
