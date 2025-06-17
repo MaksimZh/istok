@@ -94,10 +94,47 @@ namespace {
             arg.value = "aa";
         }
     };
+
+
+    class FakeHandlerComplex: public FakeHandler {
+    public:
+        FakeHandlerComplex() {
+            init();
+        }
+
+        std::vector<std::unique_ptr<Caller>> getCallers() {
+            std::vector<std::unique_ptr<Caller>> result;
+            result.push_back(std::make_unique<FakeCaller<FakeHandlerComplex>>(
+                "AA", &FakeHandlerComplex::processAA));
+            result.push_back(std::make_unique<FakeCaller<FakeHandlerComplex>>(
+                "A", &FakeHandlerComplex::processA));
+            result.push_back(std::make_unique<FakeCaller<FakeHandlerComplex>>(
+                "AAA", &FakeHandlerComplex::processAAA));
+            result.push_back(std::make_unique<FakeCaller<FakeHandlerComplex>>(
+                "ABB", &FakeHandlerComplex::processABB));
+            return result;
+        }
+
+        void processA(FakeArg& arg) {
+            arg.value = "a";
+        }
+
+        void processAA(FakeArg& arg) {
+            arg.value = "aa";
+        }
+
+        void processAAA(FakeArg& arg) {
+            arg.value = "aaa";
+        }
+
+        void processABB(FakeArg& arg) {
+            arg.value = "abb";
+        }
+    };
 }
 
 
-TEST_CASE("Simple dispatcher - flat", "[unit][gui]") {
+TEST_CASE("Dispatcher - flat", "[unit][gui]") {
     FakeHandlerFlat handler;
     FakeArg a("A");
     FakeArg b("B");
@@ -110,7 +147,7 @@ TEST_CASE("Simple dispatcher - flat", "[unit][gui]") {
 }
 
 
-TEST_CASE("Simple dispatcher - fallback", "[unit][gui]") {
+TEST_CASE("Dispatcher - fallback", "[unit][gui]") {
     FakeHandlerFallback handler;
     FakeArg a("A");
     FakeArg aa("AA");
@@ -124,4 +161,37 @@ TEST_CASE("Simple dispatcher - fallback", "[unit][gui]") {
     REQUIRE(a.value == "a");
     REQUIRE(aa.value == "aa");
     REQUIRE(ab.value == "a");
+}
+
+
+TEST_CASE("Dispatcher - complex", "[unit][gui]") {
+    FakeHandlerComplex handler;
+    FakeArg a("A");
+    FakeArg aa("AA");
+    FakeArg ab("AB");
+    FakeArg aaa("AAA");
+    FakeArg aab("AAB");
+    FakeArg aba("ABA");
+    FakeArg abb("ABB");
+    REQUIRE(a.value == "");
+    REQUIRE(aa.value == "");
+    REQUIRE(ab.value == "");
+    REQUIRE(aaa.value == "");
+    REQUIRE(aab.value == "");
+    REQUIRE(aba.value == "");
+    REQUIRE(abb.value == "");
+    handler(a);
+    handler(aa);
+    handler(ab);
+    handler(aaa);
+    handler(aab);
+    handler(aba);
+    handler(abb);
+    REQUIRE(a.value == "a");
+    REQUIRE(aa.value == "aa");
+    REQUIRE(ab.value == "a");
+    REQUIRE(aaa.value == "aaa");
+    REQUIRE(aab.value == "aa");
+    REQUIRE(aba.value == "a");
+    REQUIRE(abb.value == "abb");
 }
