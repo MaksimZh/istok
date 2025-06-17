@@ -31,7 +31,7 @@ namespace {
             }
 
             virtual bool fits(const FakeArg& arg) const override {
-                return false;
+                return arg.id.starts_with(id);
             }
 
             void operator()(DispatchedHandler& handler, FakeArg& arg) override {
@@ -45,18 +45,19 @@ namespace {
         };
     };
 
-    class FakeHandlerSimple: public FakeHandler {
+    
+    class FakeHandlerFlat: public FakeHandler {
     public:
-        FakeHandlerSimple() {
+        FakeHandlerFlat() {
             init();
         }
 
         std::vector<std::unique_ptr<Caller>> getCallers() {
             std::vector<std::unique_ptr<Caller>> result;
-            result.push_back(std::make_unique<FakeCaller<FakeHandlerSimple>>(
-                "A", &FakeHandlerSimple::processA));
-            result.push_back(std::make_unique<FakeCaller<FakeHandlerSimple>>(
-                "B", &FakeHandlerSimple::processB));
+            result.push_back(std::make_unique<FakeCaller<FakeHandlerFlat>>(
+                "A", &FakeHandlerFlat::processA));
+            result.push_back(std::make_unique<FakeCaller<FakeHandlerFlat>>(
+                "B", &FakeHandlerFlat::processB));
             return result;
         }
 
@@ -68,11 +69,36 @@ namespace {
             arg.value = "b";
         }
     };
+
+
+    class FakeHandlerFallback: public FakeHandler {
+    public:
+        FakeHandlerFallback() {
+            init();
+        }
+
+        std::vector<std::unique_ptr<Caller>> getCallers() {
+            std::vector<std::unique_ptr<Caller>> result;
+            result.push_back(std::make_unique<FakeCaller<FakeHandlerFallback>>(
+                "A", &FakeHandlerFallback::processA));
+            result.push_back(std::make_unique<FakeCaller<FakeHandlerFallback>>(
+                "AA", &FakeHandlerFallback::processAA));
+            return result;
+        }
+
+        void processA(FakeArg& arg) {
+            arg.value = "a";
+        }
+
+        void processAA(FakeArg& arg) {
+            arg.value = "aa";
+        }
+    };
 }
 
 
-TEST_CASE("Simple dispatcher - simple", "[unit][gui]") {
-    FakeHandlerSimple handler;
+TEST_CASE("Simple dispatcher - flat", "[unit][gui]") {
+    FakeHandlerFlat handler;
     FakeArg a("A");
     FakeArg b("B");
     REQUIRE(a.value == "");
@@ -81,4 +107,21 @@ TEST_CASE("Simple dispatcher - simple", "[unit][gui]") {
     handler(b);
     REQUIRE(a.value == "a");
     REQUIRE(b.value == "b");
+}
+
+
+TEST_CASE("Simple dispatcher - fallback", "[unit][gui]") {
+    FakeHandlerFallback handler;
+    FakeArg a("A");
+    FakeArg aa("AA");
+    FakeArg ab("AB");
+    REQUIRE(a.value == "");
+    REQUIRE(aa.value == "");
+    REQUIRE(ab.value == "");
+    handler(a);
+    handler(aa);
+    handler(ab);
+    REQUIRE(a.value == "a");
+    REQUIRE(aa.value == "aa");
+    REQUIRE(ab.value == "a");
 }
