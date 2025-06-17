@@ -21,10 +21,10 @@ namespace {
         }
         
         template<typename T>
-        class FakeCaller: public Caller {
+        class FakeCaller: public SubCaller<T> {
         public:
             FakeCaller(const std::string& id, MethodPtr<T, FakeArg> method)
-            : id(id), method(method) {}
+            : id(id), SubCaller<T>(method) {}
 
             std::string key() const override {
                 return id;
@@ -33,11 +33,6 @@ namespace {
             virtual bool fits(const FakeArg& arg) const override {
                 return arg.id.starts_with(id);
             }
-
-            void operator()(DispatchedHandler& handler, FakeArg& arg) override {
-                (static_cast<T*>(&handler)->*method)(arg);
-            }
-
         
         private:
             std::string id;

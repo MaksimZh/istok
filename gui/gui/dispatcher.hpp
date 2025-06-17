@@ -29,6 +29,19 @@ protected:
         virtual bool fits(const A& arg) const = 0;
         virtual void operator()(DispatchedHandler& handler, A& arg) = 0;
     };
+
+    template <typename T>
+    class SubCaller : public Caller {
+    public:
+        SubCaller(MethodPtr<T, A> method) : method(method) {}
+        
+        void operator()(DispatchedHandler& handler, A& arg) override {
+            (static_cast<T*>(&handler)->*method)(arg);
+        }
+    
+    private:
+        MethodPtr<T, A> method;
+    };
     
     class Dispatcher {
     public:
