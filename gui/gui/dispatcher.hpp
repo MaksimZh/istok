@@ -1,3 +1,4 @@
+// Copyright 2025 Maksim Sergeevich Zholudev. All rights reserved
 #pragma once
 
 #include <unordered_map>
@@ -62,13 +63,19 @@ protected:
         std::unordered_map<K, Caller*> caller_map;
     };
 
-    virtual std::vector<std::unique_ptr<Caller>> getCallers() = 0;
+    
+    bool initialized() const {
+        return callerMaps.contains(std::type_index(typeid(*this)));
+    }
 
-    void init() {
+    void firstInit(std::vector<std::unique_ptr<Caller>> callers) {
         std::type_index index(typeid(*this));
-        if (!callerMaps.contains(index)) {
-            callerMaps[index] = CallerMap(getCallers());
-        }
+        callerMaps[index] = CallerMap(std::move(callers));
+        callerMap = &callerMaps[index];
+    }
+
+    void nextInit() {
+        std::type_index index(typeid(*this));
         callerMap = &callerMaps[index];
     }
 

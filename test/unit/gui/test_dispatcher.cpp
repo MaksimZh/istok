@@ -45,10 +45,14 @@ namespace {
 
 
     template <typename... Args>
-    static std::vector<std::unique_ptr<Caller>> pack(Args... args) {
-        std::vector<std::unique_ptr<Caller>> result;
-        packRec(result, args...);
-        return result;
+    void init(Args... args) {
+        if (initialized()) {
+            nextInit();
+            return;
+        }
+        std::vector<std::unique_ptr<Caller>> callers;
+        packRec(callers, args...);
+        firstInit(std::move(callers));
     }
 
     private:
@@ -68,11 +72,7 @@ namespace {
     class FakeDispatcherFlat: public FakeDispatcher {
     public:
         FakeDispatcherFlat() {
-            init();
-        }
-
-        std::vector<std::unique_ptr<Caller>> getCallers() {
-            return pack(
+            init(
                 "A", &FakeDispatcherFlat::processA,
                 "B", &FakeDispatcherFlat::processB);
         }
@@ -90,11 +90,7 @@ namespace {
     class FakeDispatcherFallback: public FakeDispatcher {
     public:
         FakeDispatcherFallback() {
-            init();
-        }
-
-        std::vector<std::unique_ptr<Caller>> getCallers() {
-            return pack(
+            init(
                 "A", &FakeDispatcherFallback::processA,
                 "AA", &FakeDispatcherFallback::processAA);
         }
@@ -112,11 +108,7 @@ namespace {
     class FakeDispatcherComplex: public FakeDispatcher {
     public:
         FakeDispatcherComplex() {
-            init();
-        }
-
-        std::vector<std::unique_ptr<Caller>> getCallers() {
-            return pack(
+            init(
                 "AA", &FakeDispatcherComplex::processAA,
                 "A", &FakeDispatcherComplex::processA,
                 "AAA", &FakeDispatcherComplex::processAAA,
