@@ -42,6 +42,26 @@ namespace {
             std::string id;
             MethodPtr<T, FakeArg> method;
         };
+
+
+    template <typename... Args>
+    static std::vector<std::unique_ptr<Caller>> pack(Args... args) {
+        std::vector<std::unique_ptr<Caller>> result;
+        packRec(result, args...);
+        return result;
+    }
+
+    private:
+        template <typename T, typename... Args>
+        static void packRec(
+                std::vector<std::unique_ptr<Caller>>& callers,
+                const std::string& key, MethodPtr<T, FakeArg> method,
+                Args... args) {
+            callers.push_back(std::make_unique<FakeCaller<T>>(key, method));
+            packRec(callers, args...);
+        }
+
+        static void packRec(std::vector<std::unique_ptr<Caller>>& callers) {}
     };
 
     
@@ -52,12 +72,9 @@ namespace {
         }
 
         std::vector<std::unique_ptr<Caller>> getCallers() {
-            std::vector<std::unique_ptr<Caller>> result;
-            result.push_back(std::make_unique<FakeCaller<FakeDispatcherFlat>>(
-                "A", &FakeDispatcherFlat::processA));
-            result.push_back(std::make_unique<FakeCaller<FakeDispatcherFlat>>(
-                "B", &FakeDispatcherFlat::processB));
-            return result;
+            return pack(
+                "A", &FakeDispatcherFlat::processA,
+                "B", &FakeDispatcherFlat::processB);
         }
 
         void processA(FakeArg& arg) {
@@ -77,12 +94,9 @@ namespace {
         }
 
         std::vector<std::unique_ptr<Caller>> getCallers() {
-            std::vector<std::unique_ptr<Caller>> result;
-            result.push_back(std::make_unique<FakeCaller<FakeDispatcherFallback>>(
-                "A", &FakeDispatcherFallback::processA));
-            result.push_back(std::make_unique<FakeCaller<FakeDispatcherFallback>>(
-                "AA", &FakeDispatcherFallback::processAA));
-            return result;
+            return pack(
+                "A", &FakeDispatcherFallback::processA,
+                "AA", &FakeDispatcherFallback::processAA);
         }
 
         void processA(FakeArg& arg) {
@@ -102,16 +116,11 @@ namespace {
         }
 
         std::vector<std::unique_ptr<Caller>> getCallers() {
-            std::vector<std::unique_ptr<Caller>> result;
-            result.push_back(std::make_unique<FakeCaller<FakeDispatcherComplex>>(
-                "AA", &FakeDispatcherComplex::processAA));
-            result.push_back(std::make_unique<FakeCaller<FakeDispatcherComplex>>(
-                "A", &FakeDispatcherComplex::processA));
-            result.push_back(std::make_unique<FakeCaller<FakeDispatcherComplex>>(
-                "AAA", &FakeDispatcherComplex::processAAA));
-            result.push_back(std::make_unique<FakeCaller<FakeDispatcherComplex>>(
-                "ABB", &FakeDispatcherComplex::processABB));
-            return result;
+            return pack(
+                "AA", &FakeDispatcherComplex::processAA,
+                "A", &FakeDispatcherComplex::processA,
+                "AAA", &FakeDispatcherComplex::processAAA,
+                "ABB", &FakeDispatcherComplex::processABB);
         }
 
         void processA(FakeArg& arg) {
