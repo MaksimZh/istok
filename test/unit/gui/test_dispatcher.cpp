@@ -14,7 +14,7 @@ namespace {
         FakeArg(std::string id) : id(id) {}
     };
 
-    class FakeHandler: public DispatchedHandler<FakeArg, std::string> {
+    class FakeDispatcher: public Dispatcher<FakeArg, std::string> {
     protected:
         std::string keyof(const FakeArg& arg) const override {
             return arg.id;
@@ -41,18 +41,18 @@ namespace {
     };
 
     
-    class FakeHandlerFlat: public FakeHandler {
+    class FakeDispatcherFlat: public FakeDispatcher {
     public:
-        FakeHandlerFlat() {
+        FakeDispatcherFlat() {
             init();
         }
 
         std::vector<std::unique_ptr<Caller>> getCallers() {
             std::vector<std::unique_ptr<Caller>> result;
-            result.push_back(std::make_unique<FakeCaller<FakeHandlerFlat>>(
-                "A", &FakeHandlerFlat::processA));
-            result.push_back(std::make_unique<FakeCaller<FakeHandlerFlat>>(
-                "B", &FakeHandlerFlat::processB));
+            result.push_back(std::make_unique<FakeCaller<FakeDispatcherFlat>>(
+                "A", &FakeDispatcherFlat::processA));
+            result.push_back(std::make_unique<FakeCaller<FakeDispatcherFlat>>(
+                "B", &FakeDispatcherFlat::processB));
             return result;
         }
 
@@ -66,18 +66,18 @@ namespace {
     };
 
 
-    class FakeHandlerFallback: public FakeHandler {
+    class FakeDispatcherFallback: public FakeDispatcher {
     public:
-        FakeHandlerFallback() {
+        FakeDispatcherFallback() {
             init();
         }
 
         std::vector<std::unique_ptr<Caller>> getCallers() {
             std::vector<std::unique_ptr<Caller>> result;
-            result.push_back(std::make_unique<FakeCaller<FakeHandlerFallback>>(
-                "A", &FakeHandlerFallback::processA));
-            result.push_back(std::make_unique<FakeCaller<FakeHandlerFallback>>(
-                "AA", &FakeHandlerFallback::processAA));
+            result.push_back(std::make_unique<FakeCaller<FakeDispatcherFallback>>(
+                "A", &FakeDispatcherFallback::processA));
+            result.push_back(std::make_unique<FakeCaller<FakeDispatcherFallback>>(
+                "AA", &FakeDispatcherFallback::processAA));
             return result;
         }
 
@@ -91,22 +91,22 @@ namespace {
     };
 
 
-    class FakeHandlerComplex: public FakeHandler {
+    class FakeDispatcherComplex: public FakeDispatcher {
     public:
-        FakeHandlerComplex() {
+        FakeDispatcherComplex() {
             init();
         }
 
         std::vector<std::unique_ptr<Caller>> getCallers() {
             std::vector<std::unique_ptr<Caller>> result;
-            result.push_back(std::make_unique<FakeCaller<FakeHandlerComplex>>(
-                "AA", &FakeHandlerComplex::processAA));
-            result.push_back(std::make_unique<FakeCaller<FakeHandlerComplex>>(
-                "A", &FakeHandlerComplex::processA));
-            result.push_back(std::make_unique<FakeCaller<FakeHandlerComplex>>(
-                "AAA", &FakeHandlerComplex::processAAA));
-            result.push_back(std::make_unique<FakeCaller<FakeHandlerComplex>>(
-                "ABB", &FakeHandlerComplex::processABB));
+            result.push_back(std::make_unique<FakeCaller<FakeDispatcherComplex>>(
+                "AA", &FakeDispatcherComplex::processAA));
+            result.push_back(std::make_unique<FakeCaller<FakeDispatcherComplex>>(
+                "A", &FakeDispatcherComplex::processA));
+            result.push_back(std::make_unique<FakeCaller<FakeDispatcherComplex>>(
+                "AAA", &FakeDispatcherComplex::processAAA));
+            result.push_back(std::make_unique<FakeCaller<FakeDispatcherComplex>>(
+                "ABB", &FakeDispatcherComplex::processABB));
             return result;
         }
 
@@ -130,7 +130,7 @@ namespace {
 
 
 TEST_CASE("Dispatcher - flat", "[unit][gui]") {
-    FakeHandlerFlat handler;
+    FakeDispatcherFlat handler;
     FakeArg a("A");
     FakeArg b("B");
     REQUIRE(a.value == "");
@@ -143,7 +143,7 @@ TEST_CASE("Dispatcher - flat", "[unit][gui]") {
 
 
 TEST_CASE("Dispatcher - fallback", "[unit][gui]") {
-    FakeHandlerFallback handler;
+    FakeDispatcherFallback handler;
     FakeArg a("A");
     FakeArg aa("AA");
     FakeArg ab("AB");
@@ -160,7 +160,7 @@ TEST_CASE("Dispatcher - fallback", "[unit][gui]") {
 
 
 TEST_CASE("Dispatcher - complex", "[unit][gui]") {
-    FakeHandlerComplex handler;
+    FakeDispatcherComplex handler;
     FakeArg a("A");
     FakeArg aa("AA");
     FakeArg ab("AB");

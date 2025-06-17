@@ -11,13 +11,13 @@ using MethodPtr = void (T::*)(A&);
 
 
 template <typename A, typename K>
-class DispatchedHandler {
+class Dispatcher {
 public:
     void operator()(A& arg) {
-        if (!dispatcher) {
+        if (!callerMap) {
             throw std::runtime_error("Dispatcher not initialized");
         }
-        (*dispatcher)(*this, arg);
+        (*callerMap)(*this, arg);
     }
 
 protected:
@@ -27,7 +27,7 @@ protected:
     public:
         virtual K key() const = 0;
         virtual bool fits(const A& arg) const = 0;
-        virtual void operator()(DispatchedHandler& handler, A& arg) = 0;
+        virtual void operator()(Dispatcher& handler, A& arg) = 0;
     };
 
     template <typename T>
@@ -35,7 +35,7 @@ protected:
     public:
         SubCaller(MethodPtr<T, A> method) : method(method) {}
         
-        void operator()(DispatchedHandler& handler, A& arg) override {
+        void operator()(Dispatcher& handler, A& arg) override {
             (static_cast<T*>(&handler)->*method)(arg);
         }
     
@@ -43,17 +43,17 @@ protected:
         MethodPtr<T, A> method;
     };
     
-    class Dispatcher {
+    class CallerMap {
     public:
-        Dispatcher() = default;
-        Dispatcher(std::vector<std::unique_ptr<Caller>> arg)
+        CallerMap() = default;
+        CallerMap(std::vector<std::unique_ptr<Caller>> arg)
         : callers(std::move(arg)) {
             for (auto& c : callers) {
                 caller_map[c->key()] = c.get();
             }
         }
 
-        void operator()(DispatchedHandler& handler, A& arg) {
+        void operator()(Dispatcher& handler, A& arg) {
             K key = handler.keyof(arg);
             if (caller_map.contains(key)) {
                 (*caller_map[key])(handler, arg);
@@ -78,19 +78,19 @@ protected:
 
     void init() {
         std::type_index index(typeid(*this));
-        if (!dispatchers.contains(index)) {
-            dispatchers[index] = Dispatcher(getCallers());
+        if (!callerMaps.contains(index)) {
+            callerMaps[index] = CallerMap(getCallers());
         }
-        dispatcher = &dispatchers[index];
+        callerMap = &callerMaps[index];
     }
 
 private:
-    static std::unordered_map<std::type_index, Dispatcher> dispatchers;
-    Dispatcher* dispatcher = nullptr;
+    static std::unordered_map<std::type_index, CallerMap> callerMaps;
+    CallerMap* callerMap = nullptr;
 };
 
 template <typename A, typename K>
 std::unordered_map<
         std::type_index,
-        typename DispatchedHandler<A, K>::Dispatcher>
-    DispatchedHandler<A, K>::dispatchers;
+        typename Dispatcher<A, K>::CallerMap>
+    Dispatcher<A, K>::callerMaps;
