@@ -27,33 +27,47 @@ namespace {
             bool fits(T& target) override {
                 return true;
             }
+
+            std::string key() override {
+                return "";
+            }
         };
 
         FakeDispatcher() : Dispatcher([](const T& v) { return v.id; }) {}
 
-        template <typename D1>
-        void init(MethodPtr<D1, T> method) {
-            Dispatcher::init(FakeCaller(method));
+        template <typename... Args>
+        void init(Args... args) {
+            Dispatcher::init(FakeCaller(std::forward<Args>(args))...);
         }
     };
     
-    class FakeDispatcherSingle: public FakeDispatcher {
+    class FakeDispatcherSimple: public FakeDispatcher {
     public:
-        FakeDispatcherSingle() {
-            init(&FakeDispatcherSingle::processA);
+        FakeDispatcherSimple() {
+            init(
+                &FakeDispatcherSimple::processA,
+                &FakeDispatcherSimple::processB);
         }
-        
+
         void processA(T& arg) {
             arg.value = "a";
+        }
+
+        void processB(T& arg) {
+            arg.value = "b";
         }
     };
 }
 
 
 TEST_CASE("Dispatcher - single", "[unit][gui]") {
-    FakeDispatcherSingle dispatcher;
+    FakeDispatcherSimple dispatcher;
     T a("A");
+    T b("B");
     REQUIRE(a.value == "");
+    REQUIRE(b.value == "");
     dispatcher(a);
+    dispatcher(b);
     REQUIRE(a.value == "a");
+    REQUIRE(b.value == "b");
 }
