@@ -1,84 +1,83 @@
-// Copyright 2025 Maksim Sergeevich Zholudev. All rights reserved
 #pragma once
 
-#include <memory>
+#include <unordered_map>
+#include <vector>
+#include <typeindex>
+#include <stdexcept>
 
-template <typename D, typename T>
-using MethodPtr = void (D::*)(T&);
+
+template <typename T, typename A>
+using MethodPtr = void (T::*)(A&);
 
 
-template <typename T, typename KF>
-class Dispatcher {
+template <typename A, typename K>
+class DispatchedHandler {
 public:
-    using KeyType = decltype(std::declval<KF>()(std::declval<T>()));
-
-    class Caller {
-    public:
-        virtual void operator()(Dispatcher& dispatcher, T& target) = 0;
-        virtual bool fits(T& target) = 0;
-        virtual KeyType key() = 0;
-    };
-
-
-    template <typename D1>
-    class SubCaller : public Caller {
-    public:
-        SubCaller(MethodPtr<D1, T> method) : method(method) {}
-
-        void operator()(Dispatcher& dispatcher, T& target) override {
-            (static_cast<D1*>(&dispatcher)->*method)(target);
+    void operator()(A& arg) {
+        if (!dispatcher) {
+            throw std::runtime_error("Dispatcher not initialized");
         }
-
-    private:
-        MethodPtr<D1, T> method;
-    };
-
-    
-    Dispatcher(KF keyFunc) {
-        if (!keyFunction) {
-            keyFunc = keyFunction;
-        }
-    }
-
-    void operator()(T& arg) {
-        (*method)(*this, arg);
+        (*dispatcher)(*this, arg);
     }
 
 protected:
-    template <typename Head, typename... Tail>
-    void init(Head&& head, Tail&&... tail) {
-        this->method = std::make_unique<Head>(head);
+    virtual K keyof(const A& arg) const = 0;
+    
+    class Caller {
+    public:
+        virtual K key() const = 0;
+        virtual bool fits(const A& arg) const = 0;
+        virtual void operator()(DispatchedHandler& handler, A& arg) = 0;
+    };
+    
+    class Dispatcher {
+    public:
+        Dispatcher() = default;
+        Dispatcher(std::vector<std::unique_ptr<Caller>> arg)
+        : callers(std::move(arg)) {
+            for (auto& c : callers) {
+                caller_map[c->key()] = c.get();
+            }
+        }
+
+        void operator()(DispatchedHandler& handler, A& arg) {
+            K key = handler.keyof(arg);
+            if (caller_map.contains(key)) {
+                (*caller_map[key])(handler, arg);
+                return;
+            }
+            for (auto& caller : callers) {
+                if (caller->fits(arg)) {
+                    caller_map[key] = caller.get();
+                    (*caller)(handler, arg);
+                    return;
+                }
+            }
+            throw std::runtime_error("Caller not found");
+        }
+    
+    private:
+        std::vector<std::unique_ptr<Caller>> callers;
+        std::unordered_map<K, Caller*> caller_map;
+    };
+
+    virtual std::vector<std::unique_ptr<Caller>> getCallers() = 0;
+
+    void init() {
+        std::type_index index(typeid(*this));
+        if (!dispatchers.contains(index)) {
+            dispatchers[index] = Dispatcher(getCallers());
+        }
+        dispatcher = &dispatchers[index];
     }
 
 private:
-    static KF keyFunction;
-
-    class CallerPack {
-    public:
-        CallerPack()
-        
-        template <typename C>
-        void add(C&& caller) {
-            callers.push_back(std::make_unique<C>(caller));
-            KeyType key = keyFunction()
-        }
-
-        void operator()(Dispatcher& dispatcher, T& target) {}
-
-    private:
-        std::vector<std::unique_ptr<Caller>> callers;
-        std::unordered_map<KeyType, Caller*> caller_map;
-
-        template <typename V1, typename T1>
-        void addOne(VisitPtr<V1, T1> method) {
-            callers.push_back(std::make_unique<VisitCaller<V, T, V1, T1>>(method));
-            std::type_index index = std::type_index(typeid(T1));
-            caller_map[index] = callers.back().get();
-        }
-    };
-
-    std::unique_ptr<Caller> method;
+    static std::unordered_map<std::type_index, Dispatcher> dispatchers;
+    Dispatcher* dispatcher = nullptr;
 };
 
-template <typename T, typename KF>
-static KF Dispatcher<T, KF>::keyFunction = nullptr;
+template <typename A, typename K>
+std::unordered_map<
+        std::type_index,
+        typename DispatchedHandler<A, K>::Dispatcher>
+    DispatchedHandler<A, K>::dispatchers;
