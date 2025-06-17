@@ -30,18 +30,6 @@ protected:
         virtual void operator()(Dispatcher& handler, A& arg) = 0;
     };
 
-    template <typename T>
-    class SubCaller : public Caller {
-    public:
-        SubCaller(MethodPtr<T, A> method) : method(method) {}
-        
-        void operator()(Dispatcher& handler, A& arg) override {
-            (static_cast<T*>(&handler)->*method)(arg);
-        }
-    
-    private:
-        MethodPtr<T, A> method;
-    };
     
     class CallerMap {
     public:
