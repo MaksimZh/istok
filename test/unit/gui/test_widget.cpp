@@ -3,16 +3,12 @@
 
 #include <gui\widget.hpp>
 
-#include <format>
 
-
-TEST_CASE("ImageWidget", "[unit][gui]") {
-    ImageWidget img("button");
-    REQUIRE(img.getKey() == "button");
-}
-
-
-TEST_CASE("TextWidget", "[unit][gui]") {
-    TextWidget text("caption");
-    REQUIRE(text.getText() == "caption");
+TEST_CASE("Widget - base", "[unit][gui]") {
+    Widget widget1;
+    Widget widget2;
+    REQUIRE(widget1.getBase() == nullptr);
+    REQUIRE(widget2.getBase() == nullptr);
+    widget2.setBase(&widget1);
+    REQUIRE(widget2.getBase() == &widget1);
 }
