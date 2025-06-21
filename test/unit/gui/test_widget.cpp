@@ -3,28 +3,7 @@
 
 #include <gui\widget.hpp>
 
-
-TEST_CASE("Widget - base", "[unit][gui]") {
-    Widget base;
-    Widget part;
-    REQUIRE(part.getBase() == nullptr);
-    part.setBase(&base);
-    REQUIRE(part.getBase() == &base);
-}
-
-
-TEST_CASE("Widget - parts", "[unit][gui]") {
-    Widget base;
-    Widget part1;
-    Widget part2;
-    REQUIRE(base.numParts() == 0);
-    REQUIRE(base.getParts().size() == 0);
-    base.addPart(&part1);
-    base.addPart(&part2);
-    REQUIRE(base.numParts() == 2);
-    REQUIRE(base.getParts()[0] == &part1);
-    REQUIRE(base.getParts()[1] == &part2);
-}
+#include <ranges>
 
 
 namespace {
@@ -39,4 +18,26 @@ TEST_CASE("Widget - handler", "[unit][gui]") {
     WidgetHandler* handler = widget.getHandler();
     REQUIRE(handler != nullptr);
     REQUIRE(&(handler->getWidget()) == &widget);
+}
+
+
+TEST_CASE("Widget - attach/detach", "[unit][gui]") {
+    Widget base;
+    Widget part1;
+    Widget part2;
+    REQUIRE(base.getParts().size() == 0);
+    REQUIRE(part1.getBase() == nullptr);
+    REQUIRE(part2.getBase() == nullptr);
+    attach(base, part1);
+    REQUIRE(std::ranges::equal(base.getParts(), std::vector{&part1}));
+    REQUIRE(part1.getBase() == &base);
+    attach(base, part2);
+    REQUIRE(std::ranges::equal(base.getParts(), std::vector{&part1, &part2}));
+    REQUIRE(part2.getBase() == &base);
+    detach(part1);
+    REQUIRE(std::ranges::equal(base.getParts(), std::vector{&part2}));
+    REQUIRE(part1.getBase() == nullptr);
+    detach(part2);
+    REQUIRE(base.getParts().size() == 0);
+    REQUIRE(part2.getBase() == nullptr);
 }
