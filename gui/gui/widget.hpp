@@ -4,6 +4,7 @@
 #include <span>
 #include <memory>
 #include <ranges>
+#include <cassert>
 
 
 class Widget;
@@ -25,10 +26,6 @@ class Widget {
 public:
     Widget* getBase() {
         return base;
-    }
-
-    int numParts() const {
-        return parts.size();
     }
 
     std::span<Widget* const> getParts() {

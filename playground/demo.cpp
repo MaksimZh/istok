@@ -8,6 +8,20 @@
 #include <gui/widget.hpp>
 
 
+template <typename T>
+struct Position {
+    T x;
+    T y;
+};
+
+
+template <typename T>
+struct Size {
+    T width;
+    T height;
+};
+
+
 LRESULT CALLBACK windowProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     switch (msg) {
     case WM_DESTROY:
@@ -308,7 +322,7 @@ private:
     DCHandler dc;
 };
 
-
+/*
 class Screen {
 public:
     Screen() {}
@@ -341,9 +355,10 @@ public:
         visitor.visit(*this, {});
     }
 };
-
+*/
 
 int main() {
+/*
     Screen screen;
     screen.add("main", std::make_unique<Window>());
 
@@ -356,6 +371,6 @@ int main() {
         TranslateMessage(&msg);
         DispatchMessage(&msg);
     }
-
+*/
     return 0;
 }
