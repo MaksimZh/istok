@@ -1,7 +1,7 @@
 // Copyright 2025 Maksim Sergeevich Zholudev. All rights reserved
 #include <catch.hpp>
 
-#include <gui/core/visitor.hpp>
+#include <gui/core/dispatcher.hpp>
 
 
 #include <string>
@@ -22,127 +22,127 @@ namespace {
     class ABA: public AB {};
     class ABB: public AB {};
 
-    class MockVisitorSingle: public Visitor<A> {
+    class FakeDispatcherSingle: public Dispatcher<A> {
     public:
-        MockVisitorSingle() {
-            init(&MockVisitorSingle::visitA);
+        FakeDispatcherSingle() {
+            init(&FakeDispatcherSingle::handleA);
         }
 
-        void visitA(A& target) {
+        void handleA(A& target) {
             target.value = "A";
         }
     };
 
-    class MockVisitorFlat: public Visitor<A> {
+    class FakeDispatcherFlat: public Dispatcher<A> {
     public:
-        MockVisitorFlat() {
+        FakeDispatcherFlat() {
             init(
-                &MockVisitorFlat::visitAA,
-                &MockVisitorFlat::visitAB
+                &FakeDispatcherFlat::handleAA,
+                &FakeDispatcherFlat::handleAB
             );
         }
 
-        void visitAA(AA& target) {
+        void handleAA(AA& target) {
             target.value = "AA";
         }
 
-        void visitAB(AB& target) {
+        void handleAB(AB& target) {
             target.value = "AB";
         }
     };
 
-    class MockVisitorFallback: public Visitor<A> {
+    class FakeDispatcherFallback: public Dispatcher<A> {
     public:
-        MockVisitorFallback() {
+        FakeDispatcherFallback() {
             init(
-                &MockVisitorFallback::visitA,
-                &MockVisitorFallback::visitAA
+                &FakeDispatcherFallback::handleA,
+                &FakeDispatcherFallback::handleAA
             );
         }
 
-        void visitA(A& target) {
+        void handleA(A& target) {
             target.value = "A";
         }
 
-        void visitAA(AA& target) {
+        void handleAA(AA& target) {
             target.value = "AA";
         }
     };
 
-    class MockVisitorComplex: public Visitor<A> {
+    class FakeDispatcherComplex: public Dispatcher<A> {
     public:
-        MockVisitorComplex() {
+        FakeDispatcherComplex() {
             init(
-                &MockVisitorComplex::visitAA,
-                &MockVisitorComplex::visitA,
-                &MockVisitorComplex::visitAAA,
-                &MockVisitorComplex::visitABB
+                &FakeDispatcherComplex::handleAA,
+                &FakeDispatcherComplex::handleA,
+                &FakeDispatcherComplex::handleAAA,
+                &FakeDispatcherComplex::handleABB
             );
         }
 
-        void visitA(A& target) {
+        void handleA(A& target) {
             target.value = "A";
         }
 
-        void visitAA(AA& target) {
+        void handleAA(AA& target) {
             target.value = "AA";
         }
 
-        void visitAAA(AAA& target) {
+        void handleAAA(AAA& target) {
             target.value = "AAA";
         }
 
-        void visitABB(ABB& target) {
+        void handleABB(ABB& target) {
             target.value = "ABB";
         }
     };
 }
 
 
-TEST_CASE("Visitor - single", "[unit][gui]") {
-    MockVisitorSingle visitor;
+TEST_CASE("Dispatcher - single", "[unit][gui]") {
+    FakeDispatcherSingle dispatcher;
     A a1, a2;
     REQUIRE(a1.value == "");
     REQUIRE(a2.value == "");
-    visitor.visit(a1);
-    visitor.visit(a2);
+    dispatcher(a1);
+    dispatcher(a2);
     REQUIRE(a1.value == "A");
     REQUIRE(a2.value == "A");
 }
 
 
-TEST_CASE("Visitor - flat", "[unit][gui]") {
-    MockVisitorFlat visitor;
+TEST_CASE("Dispatcher - flat", "[unit][gui]") {
+    FakeDispatcherFlat dispatcher;
     AA aa;
     AB ab;
     REQUIRE(aa.value == "");
     REQUIRE(ab.value == "");
-    visitor.visit(aa);
-    visitor.visit(ab);
+    dispatcher(aa);
+    dispatcher(ab);
     REQUIRE(aa.value == "AA");
     REQUIRE(ab.value == "AB");
 }
 
 
-TEST_CASE("Visitor - fallback", "[unit][gui]") {
-    MockVisitorFallback visitor;
+TEST_CASE("Dispatcher - fallback", "[unit][gui]") {
+    FakeDispatcherFallback dispatcher;
     A a;
     AA aa;
     AB ab;
     REQUIRE(a.value == "");
     REQUIRE(aa.value == "");
     REQUIRE(ab.value == "");
-    visitor.visit(a);
-    visitor.visit(aa);
-    visitor.visit(ab);
+    dispatcher(a);
+    dispatcher(aa);
+    dispatcher(ab);
     REQUIRE(a.value == "A");
     REQUIRE(aa.value == "AA");
     REQUIRE(ab.value == "A");
 }
 
 
-TEST_CASE("Visitor - complex", "[unit][gui]") {
-    MockVisitorComplex visitor;
+TEST_CASE("Dispatcher - complex", "[unit][gui]") {
+    FakeDispatcherComplex dispatcher;
     A a;
     AA aa;
     AB ab;
@@ -157,13 +157,13 @@ TEST_CASE("Visitor - complex", "[unit][gui]") {
     REQUIRE(aab.value == "");
     REQUIRE(aba.value == "");
     REQUIRE(abb.value == "");
-    visitor.visit(a);
-    visitor.visit(aa);
-    visitor.visit(ab);
-    visitor.visit(aaa);
-    visitor.visit(aab);
-    visitor.visit(aba);
-    visitor.visit(abb);
+    dispatcher(a);
+    dispatcher(aa);
+    dispatcher(ab);
+    dispatcher(aaa);
+    dispatcher(aab);
+    dispatcher(aba);
+    dispatcher(abb);
     REQUIRE(a.value == "A");
     REQUIRE(aa.value == "AA");
     REQUIRE(ab.value == "A");
