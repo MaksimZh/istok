@@ -1,73 +1,83 @@
 // Copyright 2025 Maksim Sergeevich Zholudev. All rights reserved
 #pragma once
 
-#include <vector>
-#include <span>
-#include <memory>
-#include <ranges>
-#include <cassert>
+#include "tools.hpp"
 
-
-class Widget;
-
-class WidgetHandler {
-public:
-    WidgetHandler(Widget& widget) : widget(widget) {}
-
-    Widget& getWidget() {
-        return widget;
-    }
-
-private:
-    Widget& widget;
-};
-
-
+/**
+ * @brief Parent class for all widgets
+ * 
+ * Immutable interface for widgets.
+ * Provides read access to widget tree structure and widget sizes.
+ * Derived classes have write access to the size.
+ */
 class Widget {
 public:
     Widget* getBase() {
         return base;
     }
 
-    std::span<Widget* const> getParts() {
-        return std::span<Widget* const>(parts.data(), parts.size());
+    Size<float> getSize() {
+        return size;
     }
 
-    WidgetHandler* getHandler() {
-        return handler.get();
+protected:
+    void setSize(Size<float> value) {
+        size = value;
     }
-
-    template <typename H>
-    void createHandler() {
-        handler = std::make_unique<H>(*this);
-    }
-
 
 private:
     Widget* base = nullptr;
-    std::vector<Widget*> parts;
-    std::unique_ptr<WidgetHandler> handler;
+    Size<float> size;
 
-    friend void attach(Widget&, Widget&);
-    friend void detach(Widget&);
+    template <typename T> friend class BaseWidget;
+    friend class MutableWidget;
+
+    void setBase(Widget* widget) {
+        base = widget;
+    }
 };
 
 
-void attach(Widget& base, Widget& part) {
-    assert(
-        std::ranges::find(base.parts.begin(), base.parts.end(), &part)
-        == base.parts.end());
-    assert(part.base == nullptr);
-    base.parts.push_back(&part);
-    part.base = &base;
-}
+/**
+ * @brief Parent class for widgets that can have parts
+ * 
+ * This class provides interface to add and remove parts and ensures
+ * that these parts will have proper references to base.
+ * 
+ * Note that it is possible to create BaseWidget
+ * that cannot be attached to any widget.
+ * This template is designed specially for Screen widget
+ * that is always a root of widget tree and can control its resizing.
+ */
+template <typename T>
+class BaseWidget: public Widget {
+public:
+    void attach(T& part) {
+        part.setBase(this);
+    }
+    
+    void detach(T& part) {
+        part.setBase(nullptr);
+    }
+};
 
 
-void detach(Widget& part) {
-    assert(part.base != nullptr);
-    Widget& base = *(part.base);
-    auto pos = std::ranges::find(base.parts.begin(), base.parts.end(), &part);
-    assert(pos != base.parts.end());
-    base.parts.erase(pos);
-    part.base = nullptr;
-}
+/**
+ * @brief Parent class for all widgets
+ * 
+ * Can become any part of widget tree.
+ * Can be resized.
+ * All widgets (except Screen) should be derived from this class.
+ */
+class MutableWidget: public BaseWidget<MutableWidget> {
+public:
+    using Widget::setSize;
+};
+
+
+/**
+ * @brief Shows image
+ * 
+ * Basic element for all widget borders and background.
+ */
+class ImageWidget: public MutableWidget {};
