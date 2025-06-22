@@ -19,9 +19,9 @@ public:
 };
 
 template <typename S, typename T, typename S1, typename T1>
-class SpecificCaller : public Caller<S, T> {
+class SubCaller : public Caller<S, T> {
 public:
-    SpecificCaller(MethodPtr<S1, T1> method) : method(method) {}
+    SubCaller(MethodPtr<S1, T1> method) : method(method) {}
 
     void operator()(S& self, T& target) override {
         (static_cast<S1*>(&self)->*method)(*static_cast<T1*>(&target));
@@ -37,9 +37,9 @@ private:
 
 
 template <typename S, typename T>
-class MethodDispatcher {
+class SubDispatcher {
 public:
-    MethodDispatcher() {}
+    SubDispatcher() {}
 
     template <typename... Args>
     void add(Args... args) {
@@ -69,7 +69,7 @@ private:
 
     template <typename S1, typename T1>
     void addOne(MethodPtr<S1, T1> method) {
-        callers.push_back(std::make_unique<SpecificCaller<S, T, S1, T1>>(method));
+        callers.push_back(std::make_unique<SubCaller<S, T, S1, T1>>(method));
         std::type_index index = std::type_index(typeid(T1));
         caller_map[index] = callers.back().get();
     }
@@ -88,7 +88,7 @@ protected:
     void init(MethodPtr<S1, T1> head, Tail... tail) {
         std::type_index index = std::type_index(typeid(S1));
         if (!dispatchers.contains(index)) {
-            dispatchers[index] = std::make_unique<MethodDispatcher<Dispatcher, T>>();
+            dispatchers[index] = std::make_unique<SubDispatcher<Dispatcher, T>>();
             dispatchers[index]->add(head, tail...);
         }
         dispatcher = dispatchers[index].get();
@@ -97,15 +97,15 @@ protected:
 private:
     static std::unordered_map<
             std::type_index,
-            std::unique_ptr<MethodDispatcher<Dispatcher, T>>>
+            std::unique_ptr<SubDispatcher<Dispatcher, T>>>
         dispatchers;
     
-    MethodDispatcher<Dispatcher, T>* dispatcher;
+    SubDispatcher<Dispatcher, T>* dispatcher;
 };
 
 
 template <typename T>
 std::unordered_map<
         std::type_index,
-        std::unique_ptr<MethodDispatcher<Dispatcher<T>, T>>>
+        std::unique_ptr<SubDispatcher<Dispatcher<T>, T>>>
     Dispatcher<T>::dispatchers;
