@@ -4,15 +4,14 @@
 #include "tools.hpp"
 
 /**
- * @brief Parent class for all widgets
+ * @brief Base class for widget tree nodes
  * 
- * Immutable interface for widgets.
+ * Constant interface for widgets.
  * Provides read access to widget tree structure and widget sizes.
- * Derived classes have write access to the size.
  */
-class Widget {
+class AbstractWidget {
 public:
-    Widget* getBase() {
+    AbstractWidget* getBase() {
         return base;
     }
 
@@ -20,38 +19,37 @@ public:
         return size;
     }
 
-protected:
+private:
+    AbstractWidget* base = nullptr;
+    Size<float> size;
+
+    void setBase(AbstractWidget* widget) {
+        base = widget;
+    }
+
     void setSize(Size<float> value) {
         size = value;
     }
 
-private:
-    Widget* base = nullptr;
-    Size<float> size;
-
-    template <typename T> friend class BaseWidget;
-    friend class MutableWidget;
-
-    void setBase(Widget* widget) {
-        base = widget;
-    }
+    template <typename T> friend class ParentWidget;
+    friend class Widget;
 };
 
 
 /**
- * @brief Parent class for widgets that can have parts
+ * @brief Base class for widgets that can have children
  * 
- * This class provides interface to add and remove parts and ensures
- * that these parts will have proper references to base.
+ * This class provides interface to add and remove children and ensures
+ * that these children will have proper references to parents.
  * 
- * Note that it is possible to create BaseWidget
+ * Note that it is possible to create ParentWidget
  * that cannot be attached to any widget.
  * This template is designed specially for Screen widget
  * that is always a root of widget tree and can control its resizing.
  */
 template <typename T>
-class BaseWidget: public Widget {
-public:
+class ParentWidget: public AbstractWidget {
+protected:
     void attach(T& part) {
         part.setBase(this);
     }
@@ -63,15 +61,15 @@ public:
 
 
 /**
- * @brief Parent class for all widgets
+ * @brief Base class for most widgets
  * 
  * Can become any part of widget tree.
  * Can be resized.
  * All widgets (except Screen) should be derived from this class.
  */
-class MutableWidget: public BaseWidget<MutableWidget> {
+class Widget: public ParentWidget<Widget> {
 public:
-    using Widget::setSize;
+    using AbstractWidget::setSize;
 };
 
 
@@ -80,4 +78,4 @@ public:
  * 
  * Basic element for all widget borders and background.
  */
-class ImageWidget: public MutableWidget {};
+class ImageWidget: public Widget {};
