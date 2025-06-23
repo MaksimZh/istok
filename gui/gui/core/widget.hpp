@@ -11,8 +11,8 @@
  */
 class AbstractWidget {
 public:
-    AbstractWidget* getBase() {
-        return base;
+    AbstractWidget* getParent() {
+        return parent;
     }
 
     Size<float> getSize() {
@@ -20,11 +20,11 @@ public:
     }
 
 private:
-    AbstractWidget* base = nullptr;
+    AbstractWidget* parent = nullptr;
     Size<float> size;
 
-    void setBase(AbstractWidget* widget) {
-        base = widget;
+    void setParent(AbstractWidget* widget) {
+        parent = widget;
     }
 
     void setSize(Size<float> value) {
@@ -50,12 +50,12 @@ private:
 template <typename T>
 class ParentWidget: public AbstractWidget {
 protected:
-    void attach(T& part) {
-        part.setBase(this);
+    void attach(T& widget) {
+        widget.setParent(this);
     }
     
-    void detach(T& part) {
-        part.setBase(nullptr);
+    void detach(T& widget) {
+        widget.setParent(nullptr);
     }
 };
 
