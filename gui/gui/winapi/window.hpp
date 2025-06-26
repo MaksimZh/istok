@@ -249,6 +249,22 @@ std::wstring toUTF16(const std::string& source) {
 }
 
 
+std::string toUTF8(LPCWSTR source) {
+    if (!source) {
+        return std::string();
+    }
+
+    int size = WideCharToMultiByte(CP_UTF8, 0, source, -1, nullptr, 0, nullptr, nullptr);
+    if (size == 0) {
+        throw std::runtime_error("UTF-16 to UTF-8 conversion failed");
+    }
+    std::string result(size, '\0');
+    WideCharToMultiByte(CP_UTF8, 0, source, -1, &result[0], size, nullptr, nullptr);
+    result.resize(size - 1);
+    return result;
+}
+
+
 class SysWindow {
 public:
     SysWindow() = default;

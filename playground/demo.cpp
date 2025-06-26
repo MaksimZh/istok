@@ -1,38 +1,83 @@
 #include <string>
+#include <vector>
 #include <optional>
 #include <memory>
 #include <map>
 #include <iostream>
+#include <cmath>
 
 #include <gui/core/tools.hpp>
 #include <gui/core/widget.hpp>
+#include <gui/core/screen.hpp>
 #include <gui/winapi/window.hpp>
 
 
-BOOL CALLBACK MonitorEnumProc(HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcMonitor, LPARAM dwData)
-{
-    MONITORINFOEX monitorInfo = {};
-    monitorInfo.cbSize = sizeof(MONITORINFOEX);
-    GetMonitorInfo(hMonitor, &monitorInfo);
+class WinAPIMonitorManager {
+public:
+    WinAPIMonitorManager() {
+        update();
+    }
+    
+    bool hasChanged() const {
+        return changed;
+    }
 
-    wprintf(L"Device: %s\n", monitorInfo.szDevice);
-    printf("    rect: %d %d %d %d\n",
-        monitorInfo.rcMonitor.left, monitorInfo.rcMonitor.top,
-        monitorInfo.rcMonitor.right, monitorInfo.rcMonitor.bottom);
-    printf("    work: %d %d %d %d\n",
-        monitorInfo.rcWork.left, monitorInfo.rcWork.top,
-        monitorInfo.rcWork.right, monitorInfo.rcWork.bottom);
-    printf("    primary: %d\n", monitorInfo.dwFlags & MONITORINFOF_PRIMARY);
-    return TRUE; // Продолжаем перечисление
-}
+    void markRead() {
+        changed = false;
+    }
+
+    const std::vector<MonitorInfo>& getMonitors() const {
+        return monitors;
+    }
+
+private:
+    std::vector<MonitorInfo> monitors;
+    bool changed = true;
+
+    void update() {
+        EnumDisplayMonitors(
+            NULL, NULL, MonitorEnumProc,
+            reinterpret_cast<LPARAM>(&monitors));
+    }
+    
+    static BOOL CALLBACK MonitorEnumProc(
+        HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcMonitor, LPARAM dwData
+    ) {
+        MONITORINFOEX info = {};
+        info.cbSize = sizeof(MONITORINFOEX);
+        GetMonitorInfo(hMonitor, &info);
+        auto dest = reinterpret_cast<std::vector<MonitorInfo>*>(dwData);
+        dest->push_back(MonitorInfo{
+            toUTF8(info.szDevice),
+            {
+                info.rcMonitor.left, info.rcMonitor.top,
+                info.rcMonitor.right, info.rcMonitor.bottom,
+            },
+            {
+                info.rcWork.left, info.rcWork.top,
+                info.rcWork.right, info.rcWork.bottom,
+            }});
+        return TRUE;
+    }
+};
 
 
 int main() {
-    int r = EnumDisplayMonitors(GetDC(NULL), NULL, MonitorEnumProc, 0);
-
-/*
-    Screen screen;
-    screen.add("main", std::make_unique<Window>());
+    Window w;
+    w.setSize({400, 300});
+    Position<float> pos{300, 200}; 
+    Size<float> size = w.getSize();
+    
+    Position<int> sysPos{
+        static_cast<int>(std::round(pos.x)),
+        static_cast<int>(std::round(pos.y))
+    };
+    Size<int> sysSize{
+        static_cast<int>(std::round(size.width)),
+        static_cast<int>(std::round(size.height))
+    };
+    SysWindow s("Istok", sysPos, sysSize);
+    s.show();
 
     while (true) {
         MSG msg;
@@ -43,6 +88,6 @@ int main() {
         TranslateMessage(&msg);
         DispatchMessage(&msg);
     }
-*/
+
     return 0;
 }
