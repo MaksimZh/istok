@@ -13,3 +13,12 @@ struct Size {
     T width;
     T height;
 };
+
+
+template <typename T>
+struct Rect {
+    T left;
+    T top;
+    T right;
+    T bottom;
+};

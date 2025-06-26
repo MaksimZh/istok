@@ -2,48 +2,34 @@
 #include <optional>
 #include <memory>
 #include <map>
+#include <iostream>
 
 #include <gui/core/tools.hpp>
 #include <gui/core/widget.hpp>
 #include <gui/winapi/window.hpp>
 
 
-/*
-class Screen {
-public:
-    Screen() {}
+BOOL CALLBACK MonitorEnumProc(HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcMonitor, LPARAM dwData)
+{
+    MONITORINFOEX monitorInfo = {};
+    monitorInfo.cbSize = sizeof(MONITORINFOEX);
+    GetMonitorInfo(hMonitor, &monitorInfo);
 
-    Screen(const Screen&) = delete;
-    Screen& operator=(const Screen&) = delete;
+    wprintf(L"Device: %s\n", monitorInfo.szDevice);
+    printf("    rect: %d %d %d %d\n",
+        monitorInfo.rcMonitor.left, monitorInfo.rcMonitor.top,
+        monitorInfo.rcMonitor.right, monitorInfo.rcMonitor.bottom);
+    printf("    work: %d %d %d %d\n",
+        monitorInfo.rcWork.left, monitorInfo.rcWork.top,
+        monitorInfo.rcWork.right, monitorInfo.rcWork.bottom);
+    printf("    primary: %d\n", monitorInfo.dwFlags & MONITORINFOF_PRIMARY);
+    return TRUE; // Продолжаем перечисление
+}
 
-    Screen(Screen&& other) = delete;
-    Screen& operator=(Screen&& other) = delete;
-
-    void add(const std::string& id, std::unique_ptr<WindowWidget>&& window) {
-        if (windows.contains(id)) {
-            throw std::runtime_error("Window id is busy");
-        }
-        windows[id] = std::move(window);
-        sysWindows[id] = std::make_unique<SysWindow>(
-            id, Position<int>{100, 200}, Size<int>{400, 300});
-        sysWindows[id]->show();
-    }
-
-private:
-    std::map<std::string, std::unique_ptr<WindowWidget>> windows;
-    std::map<std::string, std::unique_ptr<SysWindow>> sysWindows;
-};
-
-
-class Window: public WindowWidget {
-public:
-    void accept(WidgetVisitor& visitor) override {
-        visitor.visit(*this, {});
-    }
-};
-*/
 
 int main() {
+    int r = EnumDisplayMonitors(GetDC(NULL), NULL, MonitorEnumProc, 0);
+
 /*
     Screen screen;
     screen.add("main", std::make_unique<Window>());

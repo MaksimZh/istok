@@ -14,12 +14,12 @@ namespace {
     public:
         std::vector<Widget*> children;
 
-        void addChild(FakeWidget& widget) {
+        void addChild(Widget& widget) {
             attach(widget);
             children.push_back(&widget);
         }
 
-        void removeChild(FakeWidget& widget) {
+        void removeChild(Widget& widget) {
             auto pos = std::find(children.begin(), children.end(), &widget);
             children.erase(pos);
             detach(widget);
@@ -28,7 +28,17 @@ namespace {
 
 }
 
-TEST_CASE("Widget - parent", "[unit][gui]") {
+
+TEST_CASE("Widget - size", "[unit][gui]") {
+    FakeWidget w;
+    w.setSize({10, 20});
+    auto size = w.getSize();
+    REQUIRE_THAT(size.width, Catch::Matchers::WithinAbs(10.0, 1e-9));
+    REQUIRE_THAT(size.height, Catch::Matchers::WithinAbs(20.0, 1e-9));
+}
+
+
+TEST_CASE("Widget - tree", "[unit][gui]") {
     FakeWidget a, b, c, d, e;
     REQUIRE(a.getParent() == nullptr);
     REQUIRE(b.getParent() == nullptr);
@@ -63,4 +73,17 @@ TEST_CASE("Widget - parent", "[unit][gui]") {
     REQUIRE(c.getParent() == nullptr);
     REQUIRE(d.getParent() == nullptr);
     REQUIRE(e.getParent() == nullptr);
+}
+
+
+TEST_CASE("Widget - protection", "[unit][gui]") {
+    FakeWidget p, f;
+    Widget& w = f;
+    AbstractWidget& a = f;
+    p.addChild(w);
+    w.setSize({10, 20});
+    REQUIRE(a.getParent() == &p);
+    auto size = a.getSize();
+    REQUIRE_THAT(size.width, Catch::Matchers::WithinAbs(10.0, 1e-9));
+    REQUIRE_THAT(size.height, Catch::Matchers::WithinAbs(20.0, 1e-9));
 }
