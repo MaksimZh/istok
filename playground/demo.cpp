@@ -9,6 +9,7 @@
 #include <gui/core/tools.hpp>
 #include <gui/core/widget.hpp>
 #include <gui/core/screen.hpp>
+#include <gui/core/dispatcher.hpp>
 #include <gui/winapi/window.hpp>
 
 
@@ -62,22 +63,39 @@ private:
 };
 
 
+class WindowManager {
+public:
+    void update(Window& window, Position<float> pos) {
+        if (!wsMap.contains(&window)) {
+            Size<float> size = window.getSize();
+            Position<int> sysPos{
+                static_cast<int>(std::round(pos.x)),
+                static_cast<int>(std::round(pos.y))
+            };
+            Size<int> sysSize{
+                static_cast<int>(std::round(size.width)),
+                static_cast<int>(std::round(size.height))
+            };
+            wsMap[&window] = std::make_unique<SysWindow>("Istok", sysPos, sysSize);
+            wsMap[&window]->show();
+            swMap[wsMap[&window].get()] = &window;
+        }
+    }
+
+private:
+    std::map<Window*, std::unique_ptr<SysWindow>> wsMap;
+    std::map<SysWindow*, Window*> swMap;
+};
+
+
 int main() {
-    Window w;
-    w.setSize({400, 300});
-    Position<float> pos{300, 200}; 
-    Size<float> size = w.getSize();
-    
-    Position<int> sysPos{
-        static_cast<int>(std::round(pos.x)),
-        static_cast<int>(std::round(pos.y))
-    };
-    Size<int> sysSize{
-        static_cast<int>(std::round(size.width)),
-        static_cast<int>(std::round(size.height))
-    };
-    SysWindow s("Istok", sysPos, sysSize);
-    s.show();
+    WindowManager windowManager;
+    Window window1;
+    Window window2;
+    window1.setSize({400, 300});
+    window2.setSize({500, 200});
+    windowManager.update(window1, {300, 200});
+    windowManager.update(window2, {400, 100});
 
     while (true) {
         MSG msg;

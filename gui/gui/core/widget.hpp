@@ -19,6 +19,8 @@ public:
         return size;
     }
 
+    virtual ~AbstractWidget() {}
+
 private:
     AbstractWidget* parent = nullptr;
     Size<float> size;
