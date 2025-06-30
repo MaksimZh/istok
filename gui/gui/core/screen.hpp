@@ -21,7 +21,7 @@ struct MonitorInfo {
 };
 
 template <MonitorManager MM, SysWindowFactory SWF>
-class Screen: public ParentWidget<Window> {
+class Screen: public RootWidget<Window> {
 public:
     Screen(MM& monitorManager, SWF& sysWindowFactory) {}
 };

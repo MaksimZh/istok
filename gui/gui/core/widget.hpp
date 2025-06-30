@@ -54,7 +54,7 @@ private:
     }
 
     template <typename T> friend class ParentWidget;
-    friend class RootWidget;
+    template <typename T> friend class RootWidget;
     friend class Widget;
 };
 
@@ -102,7 +102,8 @@ class UpdateHandler {};
  * 
  * Provides the update handler for all attached widgets.
  */
-class RootWidget: public ParentWidget<Widget> {
+template <typename T>
+class RootWidget: public ParentWidget<T> {
 protected:
     void setUpdateHandler(UpdateHandler* handler) {
         AbstractWidget::setUpdateHandler(handler);

@@ -12,7 +12,7 @@ namespace {
 
     class FakeUpdateHandler: public UpdateHandler {};
 
-    class FakeRoot: public RootWidget {
+    class FakeRoot: public RootWidget<Widget> {
     public:
         using RootWidget::setUpdateHandler;
 
