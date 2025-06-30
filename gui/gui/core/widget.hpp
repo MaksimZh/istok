@@ -67,7 +67,7 @@ private:
  * and the update handler.
  */
 template <typename T>
-class ParentWidget: public AbstractWidget {
+class ParentWidget: public virtual AbstractWidget {
 protected:
     void attach(T& widget) {
         widget.setParent(this);
@@ -88,7 +88,7 @@ protected:
  * Can be resized.
  * All widgets (except Screen) should be derived from this class.
  */
-class Widget: public ParentWidget<Widget> {
+class Widget: public virtual ParentWidget<Widget> {
 public:
     using AbstractWidget::setSize;
 };
@@ -103,7 +103,7 @@ class UpdateHandler {};
  * Provides the update handler for all attached widgets.
  */
 template <typename T>
-class RootWidget: public ParentWidget<T> {
+class RootWidget: public virtual ParentWidget<T> {
 protected:
     void setUpdateHandler(UpdateHandler* handler) {
         AbstractWidget::setUpdateHandler(handler);

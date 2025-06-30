@@ -8,11 +8,10 @@
 
 #include <gui/core/tools.hpp>
 #include <gui/core/widget.hpp>
-#include <gui/core/screen.hpp>
 #include <gui/core/dispatcher.hpp>
 #include <gui/winapi/window.hpp>
 
-
+/*
 class WinAPIMonitorManager {
 public:
     WinAPIMonitorManager() {
@@ -61,6 +60,10 @@ private:
         return TRUE;
     }
 };
+*/
+
+
+class Window: public Widget {};
 
 
 class WindowManager {
@@ -88,14 +91,27 @@ private:
 };
 
 
-int main() {
+class MyScreen: RootWidget<Window> {
+public:
+    void addWindow(Window& window, Position<float> pos) {
+        attach(window);
+        windowManager.update(window, pos);
+    }
+
+private:
     WindowManager windowManager;
+};
+
+
+
+int main() {
+    MyScreen screen;
     Window window1;
     Window window2;
     window1.setSize({400, 300});
     window2.setSize({500, 200});
-    windowManager.update(window1, {300, 200});
-    windowManager.update(window2, {400, 100});
+    screen.addWindow(window1, {300, 200});
+    screen.addWindow(window2, {400, 100});
 
     while (true) {
         MSG msg;

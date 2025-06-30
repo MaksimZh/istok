@@ -12,48 +12,32 @@ namespace {
 
     class FakeUpdateHandler: public UpdateHandler {};
 
-    class FakeRoot: public RootWidget<Widget> {
+    class FakeContainerMixin: public virtual ParentWidget<Widget> {
+    public:
+        std::vector<Widget*> children;
+        
+        void addChild(Widget& widget) {
+            attach(widget);
+            children.push_back(&widget);
+        }
+
+        void removeChild(Widget& widget) {
+            auto pos = std::find(children.begin(), children.end(), &widget);
+            children.erase(pos);
+            detach(widget);
+        }
+
+        std::vector<AbstractWidget*> getAllChildren() override {
+            return std::vector<AbstractWidget*>(children.begin(), children.end());
+        }
+    }; 
+
+    class FakeRoot: public RootWidget<Widget>, public FakeContainerMixin {
     public:
         using RootWidget::setUpdateHandler;
-
-        std::vector<Widget*> children;
-        
-        void addChild(Widget& widget) {
-            attach(widget);
-            children.push_back(&widget);
-        }
-
-        void removeChild(Widget& widget) {
-            auto pos = std::find(children.begin(), children.end(), &widget);
-            children.erase(pos);
-            detach(widget);
-        }
-
-        std::vector<AbstractWidget*> getAllChildren() override {
-            return std::vector<AbstractWidget*>(children.begin(), children.end());
-        }
     };
 
-    class FakeWidget: public Widget {
-    public:
-
-        std::vector<Widget*> children;
-        
-        void addChild(Widget& widget) {
-            attach(widget);
-            children.push_back(&widget);
-        }
-
-        void removeChild(Widget& widget) {
-            auto pos = std::find(children.begin(), children.end(), &widget);
-            children.erase(pos);
-            detach(widget);
-        }
-
-        std::vector<AbstractWidget*> getAllChildren() override {
-            return std::vector<AbstractWidget*>(children.begin(), children.end());
-        }
-    };
+    class FakeWidget: public Widget, public FakeContainerMixin {};
 
 }
 
