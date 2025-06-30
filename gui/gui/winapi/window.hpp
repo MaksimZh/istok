@@ -2,6 +2,7 @@
 #pragma once
 
 #include <windows.h>
+#include <dwmapi.h>
 #include <stdexcept>
 
 #include <gui/core/tools.hpp>
@@ -279,7 +280,10 @@ public:
             size.width, size.height,
             NULL, NULL, getHInstance(), nullptr),
         dc(wnd)
-    {}
+    {
+        setPixelFormat();
+        //enableTransparency();
+    }
     
     SysWindow(const SysWindow&) = delete;
     SysWindow& operator=(const SysWindow&) = delete;
@@ -321,4 +325,36 @@ private:
 
     WndHandler wnd;
     DCHandler dc;
+
+
+    void setPixelFormat() {
+        PIXELFORMATDESCRIPTOR pfd = {};
+        pfd.nSize = sizeof(PIXELFORMATDESCRIPTOR);
+        pfd.nVersion = 1;
+        pfd.dwFlags = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER | PFD_SUPPORT_COMPOSITION;
+        pfd.iPixelType = PFD_TYPE_RGBA;
+        pfd.cColorBits = 32;
+        pfd.cAlphaBits = 8;
+        pfd.cDepthBits = 24;
+        pfd.cStencilBits = 8;
+        pfd.iLayerType = PFD_MAIN_PLANE;
+
+        int pfi = ChoosePixelFormat(dc, &pfd);
+        if (!pfi) {
+            throw std::runtime_error("Failed to choose pixel format");
+        }
+        if (!SetPixelFormat(dc, pfi, &pfd)) {
+            throw std::runtime_error("Failed to set pixel format");
+        }
+    }
+
+
+    void enableTransparency() {
+        DWM_BLURBEHIND bb = { 0 };
+        HRGN hRgn = CreateRectRgn(0, 0, -1, -1);
+        bb.dwFlags = DWM_BB_ENABLE | DWM_BB_BLURREGION;
+        bb.hRgnBlur = hRgn;
+        bb.fEnable = TRUE;
+        DwmEnableBlurBehindWindow(wnd, &bb);
+    }
 };
