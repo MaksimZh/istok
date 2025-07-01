@@ -306,6 +306,14 @@ public:
         ShowWindow(wnd, SW_SHOW);
     }
 
+    HDC getDC() {
+        return dc.get();
+    }
+
+    HWND getHWND() {
+        return wnd.get();
+    }
+
 private:
 
     static HINSTANCE getHInstance() {

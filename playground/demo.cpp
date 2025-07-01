@@ -1,15 +1,19 @@
+#include <gui/core/tools.hpp>
+#include <gui/core/widget.hpp>
+#include <gui/core/dispatcher.hpp>
+#include <gui/winapi/window.hpp>
+
 #include <string>
 #include <vector>
 #include <optional>
 #include <memory>
 #include <map>
+#include <set>
 #include <iostream>
 #include <cmath>
 
-#include <gui/core/tools.hpp>
-#include <gui/core/widget.hpp>
-#include <gui/core/dispatcher.hpp>
-#include <gui/winapi/window.hpp>
+#include <GL/glew.h>
+#include <GL/wglew.h>
 
 /*
 class WinAPIMonitorManager {
@@ -62,6 +66,97 @@ private:
 };
 */
 
+class GLContext {
+public:
+    GLContext(HGLRC hGL) {
+        this->hGL = hGL;
+    }
+
+    ~GLContext() {
+        if (!hGL) {
+            return;
+        }
+        if (wglGetCurrentContext() == hGL) {
+            wglMakeCurrent(nullptr, nullptr);
+        }
+        wglDeleteContext(hGL);
+    }
+
+    GLContext(const GLContext&) = delete;
+    GLContext& operator=(const GLContext&) = delete;
+    GLContext(const GLContext&&) = delete;
+    GLContext& operator=(const GLContext&&) = delete;
+
+    HGLRC getGL() const { return hGL; }
+
+private:
+    HGLRC hGL;
+};
+
+
+class CompatibilityGLContext : public GLContext {
+public:
+    CompatibilityGLContext(HDC hDC) : GLContext(wglCreateContext(hDC)) {
+        if (!getGL()) {
+            throw std::runtime_error("Failed to create OpenGL context");
+        }
+    }
+
+    CompatibilityGLContext(const CompatibilityGLContext&) = delete;
+    CompatibilityGLContext& operator=(const CompatibilityGLContext&) = delete;
+    CompatibilityGLContext(const CompatibilityGLContext&&) = delete;
+    CompatibilityGLContext& operator=(const CompatibilityGLContext&&) = delete;
+};
+
+
+class ModernGLContext : public GLContext {
+public:
+    ModernGLContext(HDC hDC) : GLContext(createContext(hDC)) {
+        if (!getGL()) {
+            throw std::runtime_error("Failed to create OpenGL context");
+        }
+    }
+
+    ModernGLContext(const ModernGLContext&) = delete;
+    ModernGLContext& operator=(const ModernGLContext&) = delete;
+    ModernGLContext(const ModernGLContext&&) = delete;
+    ModernGLContext& operator=(const ModernGLContext&&) = delete;
+
+private:
+    static HGLRC createContext(HDC hDC) {
+        initGLEW(hDC);
+
+        int attribs[] = {
+            WGL_CONTEXT_MAJOR_VERSION_ARB, 3,
+            WGL_CONTEXT_MINOR_VERSION_ARB, 3,
+            WGL_CONTEXT_FLAGS_ARB, 0,
+            0
+        };
+        HGLRC hGL = wglCreateContextAttribsARB(hDC, NULL, attribs);
+        if (!hGL) {
+            throw std::runtime_error("Failed to create OpenGL context");
+        }
+        return hGL;
+    }
+
+    static void initGLEW(HDC hDC) {
+        static bool initialized = false;
+        if (initialized) {
+            return;
+        }
+        CompatibilityGLContext tmp(hDC);
+        if (!wglMakeCurrent(hDC, tmp.getGL())) {
+            throw std::runtime_error("Failed to make OpenGL context current!");
+        }
+        if (glewInit() != GLEW_OK) {
+            throw std::runtime_error("glewInit failed");
+        }
+        if (wglewIsSupported("WGL_ARB_create_context") != GL_TRUE) {
+            throw std::runtime_error("Modern OpenGL not supported");
+        }
+    }
+};
+
 
 class Window: public Widget {};
 
@@ -85,6 +180,10 @@ public:
         }
     }
 
+    SysWindow& getSysWindow(Window& window) {
+        return *wsMap[&window];
+    }
+
 private:
     std::map<Window*, std::unique_ptr<SysWindow>> wsMap;
     std::map<SysWindow*, Window*> swMap;
@@ -95,11 +194,27 @@ class MyScreen: RootWidget<Window> {
 public:
     void addWindow(Window& window, Position<float> pos) {
         attach(window);
+        windows.insert(&window);
         windowManager.update(window, pos);
+        if (!gl) {
+            gl = std::make_unique<ModernGLContext>(windowManager.getSysWindow(window).getDC());
+        }
+    }
+
+    void clear() {
+        for (auto& window : windows) {
+            SysWindow& sysWindow = windowManager.getSysWindow(*window);
+            wglMakeCurrent(sysWindow.getDC(), gl->getGL());
+            glClearColor(0.0f, 0.0f, 0.1f, 1.0f);
+            glClear(GL_COLOR_BUFFER_BIT);
+            SwapBuffers(sysWindow.getDC());
+        }
     }
 
 private:
     WindowManager windowManager;
+    std::set<Window*> windows;
+    std::unique_ptr<ModernGLContext> gl;
 };
 
 
@@ -121,6 +236,7 @@ int main() {
         }
         TranslateMessage(&msg);
         DispatchMessage(&msg);
+        screen.clear();
     }
 
     return 0;
