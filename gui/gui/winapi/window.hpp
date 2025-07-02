@@ -275,14 +275,14 @@ public:
             NULL,
             getWndClass(),
             toUTF16(title).c_str(),
-            WS_OVERLAPPEDWINDOW,
+            WS_POPUP,
             position.x, position.y,
             size.width, size.height,
             NULL, NULL, getHInstance(), nullptr),
         dc(wnd)
     {
         setPixelFormat();
-        //enableTransparency();
+        enableTransparency();
     }
     
     SysWindow(const SysWindow&) = delete;
@@ -327,7 +327,9 @@ private:
             CS_OWNDC,
             windowProc,
             getHInstance(),
-            L"Istok");
+            L"Istok",
+            0, 0, nullptr,
+            LoadCursor(NULL, IDC_ARROW));
         return wc;
     }
 
