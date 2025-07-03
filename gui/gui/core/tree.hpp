@@ -54,16 +54,4 @@ private:
 
 
 template <typename T, typename M>
-class Node {
-public:
-    T* getParent() {
-        return parent;
-    }
-
-    NodeRange<T, M> getChildren(const M& marker) {
-        return NodeRange<T, M>(nullptr);
-    }
-
-private:
-    T* parent = nullptr;
-};
+class Node {};
