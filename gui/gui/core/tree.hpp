@@ -53,5 +53,24 @@ private:
 };
 
 
+template <typename T>
+class ChildNode {
+public:
+    T* getParent() { return parent; }
+
+private:
+    T* parent = nullptr;
+};
+
+
 template <typename T, typename M>
-class Node {};
+class Node: public virtual ChildNode<T> {
+public:
+    T* getNext() { return next; }
+    T* getPrev() { return prev; }
+    NodeRange<T, M> getChildren() { return NodeRange<T, M>(head); }
+private:
+    T* next = nullptr;
+    T* prev = nullptr;
+    T* head = nullptr;
+};

@@ -6,22 +6,25 @@
 #include <ranges>
 
 namespace {
-    class _FakeMarker1 {
-    private:
-        _FakeMarker1() = default;
+    struct _Marker;
+
+    class FakeNode: private Node<FakeNode, _Marker> {
     public:
-        static _FakeMarker1 instance;
+        using Node::getParent;
+        using Node::getNext;
+        using Node::getPrev;
+        using Node::getChildren;
     };
-    _FakeMarker1 marker1 = _FakeMarker1::instance;
 
-    class FakeNode: private Node<FakeNode, _FakeMarker1> {};
-
-    static_assert(std::forward_iterator<NodeIterator<FakeNode, _FakeMarker1>>);
-    static_assert(std::ranges::forward_range<NodeRange<FakeNode, _FakeMarker1>>);
+    static_assert(std::forward_iterator<NodeIterator<FakeNode, _Marker>>);
+    static_assert(std::ranges::forward_range<NodeRange<FakeNode, _Marker>>);
 }
 
 
 TEST_CASE("Tree - initial", "[unit][gui]") {
     FakeNode a;
+    REQUIRE(a.getParent() == nullptr);
+    REQUIRE(a.getNext() == nullptr);
+    REQUIRE(a.getPrev() == nullptr);
+    REQUIRE(std::ranges::empty(a.getChildren()));
 }
-
