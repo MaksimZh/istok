@@ -5,7 +5,7 @@
 #include <ranges>
 
 
-template <typename T, typename M>
+template <typename T, typename N>
 class NodeIterator {
 public:
     using difference_type = std::ptrdiff_t;
@@ -16,7 +16,7 @@ public:
     T& operator*() const { return *current; }
 
     NodeIterator& operator++() {
-        current = current.getNext(M::instance);
+        current = current::N.getNext();
         return *this;
     }
     
@@ -35,21 +35,45 @@ private:
 };
 
 
-template <typename T, typename M>
+template <typename T, typename N>
 class NodeRange {
 public:
     NodeRange(T* head) : head(head) {}
 
-    NodeIterator<T, M> begin() {
-        return NodeIterator<T, M>(head);
+    NodeIterator<T, N> begin() {
+        return NodeIterator<T, N>(head);
     }
     
-    NodeIterator<T, M> end() {
-        return NodeIterator<T, M>(nullptr);
+    NodeIterator<T, N> end() {
+        return NodeIterator<T, N>(nullptr);
     }
 
 private:
     T* head;
+};
+
+
+template <typename T, typename N>
+class NodeList {
+public:
+    NodeRange<T, N> getRange() {
+        return NodeRange<T, N>(head);
+    }
+    
+    void add(T& node) {
+        if (!tail) {
+            head = &node;
+            tail = &node;
+            return;
+        }
+        tail.N::setNext(&node);
+        node.N::setPrev(tail);
+        tail = &node;
+    }
+
+private:
+    T* head = nullptr;
+    T* tail = nullptr;
 };
 
 
@@ -63,14 +87,19 @@ private:
 };
 
 
-template <typename T, typename M>
+template <typename T, typename N>
 class Node: public virtual ChildNode<T> {
 public:
     T* getNext() { return next; }
     T* getPrev() { return prev; }
-    NodeRange<T, M> getChildren() { return NodeRange<T, M>(head); }
+    NodeRange<T, N> getChildren() { return children.getRange(); }
+
+    void addChild(T& node) {
+        children.add(node);
+    }
+
 private:
     T* next = nullptr;
     T* prev = nullptr;
-    T* head = nullptr;
+    NodeList<T, N> children;
 };
