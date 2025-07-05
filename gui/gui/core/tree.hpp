@@ -52,7 +52,7 @@ public:
     class Range {
     public:
         Range(
-            NodeFilter<T>& filter,
+            NodeFilter<T>* filter,
             std::list<T*>::iterator start,
             std::list<T*>::iterator stop
         ) : filter(filter), start(start), stop(stop) {}
@@ -92,11 +92,14 @@ public:
             }
         
         private:
-            NodeFilter<T>* filter;
+            NodeFilter<T>* filter = nullptr;
             std::list<T*>::iterator current;
             std::list<T*>::iterator stop;
 
             void advance() {
+                if (!filter) {
+                    return;
+                }
                 while (current != stop && !filter->contains(**current)) {
                     ++current;
                 }
@@ -104,21 +107,25 @@ public:
         };
     
         Iterator begin() {
-            return Iterator(&filter, start, stop);
+            return Iterator(filter, start, stop);
         }
 
         Iterator end() {
-            return Iterator(&filter, stop, stop);
+            return Iterator(filter, stop, stop);
         }
 
     private:
-        NodeFilter<T>& filter;
+        NodeFilter<T>* filter;
         std::list<T*>::iterator start;
         std::list<T*>::iterator stop;
     };
 
     Range filter(NodeFilter<T>& filter) {
-        return Range(filter, items.begin(), items.end());
+        return Range(&filter, items.begin(), items.end());
+    }
+
+    Range getAll() {
+        return Range(nullptr, items.begin(), items.end());
     }
 
 private:
@@ -129,8 +136,28 @@ private:
 template <typename T>
 class Node {
 public:
+    T* getParent() {
+        return parent;
+    }
+
+    NodeContainer<T>::Range getChildren() {
+        return children.getAll();
+    }
+
+    NodeContainer<T>::Range getVisibleChildren() {
+        return children.filter(visibleChildren);
+    }
+
+    void addChild(T& node) {
+        assert(node.getParent() == nullptr);
+        assert(!children.contains(node));
+        node.parent = static_cast<T*>(this);
+        children.push_back(node);
+        visibleChildren.insert(node);
+    }
+
 private:
-    NodeContainer<T> layoutChildrenSequence;
-    NodeContainer<T> renderChildrenSequence;
+    T* parent = nullptr;
+    NodeContainer<T> children;
     NodeFilter<T> visibleChildren;
 };
