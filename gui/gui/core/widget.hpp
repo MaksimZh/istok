@@ -2,8 +2,8 @@
 #pragma once
 
 #include "tools.hpp"
+#include "tree.hpp"
 
-#include <vector>
 
 class UpdateHandler;
 
@@ -13,12 +13,8 @@ class UpdateHandler;
  * Constant interface for widgets.
  * Provides read access to widget tree structure and widget sizes.
  */
-class AbstractWidget {
+class AbstractWidget: private Node<AbstractWidget> {
 public:
-    AbstractWidget* getParent() {
-        return parent;
-    }
-
     UpdateHandler* getUpdateHandler() {
         return updateHandler;
     }
@@ -29,23 +25,22 @@ public:
 
     virtual ~AbstractWidget() {}
 
-    virtual std::vector<AbstractWidget*> getAllChildren() {
-        return {};
+    NodeContainer<AbstractWidget>::Range getChildren() {
+        return Node::getChildren();
+    }
+
+    NodeContainer<AbstractWidget>::Range getVisibleChildren() {
+        return Node::getVisibleChildren();
     }
 
 private:
-    AbstractWidget* parent = nullptr;
     UpdateHandler* updateHandler = nullptr;
     Size<float> size;
 
-    void setParent(AbstractWidget* widget) {
-        parent = widget;
-    }
-
     void setUpdateHandler(UpdateHandler* handler) {
         updateHandler = handler;
-        for (auto& child : getAllChildren()) {
-            child->setUpdateHandler(handler);
+        for (auto& child : getChildren()) {
+            child.setUpdateHandler(handler);
         }
     }
 
@@ -69,14 +64,8 @@ private:
 template <typename T>
 class ParentWidget: public virtual AbstractWidget {
 protected:
-    void attach(T& widget) {
-        widget.setParent(this);
-        widget.setUpdateHandler(getUpdateHandler());
-    }
-    
-    void detach(T& widget) {
-        widget.setParent(nullptr);
-        widget.setUpdateHandler(nullptr);
+    void addChild(T& widget) {
+        Node::addChild(widget);
     }
 };
 
