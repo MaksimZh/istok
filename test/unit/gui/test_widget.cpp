@@ -12,32 +12,18 @@ namespace {
 
     class FakeUpdateHandler: public UpdateHandler {};
 
-    class FakeContainerMixin: public virtual ParentWidget<Widget> {
-    public:
-        std::vector<Widget*> children;
-        
-        void addChild(Widget& widget) {
-            attach(widget);
-            children.push_back(&widget);
-        }
-
-        void removeChild(Widget& widget) {
-            auto pos = std::find(children.begin(), children.end(), &widget);
-            children.erase(pos);
-            detach(widget);
-        }
-
-        std::vector<AbstractWidget*> getAllChildren() override {
-            return std::vector<AbstractWidget*>(children.begin(), children.end());
-        }
-    }; 
-
-    class FakeRoot: public RootWidget<Widget>, public FakeContainerMixin {
+    class FakeRoot: public RootWidget<Widget> {
     public:
         using RootWidget::setUpdateHandler;
+        using RootWidget::addChild;
+        using RootWidget::removeChild;
     };
 
-    class FakeWidget: public Widget, public FakeContainerMixin {};
+    class FakeWidget: public Widget {
+    public:
+        using Widget::addChild;
+        using Widget::removeChild;
+    };
 
 }
 

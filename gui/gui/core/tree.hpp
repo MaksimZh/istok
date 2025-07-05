@@ -151,13 +151,25 @@ public:
     void addChild(T& node) {
         assert(node.getParent() == nullptr);
         assert(!children.contains(node));
-        node.parent = static_cast<T*>(this);
+        node.parent = self();
         children.push_back(node);
         visibleChildren.insert(node);
+    }
+
+    void removeChild(T& node) {
+        assert(node.getParent() == self());
+        assert(children.contains(node));
+        node.parent = nullptr;
+        children.erase(node);
+        visibleChildren.erase(node);
     }
 
 private:
     T* parent = nullptr;
     NodeContainer<T> children;
     NodeFilter<T> visibleChildren;
+
+    T* self() {
+        return static_cast<T*>(this);
+    }
 };

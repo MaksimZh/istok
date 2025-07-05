@@ -15,6 +15,10 @@ class UpdateHandler;
  */
 class AbstractWidget: private Node<AbstractWidget> {
 public:
+    using Node::getParent;
+    using Node::getChildren;
+    using Node::getVisibleChildren;
+    
     UpdateHandler* getUpdateHandler() {
         return updateHandler;
     }
@@ -24,14 +28,6 @@ public:
     }
 
     virtual ~AbstractWidget() {}
-
-    NodeContainer<AbstractWidget>::Range getChildren() {
-        return Node::getChildren();
-    }
-
-    NodeContainer<AbstractWidget>::Range getVisibleChildren() {
-        return Node::getVisibleChildren();
-    }
 
 private:
     UpdateHandler* updateHandler = nullptr;
@@ -51,6 +47,7 @@ private:
     template <typename T> friend class ParentWidget;
     template <typename T> friend class RootWidget;
     friend class Widget;
+    friend class Node<AbstractWidget>;
 };
 
 
@@ -66,6 +63,12 @@ class ParentWidget: public virtual AbstractWidget {
 protected:
     void addChild(T& widget) {
         Node::addChild(widget);
+        widget.setUpdateHandler(getUpdateHandler());
+    }
+
+    void removeChild(T& widget) {
+        Node::removeChild(widget);
+        widget.setUpdateHandler(nullptr);
     }
 };
 

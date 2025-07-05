@@ -86,4 +86,10 @@ TEST_CASE("Tree - Node", "[unit][gui]") {
     REQUIRE(samePointers(a.getVisibleChildren(), std::vector{&b, &c}));
     REQUIRE(b.getParent() == &a);
     REQUIRE(c.getParent() == &a);
+
+    a.removeChild(b);
+    REQUIRE(samePointers(a.getChildren(), std::vector{&c}));
+    REQUIRE(samePointers(a.getVisibleChildren(), std::vector{&c}));
+    REQUIRE(b.getParent() == nullptr);
+    REQUIRE(c.getParent() == &a);
 }
