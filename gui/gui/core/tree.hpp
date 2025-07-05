@@ -148,28 +148,28 @@ public:
         return children.filter(visibleChildren);
     }
 
-    void addChild(T& node) {
-        assert(node.getParent() == nullptr);
-        assert(!children.contains(node));
-        node.parent = self();
-        children.push_back(node);
-        visibleChildren.insert(node);
+    bool contains(T& value) {
+        return children.contains(value);
     }
 
-    void removeChild(T& node) {
-        assert(node.getParent() == self());
-        assert(children.contains(node));
-        node.parent = nullptr;
-        children.erase(node);
-        visibleChildren.erase(node);
+    void setParent(T* value) {
+        parent = value;
+    }
+
+    void addChild(T& value) {
+        assert(!contains(value));
+        children.push_back(value);
+        visibleChildren.insert(value);
+    }
+
+    void removeChild(T& value) {
+        assert(contains(value));
+        children.erase(value);
+        visibleChildren.erase(value);
     }
 
 private:
     T* parent = nullptr;
     NodeContainer<T> children;
     NodeFilter<T> visibleChildren;
-
-    T* self() {
-        return static_cast<T*>(this);
-    }
 };
