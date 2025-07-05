@@ -13,11 +13,11 @@ class UpdateHandler;
  * Constant interface for widgets.
  * Provides read access to widget tree structure and widget sizes.
  */
-class AbstractWidget: private Node<AbstractWidget> {
+class AbstractWidget {
 public:
-    using Node::getParent;
-    using Node::getChildren;
-    using Node::getVisibleChildren;
+    AbstractWidget* getParent() { return node.getParent(); }
+    auto getChildren() { return node.getChildren(); }
+    auto getVisibleChildren() { return node.getVisibleChildren(); }
     
     UpdateHandler* getUpdateHandler() {
         return updateHandler;
@@ -31,6 +31,7 @@ public:
 
 private:
     UpdateHandler* updateHandler = nullptr;
+    Node<AbstractWidget> node;
     Size<float> size;
 
     void setUpdateHandler(UpdateHandler* handler) {
@@ -40,6 +41,22 @@ private:
         }
     }
 
+    void addChild(AbstractWidget& widget) {
+        assert(widget.getParent() == nullptr);
+        assert(!node.contains(widget));
+        node.addChild(widget);
+        widget.node.setParent(this);
+        widget.setUpdateHandler(getUpdateHandler());
+    }
+
+    void removeChild(AbstractWidget& widget) {
+        assert(widget.getParent() == this);
+        assert(node.contains(widget));
+        node.removeChild(widget);
+        widget.node.setParent(nullptr);
+        widget.setUpdateHandler(nullptr);
+    }
+
     void setSize(Size<float> value) {
         size = value;
     }
@@ -47,7 +64,6 @@ private:
     template <typename T> friend class ParentWidget;
     template <typename T> friend class RootWidget;
     friend class Widget;
-    friend class Node<AbstractWidget>;
 };
 
 
@@ -61,15 +77,8 @@ private:
 template <typename T>
 class ParentWidget: public virtual AbstractWidget {
 protected:
-    void addChild(T& widget) {
-        Node::addChild(widget);
-        widget.setUpdateHandler(getUpdateHandler());
-    }
-
-    void removeChild(T& widget) {
-        Node::removeChild(widget);
-        widget.setUpdateHandler(nullptr);
-    }
+    void addChild(T& widget) { AbstractWidget::addChild(widget); }
+    void removeChild(T& widget) { AbstractWidget::removeChild(widget); }
 };
 
 
