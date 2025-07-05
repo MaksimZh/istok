@@ -61,13 +61,11 @@ namespace {
 
 
 TEST_CASE("Tree - Node", "[unit][gui]") {
-    FakeNode a, b;
+    FakeNode a, b, c;
     REQUIRE(a.getParent() == nullptr);
     REQUIRE(std::ranges::empty(a.getChildren()));
     REQUIRE(std::ranges::empty(a.getVisibleChildren()));
-    REQUIRE(b.getParent() == nullptr);
-    REQUIRE(std::ranges::empty(b.getChildren()));
-    REQUIRE(std::ranges::empty(b.getVisibleChildren()));
+
     a.addChild(b);
     REQUIRE(a.getParent() == nullptr);
     REQUIRE(std::ranges::equal(
@@ -81,4 +79,16 @@ TEST_CASE("Tree - Node", "[unit][gui]") {
     REQUIRE(b.getParent() == &a);
     REQUIRE(std::ranges::empty(b.getChildren()));
     REQUIRE(std::ranges::empty(b.getVisibleChildren()));
+
+    a.addChild(c);
+    REQUIRE(std::ranges::equal(
+        a.getChildren()
+            | std::views::transform([](FakeNode& n) { return &n; }),
+        std::vector<FakeNode*>{&b, &c}));
+    REQUIRE(std::ranges::equal(
+        a.getVisibleChildren()
+            | std::views::transform([](FakeNode& n) { return &n; }),
+        std::vector<FakeNode*>{&b, &c}));
+    REQUIRE(b.getParent() == &a);
+    REQUIRE(c.getParent() == &a);
 }
