@@ -3,6 +3,30 @@
 
 #include <cassert>
 #include <list>
+#include <unordered_set>
+
+
+template <typename T>
+class NodeFilter {
+public:
+    NodeFilter() = default;
+
+    void insert(T& node) {
+        items.insert(&node);
+    }
+    
+    void erase(T& node) {
+        assert(contains(node));
+        items.erase(&node);
+    }
+
+    bool contains(const T& node) {
+        return items.contains(const_cast<T*>(&node));
+    }
+
+private:
+    std::unordered_set<T*> items;
+};
 
 
 template <typename T>
@@ -25,30 +49,80 @@ public:
         return std::find(items.begin(), items.end(), &node) != items.end();
     }
 
-private:
-    std::list<T*> items;
-};
-
-
-template <typename T>
-class NodeFilter {
-public:
-    NodeFilter() = default;
-
-    void insert(T& node) {}
-    void erase(T& node) {}
-
-    bool contains(const T& node) {
-        return false;
-    }
-
     class Range {
-        class Iterator {};
+    public:
+        Range(
+            NodeFilter<T>& filter,
+            std::list<T*>::iterator start,
+            std::list<T*>::iterator stop
+        ) : filter(filter), start(start), stop(stop) {}
+
+        class Iterator {
+        public:
+            using difference_type = std::ptrdiff_t;
+            using value_type = T;
+
+            Iterator() {}
+            Iterator(
+                NodeFilter<T>* filter,
+                std::list<T*>::iterator current,
+                std::list<T*>::iterator stop
+            ) : filter(filter), current(current), stop(stop) {
+                advance();
+            }
+            
+            T& operator*() const {
+                return **current;
+            }
+            
+            Iterator& operator++() {
+                ++current;
+                advance();
+                return *this;
+            }
+            
+            Iterator operator++(int) {
+                auto tmp = *this;
+                ++*this;
+                return tmp;
+            }
+            
+            bool operator==(const Iterator& other) const {
+                return current == other.current;
+            }
+        
+        private:
+            NodeFilter<T>* filter;
+            std::list<T*>::iterator current;
+            std::list<T*>::iterator stop;
+
+            void advance() {
+                while (current != stop && !filter->contains(**current)) {
+                    ++current;
+                }
+            }
+        };
+    
+        Iterator begin() {
+            return Iterator(&filter, start, stop);
+        }
+
+        Iterator end() {
+            return Iterator(&filter, stop, stop);
+        }
+
+    private:
+        NodeFilter<T>& filter;
+        std::list<T*>::iterator start;
+        std::list<T*>::iterator stop;
     };
 
-    Range filter(NodeContainer<T> source) {
-        return Range{};
+    Range filter(NodeFilter<T>& filter) {
+        return Range(filter, items.begin(), items.end());
     }
+
+private:
+    std::list<T*> items;
 };
 
 
