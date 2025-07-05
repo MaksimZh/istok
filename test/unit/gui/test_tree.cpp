@@ -57,6 +57,13 @@ TEST_CASE("Tree - NodeContainer", "[unit][gui]") {
 
 namespace {
     class FakeNode: public Node<FakeNode> {};
+
+    template <std::ranges::forward_range T, std::ranges::forward_range P>
+    bool samePointers(T t, P p) {
+        return std::ranges::equal(
+            t | std::views::transform([](auto& n) { return &n; }),
+            p);
+    }
 }
 
 
@@ -68,27 +75,15 @@ TEST_CASE("Tree - Node", "[unit][gui]") {
 
     a.addChild(b);
     REQUIRE(a.getParent() == nullptr);
-    REQUIRE(std::ranges::equal(
-        a.getChildren()
-            | std::views::transform([](FakeNode& n) { return &n; }),
-        std::vector<FakeNode*>{&b}));
-    REQUIRE(std::ranges::equal(
-        a.getVisibleChildren()
-            | std::views::transform([](FakeNode& n) { return &n; }),
-        std::vector<FakeNode*>{&b}));
+    REQUIRE(samePointers(a.getChildren(), std::vector{&b}));
+    REQUIRE(samePointers(a.getVisibleChildren(), std::vector{&b}));
     REQUIRE(b.getParent() == &a);
     REQUIRE(std::ranges::empty(b.getChildren()));
     REQUIRE(std::ranges::empty(b.getVisibleChildren()));
 
     a.addChild(c);
-    REQUIRE(std::ranges::equal(
-        a.getChildren()
-            | std::views::transform([](FakeNode& n) { return &n; }),
-        std::vector<FakeNode*>{&b, &c}));
-    REQUIRE(std::ranges::equal(
-        a.getVisibleChildren()
-            | std::views::transform([](FakeNode& n) { return &n; }),
-        std::vector<FakeNode*>{&b, &c}));
+    REQUIRE(samePointers(a.getChildren(), std::vector{&b, &c}));
+    REQUIRE(samePointers(a.getVisibleChildren(), std::vector{&b, &c}));
     REQUIRE(b.getParent() == &a);
     REQUIRE(c.getParent() == &a);
 }
