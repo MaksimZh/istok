@@ -3,35 +3,22 @@
 
 #include <gui/core/tree.hpp>
 
-#include <ranges>
 
-namespace {
-    struct _Marker;
-
-    class FakeNode: private Node<FakeNode, _Marker> {
-    public:
-        using Node::getParent;
-        using Node::getNext;
-        using Node::getPrev;
-        using Node::getChildren;
-        using Node::addChild;
-    };
-
-    static_assert(std::forward_iterator<NodeIterator<FakeNode, _Marker>>);
-    static_assert(std::ranges::forward_range<NodeRange<FakeNode, _Marker>>);
-}
-
-
-TEST_CASE("Tree - initial", "[unit][gui]") {
-    FakeNode a;
-    REQUIRE(a.getParent() == nullptr);
-    REQUIRE(a.getNext() == nullptr);
-    REQUIRE(a.getPrev() == nullptr);
-    REQUIRE(std::ranges::empty(a.getChildren()));
-}
-
-
-TEST_CASE("Tree - add child", "[unit][gui]") {
-    FakeNode a, b, c;
-    a.addChild(b);
+TEST_CASE("Tree - NodeContainer", "[unit][gui]") {
+    NodeContainer<int> nc;
+    int a, b;
+    REQUIRE(nc.contains(a) == false);
+    REQUIRE(nc.contains(b) == false);
+    nc.push_back(a);
+    REQUIRE(nc.contains(a) == true);
+    REQUIRE(nc.contains(b) == false);
+    nc.push_back(b);
+    REQUIRE(nc.contains(a) == true);
+    REQUIRE(nc.contains(b) == true);
+    nc.erase(a);
+    REQUIRE(nc.contains(a) == false);
+    REQUIRE(nc.contains(b) == true);
+    nc.erase(b);
+    REQUIRE(nc.contains(a) == false);
+    REQUIRE(nc.contains(b) == false);
 }
