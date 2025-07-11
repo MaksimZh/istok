@@ -9,5 +9,6 @@ add_definitions(-DUNICODE -D_UNICODE)
 enable_testing()
 
 add_subdirectory(playground)
+add_subdirectory(ecs)
 add_subdirectory(gui)
 add_subdirectory(test)

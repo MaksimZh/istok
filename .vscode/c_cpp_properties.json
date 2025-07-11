@@ -4,6 +4,7 @@
             "name": "Win32",
             "includePath": [
                 "${default}",
+                "${workspaceFolder}/ecs",
                 "${workspaceFolder}/gui"
             ],
             "defines": [
