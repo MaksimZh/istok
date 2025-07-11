@@ -40,3 +40,16 @@ TEST_CASE("Entity - index queue", "[unit][ecs]") {
     REQUIRE(q.pop() == 3);
     REQUIRE(q.empty() == true);
 }
+
+
+TEST_CASE("Entity - index", "[unit][ecs]") {
+    REQUIRE(EntityIndex(42) == EntityIndex(42));
+    REQUIRE(EntityIndex(42) != EntityIndex(24));
+
+    EntityIndex i(0);
+    REQUIRE(i == 0);
+    ++i;
+    REQUIRE(i == 1);
+    i++;
+    REQUIRE(i == 2);
+}

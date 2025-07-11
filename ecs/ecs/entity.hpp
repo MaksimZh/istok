@@ -61,3 +61,26 @@ public:
 private:
     std::queue<T> container;
 };
+
+
+struct EntityIndex {
+    uint64_t value;
+
+    constexpr EntityIndex() : value(0) {}
+    explicit constexpr EntityIndex(uint64_t value) : value(value) {}
+
+    EntityIndex& operator++() {
+        ++value;
+        return *this;
+    }
+
+    EntityIndex operator++(int) {
+        auto tmp = *this;
+        ++*this;
+        return *this;
+    }
+
+    operator size_t() const {
+        return static_cast<size_t>(value);
+    }
+};
