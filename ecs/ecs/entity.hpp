@@ -63,6 +63,11 @@ private:
 };
 
 
+constexpr uint64_t lowerMask64 = 0x00000000ffffffff;
+constexpr uint64_t upperMask64 = 0xffffffff00000000;
+constexpr uint64_t upperInc64 = lowerMask64 + 1;
+
+
 struct EntityIndex {
     uint64_t value;
 
@@ -83,4 +88,25 @@ struct EntityIndex {
     operator size_t() const {
         return static_cast<size_t>(value);
     }
+};
+
+
+struct EntityGeneration {
+    uint64_t value;
+
+    constexpr EntityGeneration() : value(0) {}
+    explicit constexpr EntityGeneration(uint64_t v) : value(v) {}
+
+    EntityGeneration& operator++() {
+        value += upperInc64;
+        return *this;
+    }
+
+    EntityGeneration operator++(int) {
+        auto tmp = *this;
+        ++*this;
+        return *this;
+    }
+
+    bool operator==(const EntityGeneration& other) const = default;
 };
