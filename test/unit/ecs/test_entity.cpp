@@ -4,22 +4,39 @@
 #include <ecs/entity.hpp>
 
 
-TEST_CASE("Entity - limited value", "[unit][ecs]") {
+TEST_CASE("Entity - limited counter", "[unit][ecs]") {
     LimitedCounter c(0, 2);
     REQUIRE(c == 0);
-    REQUIRE(!c.isFull());
+    REQUIRE(c.isFull() == false);
     ++c;
     REQUIRE(c == 1);
-    REQUIRE(!c.isFull());
+    REQUIRE(c.isFull() == false);
     c++;
     REQUIRE(c == 2);
-    REQUIRE(c.isFull());
+    REQUIRE(c.isFull() == true);
     c.extendBy(3);
     for (int i = 2; i < 5; i++) {
         REQUIRE(c == i);
-        REQUIRE(!c.isFull());
+        REQUIRE(c.isFull() == false);
         c++;
     }
     REQUIRE(c == 5);
-    REQUIRE(c.isFull());
+    REQUIRE(c.isFull() == true);
+}
+
+
+TEST_CASE("Entity - index queue", "[unit][ecs]") {
+    Queue<int> q;
+    REQUIRE(q.empty() == true);
+    q.push(1);
+    REQUIRE(q.empty() == false);
+    REQUIRE(q.pop() == 1);
+    REQUIRE(q.empty() == true);
+    q.push(2);
+    q.push(3);
+    REQUIRE(q.empty() == false);
+    REQUIRE(q.pop() == 2);
+    REQUIRE(q.empty() == false);
+    REQUIRE(q.pop() == 3);
+    REQUIRE(q.empty() == true);
 }
