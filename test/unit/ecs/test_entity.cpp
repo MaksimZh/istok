@@ -162,6 +162,7 @@ TEST_CASE("Entity - storage", "[unit][ecs]") {
     // use set to check if all entities are different
     std::unordered_set<Entity, EntityHash> entities;
     
+    REQUIRE(storage.size() == 2);
     REQUIRE(storage.isFull() == false);
     Entity e0 = storage.create();
     REQUIRE(storage.isFull() == false);
@@ -177,6 +178,7 @@ TEST_CASE("Entity - storage", "[unit][ecs]") {
 
     // extend and reach new limit
     storage.extendBy(3);
+    REQUIRE(storage.size() == 5);
     for (int i = 0; i < 3; i++) {
         REQUIRE(storage.isFull() == false);
         entities.insert(storage.create());
@@ -205,4 +207,66 @@ TEST_CASE("Entity - storage", "[unit][ecs]") {
     entities.insert(e2);
     entities.insert(e3);
     REQUIRE(entities.size() == 7);
+}
+
+
+TEST_CASE("Entity - manager", "[unit][ecs]") {
+    EntityManager manager(2);
+    // use set to check if all entities are different
+    std::unordered_set<Entity, EntityHash> entities;
+
+    // create much more entities than initial capacity
+    for (int i = 0; i < 20; i++) {
+        entities.insert(manager.create());
+    }
+    REQUIRE(entities.size() == 20);
+
+    // check if all entities are valid
+    for (const Entity& e : entities) {
+        REQUIRE(manager.isValid(e) == true);
+    }
+
+    // remove some entities and ensure they became invalid
+    auto it = entities.begin();
+    Entity e0 = *it++;
+    Entity e1 = *it++;
+    manager.destroy(e0);
+    manager.destroy(e1);
+    REQUIRE(manager.isValid(e0) == false);
+    REQUIRE(manager.isValid(e1) == false);
+
+    // add more entities
+    for (int i = 0; i < 20; i++) {
+        entities.insert(manager.create());
+    }
+    REQUIRE(entities.size() == 20 + 20);
+
+    // all removed ones are still invalid
+    REQUIRE(manager.isValid(e0) == false);
+    REQUIRE(manager.isValid(e1) == false);
+}
+
+
+TEST_CASE("Entity - manager deep remove", "[unit][ecs]") {
+    EntityManager manager(2);
+    // use set to check if all entities are different
+    std::unordered_set<Entity, EntityHash> entities;
+
+    for (int i = 0; i < 10; i++) {
+        // all old entities (if any) must be invalid
+        for (const Entity& e : entities) {
+            REQUIRE(manager.isValid(e) == false);
+        }
+        Entity e0 = manager.create();
+        Entity e1 = manager.create();
+        entities.insert(e0);
+        entities.insert(e1);
+        REQUIRE(manager.isValid(e0));
+        REQUIRE(manager.isValid(e1));
+        manager.destroy(e0);
+        manager.destroy(e1);
+    }
+
+    // all entities are different
+    REQUIRE(entities.size() == 10 * 2);
 }

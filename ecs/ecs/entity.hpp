@@ -163,6 +163,10 @@ class GenerationArray {
 public:
     GenerationArray(size_t initialSize) : values(initialSize) {}
 
+    size_t size() const {
+        return values.size();
+    }
+
     EntityGeneration& operator[](size_t index) {
         assert(index < values.size());
         return values[index];
@@ -192,6 +196,10 @@ public:
         return Entity(index, generations[index]);
     }
 
+    size_t size() const {
+        return generations.size();
+    }
+
     void destroy(Entity e) {
         indexPool.freeIndex(e.index());
         generations[e.index()]++;
@@ -213,4 +221,29 @@ public:
 private:
     EntityIndexPool indexPool;
     GenerationArray generations;
+};
+
+
+class EntityManager {
+public:
+    EntityManager(size_t initialCapacity)
+        : storage(initialCapacity) {}
+    
+    Entity create() {
+        if (storage.isFull()) {
+            storage.extendBy(storage.size());
+        }
+        return storage.create();
+    }
+
+    void destroy(Entity e) {
+        storage.destroy(e);
+    }
+    
+    bool isValid(Entity e) const {
+        return storage.isValid(e);
+    }
+
+private:
+    EntityStorage storage;
 };
