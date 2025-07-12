@@ -63,8 +63,24 @@ TEST_CASE("Entity - generation", "[unit][ecs]") {
     EntityGeneration g(0);
     REQUIRE(g.value == 0);
     ++g;
-    REQUIRE(g.value > 0);
-    auto v1 = g.value;
+    REQUIRE(g.value == 1);
     g++;
-    REQUIRE(g.value == v1 * 2);
+    REQUIRE(g.value == 2);
+}
+
+
+TEST_CASE("Entity - value", "[unit][ecs]") {
+    REQUIRE(
+        Entity(EntityIndex(42), EntityGeneration(17)) ==
+        Entity(EntityIndex(42), EntityGeneration(17)));
+    REQUIRE(
+        Entity(EntityIndex(42), EntityGeneration(17)) !=
+        Entity(EntityIndex(24), EntityGeneration(17)));
+    REQUIRE(
+        Entity(EntityIndex(42), EntityGeneration(17)) !=
+        Entity(EntityIndex(42), EntityGeneration(71)));
+
+    Entity e(EntityIndex(42), EntityGeneration(17));
+    REQUIRE(e.index() == EntityIndex(42));
+    REQUIRE(e.generation() == EntityGeneration(17));
 }
