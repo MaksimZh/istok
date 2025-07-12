@@ -136,5 +136,15 @@ TEST_CASE("Entity - index pool", "[unit][ecs]") {
 
 
 TEST_CASE("Entity - generation array", "[unit][ecs]") {
-    //GenerationArray generations(2);
+    GenerationArray generations(2);
+    REQUIRE(generations[0] == EntityGeneration(0));
+    REQUIRE(generations[1] == EntityGeneration(0));
+    generations[1]++;
+    REQUIRE(generations[1] == EntityGeneration(1));
+    generations.extendBy(3);
+    REQUIRE(generations[0] == EntityGeneration(0));
+    REQUIRE(generations[1] == EntityGeneration(1));
+    REQUIRE(generations[2] == EntityGeneration(0));
+    REQUIRE(generations[3] == EntityGeneration(0));
+    REQUIRE(generations[4] == EntityGeneration(0));
 }

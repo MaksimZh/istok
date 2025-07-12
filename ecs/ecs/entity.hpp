@@ -3,6 +3,7 @@
 
 #include <cassert>
 #include <queue>
+#include <vector>
 
 
 struct EntityIndex {
@@ -155,4 +156,22 @@ public:
 private:
     LimitedCounter nextIndex;
     Queue<EntityIndex> freeIndices;
+};
+
+
+class GenerationArray {
+public:
+    GenerationArray(size_t initialSize) : values(initialSize) {}
+
+    EntityGeneration& operator[](size_t index) {
+        assert(index < values.size());
+        return values[index];
+    }
+
+    void extendBy(size_t size) {
+        values.resize(values.size() + size);
+    }
+
+private:
+    std::vector<EntityGeneration> values;
 };
