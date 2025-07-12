@@ -150,11 +150,13 @@ TEST_CASE("Entity - generation array", "[unit][ecs]") {
 }
 
 
-struct EntityHash {
-    size_t operator()(const Entity& entity) const {
-        return std::hash<uint64_t>()(entity.value);
-    }
-};
+namespace {
+    struct EntityHash {
+        size_t operator()(const Entity& entity) const {
+            return std::hash<uint64_t>()(entity.value);
+        }
+    };
+}
 
 
 TEST_CASE("Entity - storage", "[unit][ecs]") {
