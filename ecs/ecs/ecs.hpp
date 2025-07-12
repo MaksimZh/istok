@@ -15,6 +15,7 @@ public:
     virtual void remove(Entity e) = 0;
 };
 
+
 template <typename Component>
 class ComponentStorageOf: public ComponentStorage {
 public:
@@ -46,44 +47,31 @@ public:
 
     template<typename Component>
     bool has(Entity e) const {
-        static std::type_index index(typeid(Component));
-        auto it = storages.find(index);
-        if (it == storages.end()) {
+        const ComponentStorageOf<Component>* storage = viewStorage<Component>();
+        if (storage == nullptr) {
             return false;
         }
-        auto& storage = *static_cast<ComponentStorageOf<Component>*>(it->second.get());
-        return storage.has(e);
+        return storage->has(e);
     }
 
     template<typename Component>
     void add(Entity e, Component&& component) {
-        static std::type_index index(typeid(Component));
-        auto it = storages.find(index);
-        if (it == storages.end()) {
-            auto result = storages.emplace(
-                index,
-                std::make_unique<ComponentStorageOf<Component>>());
-            assert(result.second == true);
-            it = result.first;
-        }
-        auto& storage = *static_cast<ComponentStorageOf<Component>*>(it->second.get());
+        ComponentStorageOf<Component>& storage = prepareStorage<Component>();
         storage.insert(e, std::move(component));
     }
 
     template<typename Component>
     Component& get(Entity e) {
-        assert(has<Component>(e));
-        static std::type_index index(typeid(Component));
-        auto& storage = *static_cast<ComponentStorageOf<Component>*>(storages[index].get());
+        ComponentStorageOf<Component>& storage = prepareStorage<Component>();
+        assert(storage.has(e));
         return storage.get(e);
     }
 
     template<typename Component>
     void remove(Entity e) {
-        assert(has<Component>(e));
-        static std::type_index index(typeid(Component));
-        auto& storage = *static_cast<ComponentStorageOf<Component>*>(storages[index].get());
-        return storage.remove(e);
+        ComponentStorageOf<Component>& storage = prepareStorage<Component>();
+        assert(storage.has(e));
+        storage.remove(e);
     }
 
     void clean(Entity e) {
@@ -94,9 +82,50 @@ public:
         }
     }
 
+    /*
+    template<typename... Components>
+    class View {
+        View(ComponentStorageOf<Components>... storages) {}
+    };
+
+    template<typename... Components>
+    View getView() {
+        return View();
+    }
+    */
+
+
 private:
-    std::unordered_map<
+    using StoragesType = std::unordered_map<
         std::type_index,
-        std::unique_ptr<ComponentStorage>
-    > storages;
+        std::unique_ptr<ComponentStorage>>;
+    StoragesType storages;
+
+    template <typename Component>
+    constexpr std::type_index key() const {
+        static std::type_index index(typeid(Component));
+        return index;
+    }
+
+    template <typename Component>
+    ComponentStorageOf<Component>& prepareStorage() {
+        auto it = storages.find(key<Component>());
+        if (it == storages.end()) {
+            auto result = storages.emplace(
+                key<Component>(),
+                std::make_unique<ComponentStorageOf<Component>>());
+            assert(result.second == true);
+            it = result.first;
+        }
+        return *static_cast<ComponentStorageOf<Component>*>(it->second.get());
+    }
+
+    template <typename Component>
+    const ComponentStorageOf<Component>* viewStorage() const {
+        auto it = storages.find(key<Component>());
+        if (it == storages.end()) {
+            return nullptr;
+        }
+        return static_cast<ComponentStorageOf<Component>*>(it->second.get());
+    }
 };
