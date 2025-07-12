@@ -9,12 +9,16 @@
 #include <memory>
 
 
-class ComponentStorage {};
+class ComponentStorage {
+public:
+    virtual bool has(Entity e) const = 0;
+    virtual void remove(Entity e) = 0;
+};
 
 template <typename Component>
 class ComponentStorageOf: public ComponentStorage {
 public:
-    bool has(Entity e) const {
+    bool has(Entity e) const override {
         return data.contains(e);
     }
     
@@ -80,6 +84,14 @@ public:
         static std::type_index index(typeid(Component));
         auto& storage = *static_cast<ComponentStorageOf<Component>*>(storages[index].get());
         return storage.remove(e);
+    }
+
+    void clean(Entity e) {
+        for (const auto& [key, value] : storages) {
+            if (value->has(e)) {
+                value->remove(e);
+            }
+        }
     }
 
 private:

@@ -30,7 +30,6 @@ TEST_CASE("ECS - component manager", "[unit][ecs]") {
     ComponentManager manager;
     Entity e0 = fakeEntity(0);
     Entity e1 = fakeEntity(1);
-    Entity e2 = fakeEntity(2);
     
     // adding and checking components
     REQUIRE(manager.has<A>(e0) == false);
@@ -65,4 +64,20 @@ TEST_CASE("ECS - component manager", "[unit][ecs]") {
     REQUIRE(manager.has<A>(e1) == false);
     REQUIRE(manager.has<B>(e1) == true);
     REQUIRE(manager.has<C>(e1) == false);
+}
+
+
+TEST_CASE("ECS - component manager clean", "[unit][ecs]") {
+    ComponentManager manager;
+    Entity e = fakeEntity(0);
+    manager.add(e, A{0});
+    manager.add(e, B{0});
+    manager.add(e, C{0});
+    REQUIRE(manager.has<A>(e) == true);
+    REQUIRE(manager.has<B>(e) == true);
+    REQUIRE(manager.has<C>(e) == true);
+    manager.clean(e);
+    REQUIRE(manager.has<A>(e) == false);
+    REQUIRE(manager.has<B>(e) == false);
+    REQUIRE(manager.has<C>(e) == false);
 }
