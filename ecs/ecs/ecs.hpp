@@ -27,6 +27,10 @@ public:
         return data[e];
     }
 
+    void remove(Entity e) {
+        data.erase(e);
+    }
+
 private:
     std::unordered_map<Entity, Component, Entity::Hash> data;
 };
@@ -68,6 +72,14 @@ public:
         static std::type_index index(typeid(Component));
         auto& storage = *static_cast<ComponentStorageOf<Component>*>(storages[index].get());
         return storage.get(e);
+    }
+
+    template<typename Component>
+    void remove(Entity e) {
+        assert(has<Component>(e));
+        static std::type_index index(typeid(Component));
+        auto& storage = *static_cast<ComponentStorageOf<Component>*>(storages[index].get());
+        return storage.remove(e);
     }
 
 private:

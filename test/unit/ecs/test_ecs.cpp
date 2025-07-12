@@ -32,7 +32,7 @@ TEST_CASE("ECS - component manager", "[unit][ecs]") {
     Entity e1 = fakeEntity(1);
     Entity e2 = fakeEntity(2);
     
-    // component presence checks
+    // adding and checking components
     REQUIRE(manager.has<A>(e0) == false);
     REQUIRE(manager.has<B>(e0) == false);
     REQUIRE(manager.has<C>(e0) == false);
@@ -50,9 +50,19 @@ TEST_CASE("ECS - component manager", "[unit][ecs]") {
     REQUIRE(manager.has<B>(e1) == true);
     REQUIRE(manager.has<C>(e1) == true);
 
-    // component reading
+    // reading components
     REQUIRE(manager.get<A>(e0) == A{0});
     REQUIRE(manager.get<B>(e0) == B{0});
     REQUIRE(manager.get<B>(e1) == B{1});
     REQUIRE(manager.get<C>(e1) == C{1});
+
+    // removing components
+    manager.remove<A>(e0);
+    manager.remove<C>(e1);
+    REQUIRE(manager.has<A>(e0) == false);
+    REQUIRE(manager.has<B>(e0) == true);
+    REQUIRE(manager.has<C>(e0) == false);
+    REQUIRE(manager.has<A>(e1) == false);
+    REQUIRE(manager.has<B>(e1) == true);
+    REQUIRE(manager.has<C>(e1) == false);
 }
