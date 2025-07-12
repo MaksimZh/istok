@@ -168,10 +168,49 @@ public:
         return values[index];
     }
 
+    const EntityGeneration& operator[](size_t index) const {
+        assert(index < values.size());
+        return values[index];
+    }
+
     void extendBy(size_t size) {
         values.resize(values.size() + size);
     }
 
 private:
     std::vector<EntityGeneration> values;
+};
+
+
+class EntityStorage {
+public:
+    EntityStorage(size_t initialSize)
+        : indexPool(initialSize), generations(initialSize) {}
+    
+    Entity create() {
+        EntityIndex index = indexPool.getFreeIndex();
+        return Entity(index, generations[index]);
+    }
+
+    void destroy(Entity e) {
+        indexPool.freeIndex(e.index());
+        generations[e.index()]++;
+    }
+    
+    bool isValid(Entity e) const {
+        return generations[e.index()] == e.generation();
+    }
+
+    bool isFull() const {
+        return indexPool.isFull();
+    }
+    
+    void extendBy(size_t size) {
+        indexPool.extendBy(size);
+        generations.extendBy(size);
+    }
+
+private:
+    EntityIndexPool indexPool;
+    GenerationArray generations;
 };

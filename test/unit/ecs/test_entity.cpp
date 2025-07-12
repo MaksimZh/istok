@@ -148,3 +148,61 @@ TEST_CASE("Entity - generation array", "[unit][ecs]") {
     REQUIRE(generations[3] == EntityGeneration(0));
     REQUIRE(generations[4] == EntityGeneration(0));
 }
+
+
+struct EntityHash {
+    size_t operator()(const Entity& entity) const {
+        return std::hash<uint64_t>()(entity.value);
+    }
+};
+
+
+TEST_CASE("Entity - storage", "[unit][ecs]") {
+    EntityStorage storage(2);
+    // use set to check if all entities are different
+    std::unordered_set<Entity, EntityHash> entities;
+    
+    REQUIRE(storage.isFull() == false);
+    Entity e0 = storage.create();
+    REQUIRE(storage.isFull() == false);
+    REQUIRE(storage.isValid(e0) == true);
+    Entity e1 = storage.create();
+    REQUIRE(storage.isFull() == true);
+    REQUIRE(storage.isValid(e1) == true);
+    
+    // check if entities are different
+    entities.insert(e0);
+    entities.insert(e1);
+    REQUIRE(entities.size() == 2);
+
+    // extend and reach new limit
+    storage.extendBy(3);
+    for (int i = 0; i < 3; i++) {
+        REQUIRE(storage.isFull() == false);
+        entities.insert(storage.create());
+    }
+    REQUIRE(storage.isFull() == true);
+    REQUIRE(entities.size() == 5);
+
+    // destroy some entities
+    storage.destroy(e0);
+    REQUIRE(storage.isFull() == false);
+    REQUIRE(storage.isValid(e0) == false);
+    storage.destroy(e1);
+    REQUIRE(storage.isFull() == false);
+    REQUIRE(storage.isValid(e1) == false);
+    
+    // create new entities
+    Entity e2 = storage.create();
+    Entity e3 = storage.create();
+    REQUIRE(storage.isFull() == true);
+    REQUIRE(storage.isValid(e0) == false);
+    REQUIRE(storage.isValid(e1) == false);
+    REQUIRE(storage.isValid(e2) == true);
+    REQUIRE(storage.isValid(e3) == true);
+
+    // check if all entities (valid and not) are different
+    entities.insert(e2);
+    entities.insert(e3);
+    REQUIRE(entities.size() == 7);
+}
