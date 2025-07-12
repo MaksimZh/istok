@@ -3,6 +3,8 @@
 
 #include <ecs/entity.hpp>
 
+#include <unordered_set>
+
 
 TEST_CASE("Entity - index", "[unit][ecs]") {
     REQUIRE(EntityIndex(42) == EntityIndex(42));
@@ -83,4 +85,56 @@ TEST_CASE("Entity - index queue", "[unit][ecs]") {
     REQUIRE(q.empty() == false);
     REQUIRE(q.pop() == 3);
     REQUIRE(q.empty() == true);
+}
+
+
+TEST_CASE("Entity - index pool", "[unit][ecs]") {
+    EntityIndexPool pool(2);
+    // use set to check if all indices are different
+    std::unordered_set<uint64_t> indices;
+    
+    // reach limit
+    for (int i = 0; i < 2; i++) {
+        REQUIRE(pool.isFull() == false);
+        indices.insert(pool.getFreeIndex().value);
+    }
+    REQUIRE(pool.isFull() == true);
+    REQUIRE(indices.size() == 2);
+    
+    // extend and reach new limit
+    pool.extendBy(3);
+    for (int i = 0; i < 3; i++) {
+        REQUIRE(pool.isFull() == false);
+        indices.insert(pool.getFreeIndex().value);
+    }
+    REQUIRE(pool.isFull() == true);
+    REQUIRE(indices.size() == 5);
+
+    // check indices limits
+    REQUIRE(*std::max_element(indices.begin(), indices.end()) < 5);
+    
+    // free some indices
+    auto it = indices.begin();
+    auto v1 = *(it++);
+    auto v2 = *(it++);
+    indices.erase(v1);
+    indices.erase(v2);
+    pool.freeIndex(EntityIndex(v1));
+    pool.freeIndex(EntityIndex(v2));
+    
+    // reach limit once more
+    for (int i = 0; i < 2; i++) {
+        REQUIRE(pool.isFull() == false);
+        indices.insert(pool.getFreeIndex().value);
+    }
+    REQUIRE(pool.isFull() == true);
+    REQUIRE(indices.size() == 5);
+
+    // check indices limits
+    REQUIRE(*std::max_element(indices.begin(), indices.end()) < 5);
+}
+
+
+TEST_CASE("Entity - generation array", "[unit][ecs]") {
+    //GenerationArray generations(2);
 }

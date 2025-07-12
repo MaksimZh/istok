@@ -10,6 +10,7 @@ struct EntityIndex {
 
     constexpr EntityIndex() : value(0) {}
     explicit constexpr EntityIndex(uint64_t value) : value(value) {}
+    bool operator==(const EntityIndex& other) const = default;
 
     EntityIndex& operator++() {
         ++value;
@@ -33,6 +34,7 @@ struct EntityGeneration {
 
     constexpr EntityGeneration() : value(0) {}
     explicit constexpr EntityGeneration(uint64_t v) : value(v) {}
+    bool operator==(const EntityGeneration& other) const = default;
 
     EntityGeneration& operator++() {
         ++value;
@@ -44,8 +46,6 @@ struct EntityGeneration {
         ++*this;
         return *this;
     }
-
-    bool operator==(const EntityGeneration& other) const = default;
 };
 
 
@@ -58,9 +58,8 @@ struct Entity {
     constexpr Entity() : value(0) {}
     constexpr Entity(EntityIndex index, EntityGeneration generation)
         : value(index.value + (generation.value << 32)) {}
-    
     bool operator==(const Entity& other) const = default;
-
+    
     EntityIndex index() const {
         return EntityIndex(value & lowerMask);
     }
@@ -80,8 +79,8 @@ public:
         return value == sentinel;
     }
 
-    void extendBy(size_t shift) {
-        sentinel += shift;
+    void extendBy(size_t size) {
+        sentinel += size;
     }
 
     operator size_t() const {
@@ -128,3 +127,32 @@ private:
     std::queue<T> container;
 };
 
+
+class EntityIndexPool {
+public:
+    EntityIndexPool(size_t initialSize) : nextIndex(0, initialSize) {}
+
+    EntityIndex getFreeIndex() {
+        assert(!isFull());
+        if (!freeIndices.empty()) {
+            return freeIndices.pop();
+        }
+        return EntityIndex(nextIndex++);
+    }
+    
+    void freeIndex(EntityIndex index) {
+        freeIndices.push(index);
+    }
+    
+    bool isFull() const {
+        return nextIndex.isFull() && freeIndices.empty();
+    }
+
+    void extendBy(size_t size) {
+        nextIndex.extendBy(size);
+    }
+
+private:
+    LimitedCounter nextIndex;
+    Queue<EntityIndex> freeIndices;
+};
