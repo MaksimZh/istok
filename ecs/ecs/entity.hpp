@@ -68,6 +68,12 @@ struct Entity {
     EntityGeneration generation() const {
         return EntityGeneration((value & upperMask) >> 32);
     }
+
+    struct Hash {
+        size_t operator()(const Entity& entity) const {
+            return std::hash<uint64_t>()(entity.value);
+        }
+    };
 };
 
 

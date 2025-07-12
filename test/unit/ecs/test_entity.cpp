@@ -150,19 +150,10 @@ TEST_CASE("Entity - generation array", "[unit][ecs]") {
 }
 
 
-namespace {
-    struct EntityHash {
-        size_t operator()(const Entity& entity) const {
-            return std::hash<uint64_t>()(entity.value);
-        }
-    };
-}
-
-
 TEST_CASE("Entity - storage", "[unit][ecs]") {
     EntityStorage storage(2);
     // use set to check if all entities are different
-    std::unordered_set<Entity, EntityHash> entities;
+    std::unordered_set<Entity, Entity::Hash> entities;
     
     REQUIRE(storage.size() == 2);
     REQUIRE(storage.isFull() == false);
@@ -215,7 +206,7 @@ TEST_CASE("Entity - storage", "[unit][ecs]") {
 TEST_CASE("Entity - manager", "[unit][ecs]") {
     EntityManager manager(2);
     // use set to check if all entities are different
-    std::unordered_set<Entity, EntityHash> entities;
+    std::unordered_set<Entity, Entity::Hash> entities;
 
     // create much more entities than initial capacity
     for (int i = 0; i < 20; i++) {
@@ -252,7 +243,7 @@ TEST_CASE("Entity - manager", "[unit][ecs]") {
 TEST_CASE("Entity - manager deep remove", "[unit][ecs]") {
     EntityManager manager(2);
     // use set to check if all entities are different
-    std::unordered_set<Entity, EntityHash> entities;
+    std::unordered_set<Entity, Entity::Hash> entities;
 
     for (int i = 0; i < 10; i++) {
         // all old entities (if any) must be invalid
