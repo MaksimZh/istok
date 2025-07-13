@@ -149,7 +149,7 @@ public:
 
     void remove(Entity e) override {
         size_t index = indexMap[e];
-        indexMap.erase(e);
+        indexMap.remove(e);
         Entity last = entities.back();
         if (last != e) {
             indexMap[last] = index;
@@ -163,7 +163,7 @@ public:
     }
 
 private:
-    std::unordered_map<Entity, size_t, Entity::Hash> indexMap;
+    EntityIndexMap indexMap;
     DenseVector<Entity> entities;
     DenseVector<Component> components;
 };
