@@ -103,7 +103,7 @@ public:
         return indices.contains(e);
     }
 
-    void insert(Entity e) {
+    void push_back(Entity e) {
         indices[e] = entities.size();
         entities.push_back(e);
     }
@@ -182,7 +182,7 @@ public:
             components[entities.getIndex(e)] = component;
             return;
         }
-        entities.insert(e);
+        entities.push_back(e);
         components.push_back(component);
     }
 

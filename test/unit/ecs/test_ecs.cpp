@@ -116,11 +116,11 @@ TEST_CASE("ECS - dense entity storage", "[unit][ecs]") {
     }
     checkEntityStorage(s, std::vector<Entity>{});
 
-    s.insert(e[0]);
+    s.push_back(e[0]);
     checkEntityStorage(s, std::vector{e[0]});
 
     for (int i = 1; i < 5; i++) {
-        s.insert(e[i]);
+        s.push_back(e[i]);
     }
     checkEntityStorage(s, e);
 
