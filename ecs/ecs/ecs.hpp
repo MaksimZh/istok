@@ -52,7 +52,7 @@ public:
         data.push_back(value);
     }
 
-    void remove(size_t index) {
+    void erase(size_t index) {
         assert(index < size());
         if (index < size() - 1) {
             data[index] = data.back();
@@ -81,7 +81,7 @@ public:
         return it->second;
     }
 
-    void remove(Entity e) {
+    void erase(Entity e) {
         data.erase(e);
     }
 
@@ -149,13 +149,13 @@ public:
 
     void remove(Entity e) override {
         size_t index = indexMap[e];
-        indexMap.remove(e);
+        indexMap.erase(e);
         Entity last = entities.back();
         if (last != e) {
             indexMap[last] = index;
         }
-        entities.remove(index);
-        components.remove(index);
+        entities.erase(index);
+        components.erase(index);
     }
 
     View getView() override {

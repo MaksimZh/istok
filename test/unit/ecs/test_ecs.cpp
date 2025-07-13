@@ -58,11 +58,11 @@ TEST_CASE("ECS - dense vector", "[unit][ecs]") {
     v.push_back(4);
     REQUIRE(std::ranges::equal(v, std::vector{0, 1, 2, 3, 4}) == true);
 
-    v.remove(1);
+    v.erase(1);
     REQUIRE(std::ranges::equal(v, std::vector{0, 4, 2, 3}) == true);
-    v.remove(2);
+    v.erase(2);
     REQUIRE(std::ranges::equal(v, std::vector{0, 4, 3}) == true);
-    v.remove(2);
+    v.erase(2);
     REQUIRE(std::ranges::equal(v, std::vector{0, 4}) == true);
 }
 
@@ -87,7 +87,7 @@ TEST_CASE("ECS - entity index map", "[unit][ecs]") {
     REQUIRE(m[e1] == 20);
     REQUIRE(m[e2] == 30);
     
-    m.remove(e1);
+    m.erase(e1);
     REQUIRE(m.contains(e0) == true);
     REQUIRE(m.contains(e1) == false);
     REQUIRE(m.contains(e2) == true);
