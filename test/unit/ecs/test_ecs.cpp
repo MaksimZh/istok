@@ -38,6 +38,32 @@ namespace {
 }
 
 
+TEST_CASE("ECS - dense vector", "[unit][ecs]") {
+    static_assert(std::ranges::forward_range<DenseVector<int>>);
+    DenseVector<int> v;
+    REQUIRE(std::ranges::equal(v, std::vector<int>{}) == true);
+    
+    v.push_back(0);
+    v.push_back(1);
+    v.push_back(2);
+    REQUIRE(v[0] == 0);
+    REQUIRE(v[1] == 1);
+    REQUIRE(v[2] == 2);
+    REQUIRE(std::ranges::equal(v, std::vector{0, 1, 2}) == true);
+
+    v.push_back(3);
+    v.push_back(4);
+    REQUIRE(std::ranges::equal(v, std::vector{0, 1, 2, 3, 4}) == true);
+
+    v.remove(1);
+    REQUIRE(std::ranges::equal(v, std::vector{0, 4, 2, 3}) == true);
+    v.remove(2);
+    REQUIRE(std::ranges::equal(v, std::vector{0, 4, 3}) == true);
+    v.remove(2);
+    REQUIRE(std::ranges::equal(v, std::vector{0, 4}) == true);
+}
+
+
 TEST_CASE("ECS - component storage", "[unit][ecs]") {
     ComponentStorageOf<A> storage;
     Entity e0 = fakeEntity(0);

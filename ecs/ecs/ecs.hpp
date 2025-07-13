@@ -10,6 +10,43 @@
 #include <vector>
 
 
+template <typename T>
+class DenseVector {
+public:
+    using iterator = std::vector<T>::iterator;
+    using const_iterator = std::vector<T>::const_iterator;
+    iterator begin() { return data.begin(); }
+    iterator end() { return data.end(); }
+    const_iterator begin() const { return data.begin(); }
+    const_iterator end() const { return data.end(); }
+
+    T& operator[](size_t index) {
+        assert(index < data.size());
+        return data[index];
+    }
+
+    const T& operator[](size_t index) const {
+        assert(index < data.size());
+        return data[index];
+    }
+    
+    void push_back(T&& value) {
+        data.push_back(value);
+    }
+
+    void remove(size_t index) {
+        assert(index < data.size());
+        if (index < data.size() - 1) {
+            data[index] = data.back();
+        }
+        data.pop_back();
+    }
+
+private:
+    std::vector<T> data;
+};
+
+
 class ComponentStorage {
 public:
     virtual bool has(Entity e) const = 0;
