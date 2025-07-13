@@ -20,6 +20,18 @@ public:
     public:
         View(std::vector<Entity>& target, size_t limit)
             : target(target), limit(limit) {}
+
+        View(const View& other)
+            : target(other.target), limit(other.limit) {}
+
+        View& operator=(const View& other) {
+            if (this == &other) {
+                return *this;
+            }
+            target = other.target;
+            limit = other.limit;
+            return *this;
+        }
         
         using iterator = std::vector<Entity>::iterator;
         using const_iterator = std::vector<Entity>::const_iterator;
@@ -154,12 +166,12 @@ public:
 
     class View {
     public:
-        explicit View(std::vector<ComponentStorage*> source)
+        explicit View(std::vector<ComponentStorage::View> source)
             : storages(std::move(source)) {
             std::sort(
                 storages.begin(), storages.end(),
-                [](const ComponentStorage* a, ComponentStorage* b) {
-                    return a->size() < b->size();
+                [](const ComponentStorage::View& a, const ComponentStorage::View& b) {
+                    return a.size() < b.size();
                 });
         }
 
@@ -174,14 +186,14 @@ public:
         */
 
     private:
-        std::vector<ComponentStorage*> storages;
+        std::vector<ComponentStorage::View> storages;
     };
 
 
     template<typename... Components>
     View getView() {
-        return View(std::vector<ComponentStorage*>{
-            &prepareStorage<Components>()...});
+        return View(std::vector<ComponentStorage::View>{
+            prepareStorage<Components>().getView()...});
     }
 
 
