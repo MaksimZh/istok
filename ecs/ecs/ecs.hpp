@@ -7,10 +7,12 @@
 #include <unordered_map>
 #include <typeindex>
 #include <memory>
+#include <vector>
 
 
 class ComponentStorage {
 public:
+    virtual size_t size() const = 0;
     virtual bool has(Entity e) const = 0;
     virtual void remove(Entity e) = 0;
 };
@@ -19,6 +21,10 @@ public:
 template <typename Component>
 class ComponentStorageOf: public ComponentStorage {
 public:
+    size_t size() const override {
+        return data.size();
+    }
+    
     bool has(Entity e) const override {
         return data.contains(e);
     }
@@ -32,7 +38,7 @@ public:
         return data[e];
     }
 
-    void remove(Entity e) {
+    void remove(Entity e) override {
         data.erase(e);
     }
 
@@ -82,17 +88,38 @@ public:
         }
     }
 
-    /*
-    template<typename... Components>
+
     class View {
-        View(ComponentStorageOf<Components>... storages) {}
+    public:
+        explicit View(std::vector<ComponentStorage*> source)
+            : storages(std::move(source)) {
+            std::sort(
+                storages.begin(), storages.end(),
+                [](const ComponentStorage* a, ComponentStorage* b) {
+                    return a->size() < b->size();
+                });
+        }
+
+        /*
+        class Iterator {
+        public:
+            using difference_type = std::ptrdiff_t;
+            using value_type = Entity;
+
+            Iterator() {}
+        };
+        */
+
+    private:
+        std::vector<ComponentStorage*> storages;
     };
+
 
     template<typename... Components>
     View getView() {
-        return View();
+        return View(std::vector<ComponentStorage*>{
+            &prepareStorage<Components>()...});
     }
-    */
 
 
 private:

@@ -108,5 +108,6 @@ TEST_CASE("ECS - component manager view", "[unit][ecs]") {
     manager.add(abc, A{6});
     manager.add(abc, B{6});
     manager.add(abc, C{6});
+    auto v = manager.getView<A>();
     //REQUIRE(std::ranges::equal(manager.getView<A>(), std::vector{a, ab, ca, abc}));
 }
