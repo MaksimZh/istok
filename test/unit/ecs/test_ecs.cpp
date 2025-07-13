@@ -30,6 +30,18 @@ namespace {
 }
 
 
+TEST_CASE("ECS - component storage", "[unit][ecs]") {
+    ComponentStorageOf<A> storage;
+    Entity e0 = fakeEntity(0);
+    Entity e1 = fakeEntity(0);
+    Entity e2 = fakeEntity(0);
+    REQUIRE(storage.has(e0) == false);
+    storage.insert(e0, A{0});
+    REQUIRE(storage.has(e0) == true);
+    REQUIRE(storage.get(e0) == A{0});
+}
+
+
 TEST_CASE("ECS - component manager", "[unit][ecs]") {
     ComponentManager manager;
     Entity e0 = fakeEntity(0);
