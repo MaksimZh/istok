@@ -12,7 +12,6 @@
 
 class ComponentStorage {
 public:
-    virtual size_t size() const = 0;
     virtual bool has(Entity e) const = 0;
     virtual void remove(Entity e) = 0;
 
@@ -71,10 +70,6 @@ public:
     ComponentStorageOf() {};
     ComponentStorageOf(const ComponentStorageOf&) = delete;
     ComponentStorageOf& operator=(const ComponentStorageOf&) = delete;
-    
-    size_t size() const override {
-        return entities.size();
-    }
     
     bool has(Entity e) const override {
         return indexMap.contains(e);
