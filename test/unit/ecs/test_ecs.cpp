@@ -4,7 +4,7 @@
 #include <ecs/ecs.hpp>
 
 #include <ranges>
-#include <vector>
+#include <unordered_set>
 
 
 namespace {
@@ -27,6 +27,14 @@ namespace {
         bool operator==(const C&) const = default;
     };
 
+    using EntityUSet = std::unordered_set<Entity, Entity::Hash>;
+
+    template <std::ranges::input_range R>
+    bool isSameEntitySet(const R& x, const EntityUSet& y) {
+        EntityUSet xs(std::ranges::begin(x), std::ranges::end(x));
+        bool allUnique = std::ranges::size(x) == xs.size();
+        return allUnique && xs == y;
+    }
 }
 
 
@@ -64,6 +72,11 @@ TEST_CASE("ECS - component storage", "[unit][ecs]") {
     REQUIRE(storage.has(e1) == false);
     REQUIRE(storage.has(e2) == false);
     REQUIRE(storage.get(e0) == A{0});
+}
+
+
+TEST_CASE("ECS - component storage view", "[unit][ecs]") {
+    static_assert(std::ranges::forward_range<ComponentStorageOf<A>::View>);
 }
 
 

@@ -15,6 +15,28 @@ public:
     virtual size_t size() const = 0;
     virtual bool has(Entity e) const = 0;
     virtual void remove(Entity e) = 0;
+
+    class View {
+    public:
+        View(std::vector<Entity>& target, size_t size)
+            : target(target), size(size) {}
+        
+        using Iterator = std::vector<Entity>::iterator;
+        
+        Iterator begin() {
+            return target.begin();
+        }
+
+        Iterator end() {
+            return target.begin() + size;
+        }
+
+    private:
+        std::vector<Entity>& target;
+        size_t size;
+    };
+    
+    virtual View getView() = 0;
 };
 
 
@@ -22,28 +44,52 @@ template <typename Component>
 class ComponentStorageOf: public ComponentStorage {
 public:
     size_t size() const override {
-        return data.size();
+        return entities.size();
     }
     
     bool has(Entity e) const override {
-        return data.contains(e);
+        return indexMap.contains(e);
     }
     
     void insert(Entity e, Component&& component) {
-        data[e] = component;
+        if (has(e)) {
+            components[indexMap[e]] = component;
+            return;
+        }
+        indexMap[e] = entities.size();
+        entities.push_back(e);
+        components.push_back(component);
     }
 
     Component& get(Entity e) {
         assert(has(e));
-        return data[e];
+        return components[indexMap[e]];
     }
 
     void remove(Entity e) override {
-        data.erase(e);
+        size_t index = indexMap[e];
+        indexMap.erase(e);
+        if (index == entities.size() - 1) {
+            entities.pop_back();
+            components.pop_back();
+            return;
+        }
+        Entity last = entities.back();
+        indexMap[last] = index;
+        entities[index] = last;
+        components[index] = components.back();
+        entities.pop_back();
+        components.pop_back();
+    }
+
+    View getView() override {
+        return View(entities, entities.size());
     }
 
 private:
-    std::unordered_map<Entity, Component, Entity::Hash> data;
+    std::unordered_map<Entity, size_t, Entity::Hash> indexMap;
+    std::vector<Entity> entities;
+    std::vector<Component> components;
 };
 
 
