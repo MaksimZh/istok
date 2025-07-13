@@ -93,7 +93,42 @@ TEST_CASE("ECS - entity index map", "[unit][ecs]") {
     REQUIRE(m.contains(e2) == true);
     REQUIRE(m[e0] == 10);
     REQUIRE(m[e2] == 30);
-    
+}
+
+
+namespace {
+    void checkEntityStorage(DenseEntityStorage s, std::vector<Entity> v) {
+        for (int i = 0; i < v.size(); i++) {
+            REQUIRE(s.contains(v[i]) == true);
+            REQUIRE(s.getIndex(v[i]) == i);
+            REQUIRE(s.getEntity(i) == v[i]);
+        }
+    }
+}
+
+
+TEST_CASE("ECS - dense entity storage", "[unit][ecs]") {
+    DenseEntityStorage s;
+    std::vector<Entity> e;
+    for (int i = 0; i < 5; i++) {
+        e.push_back(fakeEntity(i));
+    }
+    checkEntityStorage(s, std::vector<Entity>{});
+
+    s.insert(e[0]);
+    checkEntityStorage(s, std::vector{e[0]});
+
+    for (int i = 1; i < 5; i++) {
+        s.insert(e[i]);
+    }
+    checkEntityStorage(s, e);
+
+    s.erase(e[1]);
+    checkEntityStorage(s, std::vector{e[0], e[4], e[2], e[3]});
+    s.erase(e[2]);
+    checkEntityStorage(s, std::vector{e[0], e[4], e[3]});
+    s.erase(e[3]);
+    checkEntityStorage(s, std::vector{e[0], e[4]});
 }
 
 

@@ -90,6 +90,44 @@ private:
 };
 
 
+class DenseEntityStorage {
+public:
+    bool contains(Entity e) const {
+        return indices.contains(e);
+    }
+
+    void insert(Entity e) {
+        indices[e] = entities.size();
+        entities.push_back(e);
+    }
+
+    size_t getIndex(Entity e) const {
+        assert(contains(e));
+        return indices[e];
+    }
+
+    Entity getEntity(size_t index) const {
+        assert(index < entities.size());
+        return entities[index];
+    }
+
+    void erase(Entity e) {
+        assert(contains(e));
+        size_t index = indices[e];
+        indices.erase(e);
+        Entity last = entities.back();
+        if (last != e) {
+            indices[last] = index;
+        }
+        entities.erase(index);
+    }
+
+private:
+    EntityIndexMap indices;
+    DenseVector<Entity> entities;
+};
+
+
 class ComponentStorage {
 public:
     virtual bool has(Entity e) const = 0;
