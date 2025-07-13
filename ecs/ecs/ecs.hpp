@@ -92,6 +92,13 @@ private:
 
 class DenseEntityStorage {
 public:
+    using iterator = DenseVector<Entity>::iterator;
+    using const_iterator = DenseVector<Entity>::const_iterator;
+    iterator begin() { return entities.begin(); }
+    iterator end() { return entities.end(); }
+    const_iterator begin() const { return entities.begin(); }
+    const_iterator end() const { return entities.end(); }
+    
     bool contains(Entity e) const {
         return indices.contains(e);
     }
@@ -167,33 +174,26 @@ public:
     ComponentStorageOf& operator=(const ComponentStorageOf&) = delete;
     
     bool has(Entity e) const override {
-        return indexMap.contains(e);
+        return entities.contains(e);
     }
     
     void insert(Entity e, Component&& component) {
         if (has(e)) {
-            components[indexMap[e]] = component;
+            components[entities.getIndex(e)] = component;
             return;
         }
-        indexMap[e] = entities.size();
-        entities.push_back(e);
+        entities.insert(e);
         components.push_back(component);
     }
 
     Component& get(Entity e) {
         assert(has(e));
-        return components[indexMap[e]];
+        return components[entities.getIndex(e)];
     }
 
     void remove(Entity e) override {
-        size_t index = indexMap[e];
-        indexMap.erase(e);
-        Entity last = entities.back();
-        if (last != e) {
-            indexMap[last] = index;
-        }
-        entities.erase(index);
-        components.erase(index);
+        components.erase(entities.getIndex(e));
+        entities.erase(e);
     }
 
     View getView() override {
@@ -201,8 +201,7 @@ public:
     }
 
 private:
-    EntityIndexMap indexMap;
-    DenseVector<Entity> entities;
+    DenseEntityStorage entities;
     DenseVector<Component> components;
 };
 

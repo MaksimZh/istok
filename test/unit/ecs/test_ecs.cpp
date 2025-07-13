@@ -103,6 +103,7 @@ namespace {
             REQUIRE(s.getIndex(v[i]) == i);
             REQUIRE(s.getEntity(i) == v[i]);
         }
+        REQUIRE(std::ranges::equal(s, v) == true);
     }
 }
 
