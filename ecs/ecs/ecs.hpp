@@ -56,6 +56,10 @@ public:
 template <typename Component>
 class ComponentStorageOf: public ComponentStorage {
 public:
+    ComponentStorageOf() {};
+    ComponentStorageOf(const ComponentStorageOf&) = delete;
+    ComponentStorageOf& operator=(const ComponentStorageOf&) = delete;
+    
     size_t size() const override {
         return entities.size();
     }
