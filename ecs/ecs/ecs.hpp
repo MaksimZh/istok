@@ -18,22 +18,35 @@ public:
 
     class View {
     public:
-        View(std::vector<Entity>& target, size_t size)
-            : target(target), size(size) {}
+        View(std::vector<Entity>& target, size_t limit)
+            : target(target), limit(limit) {}
         
-        using Iterator = std::vector<Entity>::iterator;
-        
-        Iterator begin() {
+        using iterator = std::vector<Entity>::iterator;
+        using const_iterator = std::vector<Entity>::const_iterator;
+
+        size_t size() const {
+            return limit;
+        }
+
+        iterator begin() {
             return target.begin();
         }
 
-        Iterator end() {
-            return target.begin() + size;
+        const_iterator begin() const {
+            return target.begin();
+        }
+
+        iterator end() {
+            return target.begin() + limit;
+        }
+
+        const_iterator end() const {
+            return target.begin() + limit;
         }
 
     private:
         std::vector<Entity>& target;
-        size_t size;
+        size_t limit;
     };
     
     virtual View getView() = 0;
