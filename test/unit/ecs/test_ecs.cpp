@@ -41,14 +41,17 @@ namespace {
 TEST_CASE("ECS - dense vector", "[unit][ecs]") {
     static_assert(std::ranges::forward_range<DenseVector<int>>);
     DenseVector<int> v;
+    REQUIRE(v.size() == 0);
     REQUIRE(std::ranges::equal(v, std::vector<int>{}) == true);
     
     v.push_back(0);
     v.push_back(1);
     v.push_back(2);
+    REQUIRE(v.size() == 3);
     REQUIRE(v[0] == 0);
     REQUIRE(v[1] == 1);
     REQUIRE(v[2] == 2);
+    REQUIRE(v.back() == 2);
     REQUIRE(std::ranges::equal(v, std::vector{0, 1, 2}) == true);
 
     v.push_back(3);

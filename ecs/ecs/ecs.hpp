@@ -20,23 +20,41 @@ public:
     const_iterator begin() const { return data.begin(); }
     const_iterator end() const { return data.end(); }
 
+    size_t size() const {
+        return data.size();
+    }
+    
     T& operator[](size_t index) {
-        assert(index < data.size());
+        assert(index < size());
         return data[index];
     }
 
+    T& back() {
+        assert(size() > 0);
+        return data.back();
+    }
+
+    const T& back() const {
+        assert(size() > 0);
+        return data.back();
+    }
+
     const T& operator[](size_t index) const {
-        assert(index < data.size());
+        assert(index < size());
         return data[index];
     }
     
+    void push_back(const T& value) {
+        data.push_back(value);
+    }
+
     void push_back(T&& value) {
         data.push_back(value);
     }
 
     void remove(size_t index) {
-        assert(index < data.size());
-        if (index < data.size() - 1) {
+        assert(index < size());
+        if (index < size() - 1) {
             data[index] = data.back();
         }
         data.pop_back();
@@ -54,47 +72,24 @@ public:
 
     class View {
     public:
-        View(std::vector<Entity>& target, size_t limit)
-            : target(target), limit(limit) {}
-
-        View(const View& other)
-            : target(other.target), limit(other.limit) {}
-
-        View& operator=(const View& other) {
-            if (this == &other) {
-                return *this;
-            }
-            target = other.target;
-            limit = other.limit;
-            return *this;
-        }
-        
         using iterator = std::vector<Entity>::iterator;
         using const_iterator = std::vector<Entity>::const_iterator;
 
+        View(iterator start, iterator sentinel)
+            : start(start), sentinel(sentinel) {}
+
         size_t size() const {
-            return limit;
+            return sentinel - start;
         }
 
-        iterator begin() {
-            return target.begin();
-        }
-
-        const_iterator begin() const {
-            return target.begin();
-        }
-
-        iterator end() {
-            return target.begin() + limit;
-        }
-
-        const_iterator end() const {
-            return target.begin() + limit;
-        }
+        iterator begin() { return start; }
+        iterator end() { return sentinel; }
+        const_iterator begin() const { return start; }
+        const_iterator end() const { return sentinel; }
 
     private:
-        std::vector<Entity>& target;
-        size_t limit;
+        iterator start;
+        iterator sentinel;
     };
     
     virtual View getView() = 0;
@@ -130,27 +125,22 @@ public:
     void remove(Entity e) override {
         size_t index = indexMap[e];
         indexMap.erase(e);
-        if (index == entities.size() - 1) {
-            entities.pop_back();
-            components.pop_back();
-            return;
-        }
         Entity last = entities.back();
-        indexMap[last] = index;
-        entities[index] = last;
-        components[index] = components.back();
-        entities.pop_back();
-        components.pop_back();
+        if (last != e) {
+            indexMap[last] = index;
+        }
+        entities.remove(index);
+        components.remove(index);
     }
 
     View getView() override {
-        return View(entities, entities.size());
+        return View(entities.begin(), entities.end());
     }
 
 private:
     std::unordered_map<Entity, size_t, Entity::Hash> indexMap;
-    std::vector<Entity> entities;
-    std::vector<Component> components;
+    DenseVector<Entity> entities;
+    DenseVector<Component> components;
 };
 
 
