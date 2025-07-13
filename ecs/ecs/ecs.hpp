@@ -65,6 +65,31 @@ private:
 };
 
 
+class EntityIndexMap {
+public:
+    bool contains(Entity e) const {
+        return data.contains(e);
+    }
+
+    size_t& operator[](Entity e) {
+        return data.insert(std::make_pair(e, 0)).first->second;
+    }
+
+    size_t operator[](Entity e) const {
+        auto it = data.find(e);
+        assert(it != data.end());
+        return it->second;
+    }
+
+    void remove(Entity e) {
+        data.erase(e);
+    }
+
+private:
+    std::unordered_map<Entity, size_t, Entity::Hash> data;
+};
+
+
 class ComponentStorage {
 public:
     virtual bool has(Entity e) const = 0;

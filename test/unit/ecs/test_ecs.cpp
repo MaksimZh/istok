@@ -67,6 +67,36 @@ TEST_CASE("ECS - dense vector", "[unit][ecs]") {
 }
 
 
+TEST_CASE("ECS - entity index map", "[unit][ecs]") {
+    EntityIndexMap m;
+    Entity e0 = fakeEntity(0);
+    Entity e1 = fakeEntity(1);
+    Entity e2 = fakeEntity(2);
+    REQUIRE(m.contains(e0) == false);
+    
+    m[e0] = 10;
+    REQUIRE(m.contains(e0) == true);
+    REQUIRE(m[e0] == 10);
+    
+    m[e1] = 20;
+    m[e2] = 30;
+    REQUIRE(m.contains(e0) == true);
+    REQUIRE(m.contains(e1) == true);
+    REQUIRE(m.contains(e2) == true);
+    REQUIRE(m[e0] == 10);
+    REQUIRE(m[e1] == 20);
+    REQUIRE(m[e2] == 30);
+    
+    m.remove(e1);
+    REQUIRE(m.contains(e0) == true);
+    REQUIRE(m.contains(e1) == false);
+    REQUIRE(m.contains(e2) == true);
+    REQUIRE(m[e0] == 10);
+    REQUIRE(m[e2] == 30);
+    
+}
+
+
 TEST_CASE("ECS - component storage", "[unit][ecs]") {
     ComponentStorageOf<A> storage;
     Entity e0 = fakeEntity(0);
