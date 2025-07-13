@@ -33,11 +33,36 @@ namespace {
 TEST_CASE("ECS - component storage", "[unit][ecs]") {
     ComponentStorageOf<A> storage;
     Entity e0 = fakeEntity(0);
-    Entity e1 = fakeEntity(0);
-    Entity e2 = fakeEntity(0);
+    Entity e1 = fakeEntity(1);
+    Entity e2 = fakeEntity(2);
+
+    // empty storage
     REQUIRE(storage.has(e0) == false);
+    
+    // adding entries
     storage.insert(e0, A{0});
     REQUIRE(storage.has(e0) == true);
+    REQUIRE(storage.get(e0) == A{0});
+    storage.insert(e1, A{1});
+    storage.insert(e2, A{2});
+    REQUIRE(storage.has(e0) == true);
+    REQUIRE(storage.has(e1) == true);
+    REQUIRE(storage.has(e2) == true);
+    REQUIRE(storage.get(e0) == A{0});
+    REQUIRE(storage.get(e1) == A{1});
+    REQUIRE(storage.get(e2) == A{2});
+
+    // remove entry
+    storage.remove(e1);
+    REQUIRE(storage.has(e0) == true);
+    REQUIRE(storage.has(e1) == false);
+    REQUIRE(storage.has(e2) == true);
+    REQUIRE(storage.get(e0) == A{0});
+    REQUIRE(storage.get(e2) == A{2});
+    storage.remove(e2);
+    REQUIRE(storage.has(e0) == true);
+    REQUIRE(storage.has(e1) == false);
+    REQUIRE(storage.has(e2) == false);
     REQUIRE(storage.get(e0) == A{0});
 }
 
