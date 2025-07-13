@@ -47,7 +47,7 @@ TEST_CASE("ECS - component storage", "[unit][ecs]") {
     // empty storage
     REQUIRE(storage.has(e0) == false);
     
-    // adding entries
+    // add entries
     storage.insert(e0, A{0});
     REQUIRE(storage.has(e0) == true);
     REQUIRE(storage.get(e0) == A{0});
@@ -60,13 +60,20 @@ TEST_CASE("ECS - component storage", "[unit][ecs]") {
     REQUIRE(storage.get(e1) == A{1});
     REQUIRE(storage.get(e2) == A{2});
 
+    // replace components
+    storage.insert(e1, A{3});
+    storage.insert(e2, A{4});
+    REQUIRE(storage.get(e0) == A{0});
+    REQUIRE(storage.get(e1) == A{3});
+    REQUIRE(storage.get(e2) == A{4});
+
     // remove entry
     storage.remove(e1);
     REQUIRE(storage.has(e0) == true);
     REQUIRE(storage.has(e1) == false);
     REQUIRE(storage.has(e2) == true);
     REQUIRE(storage.get(e0) == A{0});
-    REQUIRE(storage.get(e2) == A{2});
+    REQUIRE(storage.get(e2) == A{4});
     storage.remove(e2);
     REQUIRE(storage.has(e0) == true);
     REQUIRE(storage.has(e1) == false);
