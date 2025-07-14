@@ -25,13 +25,16 @@ TEST_CASE("ECS Data Structures - queue", "[unit][ecs]") {
     REQUIRE(q.empty() == true);
     q.push(Obj(1));
     REQUIRE(q.empty() == false);
-    REQUIRE(q.pop() == Obj(1));
+    REQUIRE(q.front() == Obj(1));
+    q.pop();
     REQUIRE(q.empty() == true);
     q.push(Obj(2));
     q.push(Obj(3));
     REQUIRE(q.empty() == false);
-    REQUIRE(q.pop() == Obj(2));
+    REQUIRE(q.front() == Obj(2));
+    q.pop();
     REQUIRE(q.empty() == false);
-    REQUIRE(q.pop() == Obj(3));
+    REQUIRE(q.front() == Obj(3));
+    q.pop();
     REQUIRE(q.empty() == true);
 }

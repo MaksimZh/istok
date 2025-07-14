@@ -122,7 +122,9 @@ public:
     EntityIndex getFreeIndex() {
         assert(!isFull());
         if (!freeIndices.empty()) {
-            return freeIndices.pop();
+            EntityIndex index = freeIndices.front();
+            freeIndices.pop();
+            return index;
         }
         return EntityIndex(nextIndex++);
     }

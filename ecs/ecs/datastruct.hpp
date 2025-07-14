@@ -17,10 +17,12 @@ public:
         container.push(value);
     }
 
-    T pop() {
-        T value = container.front();
+    T& front() {
+        return container.front();
+    }
+
+    void pop() {
         container.pop();
-        return value;
     }
 
 private:
