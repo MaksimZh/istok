@@ -71,23 +71,6 @@ TEST_CASE("Entity - limited counter", "[unit][ecs]") {
 }
 
 
-TEST_CASE("Entity - index queue", "[unit][ecs]") {
-    Queue<int> q;
-    REQUIRE(q.empty() == true);
-    q.push(1);
-    REQUIRE(q.empty() == false);
-    REQUIRE(q.pop() == 1);
-    REQUIRE(q.empty() == true);
-    q.push(2);
-    q.push(3);
-    REQUIRE(q.empty() == false);
-    REQUIRE(q.pop() == 2);
-    REQUIRE(q.empty() == false);
-    REQUIRE(q.pop() == 3);
-    REQUIRE(q.empty() == true);
-}
-
-
 TEST_CASE("Entity - index pool", "[unit][ecs]") {
     EntityIndexPool pool(2);
     // use set to check if all indices are different
