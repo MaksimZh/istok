@@ -3,25 +3,29 @@
 
 #include <queue>
 
-namespace ecs {
-    template <typename T>
-    class Queue {
-    public:
-        bool empty() const {
-            return container.empty();
-        }
+namespace Istok {
+namespace ECS {
 
-        void push(T value) {
-            container.push(value);
-        }
+template <typename T>
+class Queue {
+public:
+    bool empty() const {
+        return container.empty();
+    }
 
-        T pop() {
-            T value = container.front();
-            container.pop();
-            return value;
-        }
+    void push(T value) {
+        container.push(value);
+    }
 
-    private:
-        std::queue<T> container;
-    };
-}
+    T pop() {
+        T value = container.front();
+        container.pop();
+        return value;
+    }
+
+private:
+    std::queue<T> container;
+};
+
+} // namespace ECS
+} // namespace Istok

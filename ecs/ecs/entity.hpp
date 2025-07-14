@@ -141,7 +141,7 @@ public:
 
 private:
     LimitedCounter nextIndex;
-    Queue<EntityIndex> freeIndices;
+    Istok::ECS::Queue<EntityIndex> freeIndices;
 };
 
 

@@ -3,6 +3,7 @@
 
 #include <ecs/datastruct.hpp>
 
+namespace ecs = Istok::ECS;
 
 namespace {
     struct Obj {
