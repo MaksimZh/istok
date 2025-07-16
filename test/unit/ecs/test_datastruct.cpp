@@ -1,3 +1,4 @@
+// test_datastruct.cpp
 // Copyright 2025 Maksim Sergeevich Zholudev. All rights reserved
 #include <catch.hpp>
 
@@ -220,5 +221,50 @@ TEST_CASE("ECS Data Structures - DenseArrayPair", "[unit][ecs]") {
         }
         REQUIRE(std::ranges::equal(array.firstElements(), elements1));
         REQUIRE(std::ranges::equal(array.secondElements(), elements2));
+    }
+}
+
+
+TEST_CASE("ECS Data Structures - IndexMap", "[unit][ecs]") {
+    ecs::IndexMap<A, A::Hasher> map;
+
+    REQUIRE(map.contains(A(0)) == false);
+
+    SECTION("insert lvalue") {
+        A value(1);
+        map.insert(value, 10);
+        REQUIRE(map.contains(A(1)) == true);
+        REQUIRE(map.get(A(1)) == 10);
+    }
+
+    SECTION("insert rvalue") {
+        map.insert(A(1), 10);
+        REQUIRE(map.contains(A(1)) == true);
+        REQUIRE(map.get(A(1)) == 10);
+    }
+
+    SECTION("multiple elements") {
+        map.insert(A(1), 10);
+        map.insert(A(2), 20);
+        map.insert(A(3), 30);
+        REQUIRE(map.contains(A(0)) == false);
+        REQUIRE(map.contains(A(1)) == true);
+        REQUIRE(map.contains(A(2)) == true);
+        REQUIRE(map.contains(A(3)) == true);
+        REQUIRE(map.get(A(1)) == 10);
+        REQUIRE(map.get(A(2)) == 20);
+        REQUIRE(map.get(A(3)) == 30);
+    }
+
+    SECTION("erase") {
+        map.insert(A(1), 10);
+        map.insert(A(2), 20);
+        map.insert(A(3), 30);
+        map.erase(A(2));
+        REQUIRE(map.contains(A(1)) == true);
+        REQUIRE(map.contains(A(2)) == false);
+        REQUIRE(map.contains(A(3)) == true);
+        REQUIRE(map.get(A(1)) == 10);
+        REQUIRE(map.get(A(3)) == 30);
     }
 }

@@ -1,3 +1,4 @@
+// datastruct.hpp
 // Copyright 2025 Maksim Sergeevich Zholudev. All rights reserved
 #pragma once
 
@@ -179,6 +180,42 @@ public:
 private:
     DenseArray<T1> container1;
     DenseArray<T2> container2;
+};
+
+
+template <typename T, typename Hash = std::hash<T>>
+class IndexMap {
+public:
+    IndexMap() = default;
+    IndexMap(const IndexMap &) = delete;
+    IndexMap(IndexMap &&) noexcept = delete;
+    IndexMap & operator=(const IndexMap &) = default;
+    IndexMap & operator=(IndexMap &&) noexcept = default;
+
+    bool contains(const T& key) const {
+        return container.contains(key);
+    }
+
+    void insert(const T& key, size_t index) {
+        container[key] = index;
+    }
+    
+    void insert(T&& key, size_t index) {
+        container[key] = index;
+    }
+
+    size_t get(const T& key) const {
+        assert(contains(key));
+        return container.find(key)->second;
+    }
+
+    void erase(const T& key) {
+        assert(contains(key));
+        container.erase(key);
+    }
+
+private:
+    std::unordered_map<T, size_t, Hash> container;
 };
 
 
