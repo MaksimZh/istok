@@ -91,7 +91,7 @@ public:
     }
 
     void erase(size_t index) {
-        assert(index <= size());
+        assert(index < size());
         if (index < size() - 1) {
             container[index] = std::move(container.back());
         }
@@ -148,8 +148,8 @@ public:
     template <typename V1, typename V2>
     void push_back(V1&& value1, V2&& value2)
         requires (
-            std::same_as<std::decay_t<V1>,
-            T1> && std::same_as<std::decay_t<V2>, T2>)
+            std::same_as<std::decay_t<V1>, T1> &&
+            std::same_as<std::decay_t<V2>, T2>)
     {
         container1.push_back(std::forward<V1>(value1));
         container2.push_back(std::forward<V2>(value2));
@@ -216,6 +216,56 @@ public:
 
 private:
     std::unordered_map<T, size_t, Hash> container;
+};
+
+
+template <typename K, typename V, typename Hash = std::hash<K>>
+class DenseMap {
+public:
+    DenseMap() = default;
+    DenseMap(const DenseMap&) = delete;
+    DenseMap& operator=(const DenseMap&) = delete;
+    DenseMap(DenseMap&&) noexcept = default;
+    DenseMap& operator=(DenseMap&&) noexcept = default;
+
+    bool contains(const K& key) const {
+        return indices.contains(key);
+    }
+
+    template <typename KVal, typename VVal>
+    void insert(KVal&& key, VVal&& value)
+        requires (
+            std::same_as<std::decay_t<KVal>, K> &&
+            std::same_as<std::decay_t<VVal>, V>)
+    {
+        size_t index = values.size();
+        indices.insert(std::forward<KVal>(key), index);
+        values.push_back(std::forward<KVal>(key), std::forward<VVal>(value));
+    }
+
+    const V& get(const K& key) const {
+        assert(contains(key));
+        size_t index = indices.get(key);
+        return values.second(index);
+    }
+
+    void erase(const K& key) {
+        assert(contains(key));
+        size_t index = indices.get(key);
+        indices.erase(key);
+        values.erase(index);
+        if (index < values.size()) {
+            indices.insert(values.first(index), index);
+        }
+    }
+
+    DenseRange<K> byKey() {
+        return values.firstElements();
+    }
+
+private:
+    IndexMap<K, Hash> indices;
+    DenseArrayPair<K, V> values;
 };
 
 
