@@ -105,6 +105,11 @@ TEST_CASE("ECS Data Structures - DenseArray", "[unit][ecs]") {
         REQUIRE(array[0] == A(1));
         REQUIRE(std::ranges::equal(array.byElement(), std::vector{A(1)}));
 
+        SECTION("replace") {
+            array[0] = A(42);
+            REQUIRE(std::ranges::equal(array.byElement(), std::vector{A(42)}));
+        }
+
         SECTION("erase") {
             array.erase(0);
             REQUIRE(array.size() == 0);
@@ -130,6 +135,12 @@ TEST_CASE("ECS Data Structures - DenseArray", "[unit][ecs]") {
         REQUIRE(array[3] == A(4));
         REQUIRE(std::ranges::equal(array.byElement(), std::vector{
             A(1), A(2), A(3), A(4)}));
+
+        SECTION("replace") {
+            array[2] = A(42);
+            REQUIRE(std::ranges::equal(array.byElement(), std::vector{
+                A(1), A(2), A(42), A(4)}));
+        }
 
         SECTION("erase last") {
             array.erase(3);
@@ -173,6 +184,12 @@ TEST_CASE("ECS Data Structures - DenseArrayPair", "[unit][ecs]") {
         REQUIRE(std::ranges::equal(array.firstElements(), std::vector{A(1)}));
         REQUIRE(std::ranges::equal(array.secondElements(), std::vector{B(10)}));
 
+        SECTION("replace") {
+            array.set(0, A(42), B(17));
+            REQUIRE(std::ranges::equal(array.firstElements(), std::vector{A(42)}));
+            REQUIRE(std::ranges::equal(array.secondElements(), std::vector{B(17)}));
+        }
+
         SECTION("erase") {
             array.erase(0);
             REQUIRE(array.size() == 0);
@@ -206,6 +223,14 @@ TEST_CASE("ECS Data Structures - DenseArrayPair", "[unit][ecs]") {
         REQUIRE(array.second(3) == B(40));
         REQUIRE(std::ranges::equal(array.secondElements(), std::vector{
             B(10), B(20), B(30), B(40)}));
+
+        SECTION("replace") {
+            array.set(2, A(42), B(17));
+            REQUIRE(std::ranges::equal(array.firstElements(), std::vector{
+                A(1), A(2), A(42), A(4)}));
+            REQUIRE(std::ranges::equal(array.secondElements(), std::vector{
+                B(10), B(20), B(17), B(40)}));
+        }
 
         SECTION("erase last") {
             array.erase(3);
@@ -250,6 +275,12 @@ TEST_CASE("ECS Data Structures - IndexMap", "[unit][ecs]") {
         REQUIRE(map.contains(A(1)) == true);
         REQUIRE(map.get(A(1)) == 10);
 
+        SECTION("replace") {
+            map.insert(A(1), 42);
+            REQUIRE(map.contains(A(1)) == true);
+            REQUIRE(map.get(A(1)) == 42);
+        }
+
         SECTION("erase") {
             map.erase(A(1));
             REQUIRE(map.contains(A(1)) == false);
@@ -274,6 +305,17 @@ TEST_CASE("ECS Data Structures - IndexMap", "[unit][ecs]") {
         REQUIRE(map.get(A(1)) == 10);
         REQUIRE(map.get(A(2)) == 20);
         REQUIRE(map.get(A(3)) == 30);
+
+        SECTION("replace") {
+            map.insert(A(2), 42);
+            REQUIRE(map.contains(A(0)) == false);
+            REQUIRE(map.contains(A(1)) == true);
+            REQUIRE(map.contains(A(2)) == true);
+            REQUIRE(map.contains(A(3)) == true);
+            REQUIRE(map.get(A(1)) == 10);
+            REQUIRE(map.get(A(2)) == 42);
+            REQUIRE(map.get(A(3)) == 30);
+        }
 
         SECTION("erase") {
             map.erase(A(2));
@@ -307,8 +349,14 @@ TEST_CASE("ECS Data Structures - DenseMap", "[unit][ecs]") {
     SECTION("single value") {
         map.insert(A(1), B(10));
         REQUIRE(map.contains(A(1)) == true);
-        REQUIRE(map.get(A(1)) == B(10));
         REQUIRE(std::ranges::equal(map.byKey(), std::vector{A(1)}));
+        REQUIRE(map.get(A(1)) == B(10));
+
+        SECTION("replace") {
+            map.insert(A(1), B(42));
+            REQUIRE(std::ranges::equal(map.byKey(), std::vector{A(1)}));
+            REQUIRE(map.get(A(1)) == B(42));
+        }
 
         SECTION("erase") {
             map.erase(A(1));
@@ -341,6 +389,16 @@ TEST_CASE("ECS Data Structures - DenseMap", "[unit][ecs]") {
         REQUIRE(map.get(A(2)) == B(20));
         REQUIRE(map.get(A(3)) == B(30));
         REQUIRE(map.get(A(4)) == B(40));
+
+        SECTION("replace") {
+            map.insert(A(3), B(42));
+            REQUIRE(std::ranges::equal(map.byKey(), std::vector{
+                A(1), A(2), A(3), A(4)}));
+            REQUIRE(map.get(A(1)) == B(10));
+            REQUIRE(map.get(A(2)) == B(20));
+            REQUIRE(map.get(A(3)) == B(42));
+            REQUIRE(map.get(A(4)) == B(40));
+        }
 
         SECTION("erase last") {
             map.erase(A(4));

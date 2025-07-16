@@ -155,6 +155,17 @@ public:
         container2.push_back(std::forward<V2>(value2));
     }
 
+    template <typename V1, typename V2>
+    void set(size_t index, V1&& value1, V2&& value2)
+        requires (
+            std::same_as<std::decay_t<V1>, T1> &&
+            std::same_as<std::decay_t<V2>, T2>)
+    {
+        assert(index < size());
+        container1[index] = std::forward<V1>(value1);
+        container2[index] = std::forward<V2>(value2);
+    }
+
     void erase(size_t index) {
         assert(index < size());
         container1.erase(index);
@@ -238,6 +249,11 @@ public:
             std::same_as<std::decay_t<KVal>, K> &&
             std::same_as<std::decay_t<VVal>, V>)
     {
+        if (contains(key)) {
+            size_t index = indices.get(key);
+            values.set(index, std::forward<KVal>(key), std::forward<VVal>(value));
+            return;
+        }
         size_t index = values.size();
         indices.insert(std::forward<KVal>(key), index);
         values.push_back(std::forward<KVal>(key), std::forward<VVal>(value));
