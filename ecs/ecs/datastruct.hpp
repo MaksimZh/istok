@@ -46,15 +46,15 @@ public:
     using iterator = typename std::vector<T>::iterator;
     using const_iterator = typename std::vector<T>::const_iterator;
 
-    DenseRange(std::vector<T>& data) : data(data) {}
+    DenseRange(std::vector<T>& container) : container(container) {}
 
-    iterator begin() noexcept { return data.begin(); }
-    iterator end() noexcept { return data.end(); }
-    const_iterator begin() const noexcept { return data.cbegin(); }
-    const_iterator end() const noexcept { return data.cend(); }
+    iterator begin() noexcept { return container.begin(); }
+    iterator end() noexcept { return container.end(); }
+    const_iterator begin() const noexcept { return container.cbegin(); }
+    const_iterator end() const noexcept { return container.cend(); }
 
 private:
-    std::vector<T>& data;
+    std::vector<T>& container;
 };
 
 
@@ -108,6 +108,79 @@ public:
 private:
     std::vector<T> container;
 };
+
+
+template <typename T1, typename T2>
+class DenseArrayPair {
+public:
+    DenseArrayPair() = default;
+    DenseArrayPair(const DenseArrayPair & other) = delete;
+    DenseArrayPair & operator=(const DenseArrayPair & other) = delete;
+    DenseArrayPair(DenseArrayPair && other) noexcept = default;
+    DenseArrayPair & operator=(DenseArrayPair && other) noexcept = default;
+
+    size_t size() const noexcept {
+        assert(container1.size() == container2.size());
+        return container1.size();
+    }
+
+    T1 &first(size_t index) {
+        assert(index < size());
+        return container1[index];
+    }
+
+    const T1 &first(size_t index) const {
+        assert(index < size());
+        return container1[index];
+    }
+
+    T2 &second(size_t index) {
+        assert(index < size());
+        return container2[index];
+    }
+
+    const T2 &second(size_t index) const {
+        assert(index < size());
+        return container2[index];
+    }
+
+    template <typename V1, typename V2>
+    void push_back(V1&& value1, V2&& value2)
+        requires (
+            std::same_as<std::decay_t<V1>,
+            T1> && std::same_as<std::decay_t<V2>, T2>)
+    {
+        container1.push_back(std::forward<V1>(value1));
+        container2.push_back(std::forward<V2>(value2));
+    }
+
+    void erase(size_t index) {
+        assert(index < size());
+        container1.erase(index);
+        container2.erase(index);
+    }
+
+    DenseRange<T1> firstElements() noexcept {
+        return container1.byElement();
+    }
+
+    DenseRange<const T1> firstElements() const noexcept {
+        return container1.byElement();
+    }
+
+    DenseRange<T2> secondElements() noexcept {
+        return container2.byElement();
+    }
+
+    DenseRange<const T2> secondElements() const noexcept {
+        return container2.byElement();
+    }
+
+private:
+    DenseArray<T1> container1;
+    DenseArray<T2> container2;
+};
+
 
 } // namespace ECS
 } // namespace Istok
