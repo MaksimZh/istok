@@ -13,7 +13,11 @@ public:
         return container.empty();
     }
 
-    void push(T value) {
+    void push(const T& value) {
+        container.push(value);
+    }
+
+    void push(T&& value) {
         container.push(value);
     }
 

@@ -6,13 +6,25 @@
 namespace ecs = Istok::ECS;
 
 namespace {
-    struct Obj {
+    struct A {
         int value;
 
-        bool operator==(const Obj&) const = default;
+        bool operator==(const A&) const = default;
 
         struct Hasher {
-            size_t operator()(const Obj& obj) const {
+            size_t operator()(const A& obj) const {
+                return std::hash<int>()(obj.value);
+            }
+        };
+    };
+
+    struct B {
+        int value;
+
+        bool operator==(const B&) const = default;
+
+        struct Hasher {
+            size_t operator()(const B& obj) const {
                 return std::hash<int>()(obj.value);
             }
         };
@@ -20,21 +32,58 @@ namespace {
 }
 
 
-TEST_CASE("ECS Data Structures - queue", "[unit][ecs]") {
-    ecs::Queue<Obj> q;
-    REQUIRE(q.empty() == true);
-    q.push(Obj(1));
-    REQUIRE(q.empty() == false);
-    REQUIRE(q.front() == Obj(1));
-    q.pop();
-    REQUIRE(q.empty() == true);
-    q.push(Obj(2));
-    q.push(Obj(3));
-    REQUIRE(q.empty() == false);
-    REQUIRE(q.front() == Obj(2));
-    q.pop();
-    REQUIRE(q.empty() == false);
-    REQUIRE(q.front() == Obj(3));
-    q.pop();
-    REQUIRE(q.empty() == true);
+TEST_CASE("ECS Data Structures - Queue", "[unit][ecs]") {
+    ecs::Queue<A> queue;
+    REQUIRE(queue.empty() == true);
+    
+    SECTION("push lvalue") {
+        A value(1);
+        queue.push(value);
+        REQUIRE(queue.empty() == false);
+        REQUIRE(queue.front() == A(1));
+    }
+
+    SECTION("push rvalue") {
+        queue.push(A(1));
+        REQUIRE(queue.empty() == false);
+        REQUIRE(queue.front() == A(1));
+    }
+
+    SECTION("push-pop one") {
+        queue.push(A(1));
+        queue.pop();
+        REQUIRE(queue.empty() == true);
+    }
+
+    SECTION("push-pop multi") {
+        queue.push(A(1));
+        queue.push(A(2));
+        queue.push(A(3));
+        REQUIRE(queue.empty() == false);
+        REQUIRE(queue.front() == A(1));
+        queue.pop();
+        REQUIRE(queue.empty() == false);
+        REQUIRE(queue.front() == A(2));
+        queue.pop();
+        REQUIRE(queue.empty() == false);
+        REQUIRE(queue.front() == A(3));
+        queue.pop();
+        REQUIRE(queue.empty() == true);
+    }
+
+    SECTION("push-pop mix") {
+        queue.push(A(1));
+        queue.push(A(2));
+        REQUIRE(queue.front() == A(1));
+        queue.pop();
+        REQUIRE(queue.front() == A(2));
+        queue.push(A(3));
+        queue.push(A(4));
+        queue.pop();
+        REQUIRE(queue.front() == A(3));
+        queue.pop();
+        REQUIRE(queue.front() == A(4));
+        queue.pop();
+        REQUIRE(queue.empty() == true);
+    }
 }
