@@ -96,6 +96,7 @@ TEST_CASE("ECS Data Structures - DenseArray", "[unit][ecs]") {
     ecs::DenseArray<A> array;
 
     REQUIRE(array.size() == 0);
+    REQUIRE(std::ranges::equal(array.byElement(), std::vector<A>{}));
 
     SECTION("push_back lvalue") {
         A value(1);
@@ -104,50 +105,56 @@ TEST_CASE("ECS Data Structures - DenseArray", "[unit][ecs]") {
         REQUIRE(array[0] == A(1));
     }
 
-    SECTION("push_back rvalue") {
+    SECTION("single element") {
         array.push_back(A(1));
+
         REQUIRE(array.size() == 1);
         REQUIRE(array[0] == A(1));
+        REQUIRE(std::ranges::equal(array.byElement(), std::vector{A(1)}));
+
+        SECTION("erase") {
+            array.erase(0);
+            REQUIRE(array.size() == 0);
+        }
     }
 
     SECTION("multiple elements") {
         array.push_back(A(1));
         array.push_back(A(2));
         array.push_back(A(3));
-        REQUIRE(array.size() == 3);
-        REQUIRE(array[0] == A(1));
-        REQUIRE(array[1] == A(2));
-        REQUIRE(array[2] == A(3));
-    }
-
-    SECTION("erase last") {
-        array.push_back(A(1));
-        array.push_back(A(2));
-        array.push_back(A(3));
-        array.erase(2);
-        REQUIRE(array.size() == 2);
-        REQUIRE(array[0] == A(1));
-        REQUIRE(array[1] == A(2));
-    }
-
-    SECTION("erase middle") {
-        array.push_back(A(1));
-        array.push_back(A(2));
-        array.push_back(A(3));
         array.push_back(A(4));
-        array.erase(1);
-        REQUIRE(array.size() == 3);
-        REQUIRE(array[0] == A(1));
-        REQUIRE(array[1] == A(4));
-        REQUIRE(array[2] == A(3));
-    }
 
-    SECTION("byElement") {
-        std::vector<A> elements = {A(1), A(2), A(3)};
-        for (const auto& a : elements) {
-            array.push_back(a);
+        REQUIRE(array.size() == 4);
+        REQUIRE(array[0] == A(1));
+        REQUIRE(array[1] == A(2));
+        REQUIRE(array[2] == A(3));
+        REQUIRE(array[3] == A(4));
+        REQUIRE(std::ranges::equal(array.byElement(), std::vector{
+            A(1), A(2), A(3), A(4)}));
+
+        SECTION("erase last") {
+            array.erase(3);
+            REQUIRE(std::ranges::equal(array.byElement(), std::vector{
+                A(1), A(2), A(3)}));
         }
-        REQUIRE(std::ranges::equal(array.byElement(), elements));
+
+        SECTION("erase middle") {
+            array.erase(1);
+            REQUIRE(array.size() == 3);
+            REQUIRE(std::ranges::equal(array.byElement(), std::vector{
+                A(1), A(4), A(3)}));
+        }
+
+        SECTION("erase many") {
+            array.erase(1);
+            array.erase(2);
+            REQUIRE(std::ranges::equal(array.byElement(), std::vector{
+                A(1), A(4)}));
+            array.erase(0);
+            REQUIRE(std::ranges::equal(array.byElement(), std::vector{A(4)}));
+            array.erase(0);
+            REQUIRE(array.size() == 0);
+        }
     }
 }
 
