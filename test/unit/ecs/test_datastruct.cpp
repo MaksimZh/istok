@@ -98,13 +98,6 @@ TEST_CASE("ECS Data Structures - DenseArray", "[unit][ecs]") {
     REQUIRE(array.size() == 0);
     REQUIRE(std::ranges::equal(array.byElement(), std::vector<A>{}));
 
-    SECTION("push_back lvalue") {
-        A value(1);
-        array.push_back(value);
-        REQUIRE(array.size() == 1);
-        REQUIRE(array[0] == A(1));
-    }
-
     SECTION("single element") {
         array.push_back(A(1));
 
@@ -116,6 +109,12 @@ TEST_CASE("ECS Data Structures - DenseArray", "[unit][ecs]") {
             array.erase(0);
             REQUIRE(array.size() == 0);
         }
+    }
+
+    SECTION("push_back lvalue") {
+        A value(1);
+        array.push_back(value);
+        REQUIRE(std::ranges::equal(array.byElement(), std::vector{A(1)}));
     }
 
     SECTION("multiple elements") {
@@ -140,7 +139,6 @@ TEST_CASE("ECS Data Structures - DenseArray", "[unit][ecs]") {
 
         SECTION("erase middle") {
             array.erase(1);
-            REQUIRE(array.size() == 3);
             REQUIRE(std::ranges::equal(array.byElement(), std::vector{
                 A(1), A(4), A(3)}));
         }
@@ -163,71 +161,81 @@ TEST_CASE("ECS Data Structures - DenseArrayPair", "[unit][ecs]") {
     ecs::DenseArrayPair<A, B> array;
 
     REQUIRE(array.size() == 0);
+    REQUIRE(std::ranges::equal(array.firstElements(), std::vector<A>{}));
+    REQUIRE(std::ranges::equal(array.secondElements(), std::vector<B>{}));
+
+    SECTION("single element") {
+        array.push_back(A(1), B(10));
+
+        REQUIRE(array.size() == 1);
+        REQUIRE(array.first(0) == A(1));
+        REQUIRE(array.second(0) == B(10));
+        REQUIRE(std::ranges::equal(array.firstElements(), std::vector{A(1)}));
+        REQUIRE(std::ranges::equal(array.secondElements(), std::vector{B(10)}));
+
+        SECTION("erase") {
+            array.erase(0);
+            REQUIRE(array.size() == 0);
+        }
+    }
 
     SECTION("push_back lvalue") {
         A value1(1);
         B value2(10);
         array.push_back(value1, value2);
-        REQUIRE(array.size() == 1);
-        REQUIRE(array.first(0) == A(1));
-        REQUIRE(array.second(0) == B(10));
-    }
-
-    SECTION("push_back rvalue") {
-        array.push_back(A(1), B(10));
-        REQUIRE(array.size() == 1);
-        REQUIRE(array.first(0) == A(1));
-        REQUIRE(array.second(0) == B(10));
+        REQUIRE(std::ranges::equal(array.firstElements(), std::vector{A(1)}));
+        REQUIRE(std::ranges::equal(array.secondElements(), std::vector{B(10)}));
     }
 
     SECTION("multiple elements") {
         array.push_back(A(1), B(10));
         array.push_back(A(2), B(20));
         array.push_back(A(3), B(30));
-        REQUIRE(array.size() == 3);
-        REQUIRE(array.first(0) == A(1));
-        REQUIRE(array.first(1) == A(2));
-        REQUIRE(array.first(2) == A(3));
-        REQUIRE(array.second(0) == B(10));
-        REQUIRE(array.second(1) == B(20));
-        REQUIRE(array.second(2) == B(30));
-    }
-
-    SECTION("erase last") {
-        array.push_back(A(1), B(10));
-        array.push_back(A(2), B(20));
-        array.push_back(A(3), B(30));
-        array.erase(2);
-        REQUIRE(array.size() == 2);
-        REQUIRE(array.first(0) == A(1));
-        REQUIRE(array.first(1) == A(2));
-        REQUIRE(array.second(0) == B(10));
-        REQUIRE(array.second(1) == B(20));
-    }
-
-    SECTION("erase middle") {
-        array.push_back(A(1), B(10));
-        array.push_back(A(2), B(20));
-        array.push_back(A(3), B(30));
         array.push_back(A(4), B(40));
-        array.erase(1);
-        REQUIRE(array.size() == 3);
-        REQUIRE(array.first(0) == A(1));
-        REQUIRE(array.first(1) == A(4));
-        REQUIRE(array.first(2) == A(3));
-        REQUIRE(array.second(0) == B(10));
-        REQUIRE(array.second(1) == B(40));
-        REQUIRE(array.second(2) == B(30));
-    }
 
-    SECTION("byElement") {
-        std::vector<A> elements1 = {A(1), A(2), A(3)};
-        std::vector<B> elements2 = {B(10), B(20), B(30)};
-        for (int i = 0; i < elements1.size(); i++) {
-            array.push_back(elements1[i], elements2[i]);
+        REQUIRE(array.size() == 4);
+        REQUIRE(array.first(0) == A(1));
+        REQUIRE(array.first(1) == A(2));
+        REQUIRE(array.first(2) == A(3));
+        REQUIRE(array.first(3) == A(4));
+        REQUIRE(std::ranges::equal(array.firstElements(), std::vector{
+            A(1), A(2), A(3), A(4)}));
+        REQUIRE(array.second(1) == B(20));
+        REQUIRE(array.second(0) == B(10));
+        REQUIRE(array.second(2) == B(30));
+        REQUIRE(array.second(3) == B(40));
+        REQUIRE(std::ranges::equal(array.secondElements(), std::vector{
+            B(10), B(20), B(30), B(40)}));
+
+        SECTION("erase last") {
+            array.erase(3);
+            REQUIRE(std::ranges::equal(array.firstElements(), std::vector{
+                A(1), A(2), A(3)}));
+            REQUIRE(std::ranges::equal(array.secondElements(), std::vector{
+                B(10), B(20), B(30)}));
         }
-        REQUIRE(std::ranges::equal(array.firstElements(), elements1));
-        REQUIRE(std::ranges::equal(array.secondElements(), elements2));
+
+        SECTION("erase middle") {
+            array.erase(1);
+            REQUIRE(std::ranges::equal(array.firstElements(), std::vector{
+                A(1), A(4), A(3)}));
+            REQUIRE(std::ranges::equal(array.secondElements(), std::vector{
+                B(10), B(40), B(30)}));
+        }
+
+        SECTION("erase many") {
+            array.erase(1);
+            array.erase(2);
+            REQUIRE(std::ranges::equal(array.firstElements(), std::vector{
+                A(1), A(4)}));
+            REQUIRE(std::ranges::equal(array.secondElements(), std::vector{
+                B(10), B(40)}));
+            array.erase(0);
+            REQUIRE(std::ranges::equal(array.firstElements(), std::vector{A(4)}));
+            REQUIRE(std::ranges::equal(array.secondElements(), std::vector{B(40)}));
+            array.erase(0);
+            REQUIRE(array.size() == 0);
+        }
     }
 }
 
@@ -237,15 +245,20 @@ TEST_CASE("ECS Data Structures - IndexMap", "[unit][ecs]") {
 
     REQUIRE(map.contains(A(0)) == false);
 
+    SECTION("single value") {
+        map.insert(A(1), 10);
+        REQUIRE(map.contains(A(1)) == true);
+        REQUIRE(map.get(A(1)) == 10);
+
+        SECTION("erase") {
+            map.erase(A(1));
+            REQUIRE(map.contains(A(1)) == false);
+        }
+    }
+
     SECTION("insert lvalue") {
         A value(1);
         map.insert(value, 10);
-        REQUIRE(map.contains(A(1)) == true);
-        REQUIRE(map.get(A(1)) == 10);
-    }
-
-    SECTION("insert rvalue") {
-        map.insert(A(1), 10);
         REQUIRE(map.contains(A(1)) == true);
         REQUIRE(map.get(A(1)) == 10);
     }
@@ -261,17 +274,25 @@ TEST_CASE("ECS Data Structures - IndexMap", "[unit][ecs]") {
         REQUIRE(map.get(A(1)) == 10);
         REQUIRE(map.get(A(2)) == 20);
         REQUIRE(map.get(A(3)) == 30);
-    }
 
-    SECTION("erase") {
-        map.insert(A(1), 10);
-        map.insert(A(2), 20);
-        map.insert(A(3), 30);
-        map.erase(A(2));
-        REQUIRE(map.contains(A(1)) == true);
-        REQUIRE(map.contains(A(2)) == false);
-        REQUIRE(map.contains(A(3)) == true);
-        REQUIRE(map.get(A(1)) == 10);
-        REQUIRE(map.get(A(3)) == 30);
+        SECTION("erase") {
+            map.erase(A(2));
+            REQUIRE(map.contains(A(1)) == true);
+            REQUIRE(map.contains(A(2)) == false);
+            REQUIRE(map.contains(A(3)) == true);
+            REQUIRE(map.get(A(1)) == 10);
+            REQUIRE(map.get(A(3)) == 30);
+        }
+
+        SECTION("many") {
+            map.erase(A(1));
+            map.erase(A(3));
+            REQUIRE(map.contains(A(1)) == false);
+            REQUIRE(map.contains(A(2)) == true);
+            REQUIRE(map.contains(A(3)) == false);
+            REQUIRE(map.get(A(2)) == 20);
+            map.erase(A(2));
+            REQUIRE(map.contains(A(2)) == false);
+        }
     }
 }
