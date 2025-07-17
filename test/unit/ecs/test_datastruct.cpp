@@ -99,7 +99,7 @@ TEST_CASE("ECS Data Structures - DenseArray", "[unit][ecs]") {
     REQUIRE(std::ranges::equal(array.byElement(), std::vector<A>{}));
 
     SECTION("single element") {
-        array.push_back(A(1));
+        array.pushBack(A(1));
 
         REQUIRE(array.size() == 1);
         REQUIRE(array[0] == A(1));
@@ -116,17 +116,17 @@ TEST_CASE("ECS Data Structures - DenseArray", "[unit][ecs]") {
         }
     }
 
-    SECTION("push_back lvalue") {
+    SECTION("pushBack lvalue") {
         A value(1);
-        array.push_back(value);
+        array.pushBack(value);
         REQUIRE(std::ranges::equal(array.byElement(), std::vector{A(1)}));
     }
 
     SECTION("multiple elements") {
-        array.push_back(A(1));
-        array.push_back(A(2));
-        array.push_back(A(3));
-        array.push_back(A(4));
+        array.pushBack(A(1));
+        array.pushBack(A(2));
+        array.pushBack(A(3));
+        array.pushBack(A(4));
 
         REQUIRE(array.size() == 4);
         REQUIRE(array[0] == A(1));
@@ -176,7 +176,7 @@ TEST_CASE("ECS Data Structures - DenseArrayPair", "[unit][ecs]") {
     REQUIRE(std::ranges::equal(array.secondElements(), std::vector<B>{}));
 
     SECTION("single element") {
-        array.push_back(A(1), B(10));
+        array.pushBack(A(1), B(10));
 
         REQUIRE(array.size() == 1);
         REQUIRE(array.first(0) == A(1));
@@ -196,19 +196,19 @@ TEST_CASE("ECS Data Structures - DenseArrayPair", "[unit][ecs]") {
         }
     }
 
-    SECTION("push_back lvalue") {
+    SECTION("pushBack lvalue") {
         A value1(1);
         B value2(10);
-        array.push_back(value1, value2);
+        array.pushBack(value1, value2);
         REQUIRE(std::ranges::equal(array.firstElements(), std::vector{A(1)}));
         REQUIRE(std::ranges::equal(array.secondElements(), std::vector{B(10)}));
     }
 
     SECTION("multiple elements") {
-        array.push_back(A(1), B(10));
-        array.push_back(A(2), B(20));
-        array.push_back(A(3), B(30));
-        array.push_back(A(4), B(40));
+        array.pushBack(A(1), B(10));
+        array.pushBack(A(2), B(20));
+        array.pushBack(A(3), B(30));
+        array.pushBack(A(4), B(40));
 
         REQUIRE(array.size() == 4);
         REQUIRE(array.first(0) == A(1));

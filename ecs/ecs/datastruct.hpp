@@ -25,7 +25,7 @@ public:
     }
 
     void push(T&& value) {
-        container.push(value);
+        container.push(std::move(value));
     }
 
     T& front() {
@@ -53,6 +53,8 @@ public:
     iterator end() noexcept { return container.end(); }
     const_iterator begin() const noexcept { return container.cbegin(); }
     const_iterator end() const noexcept { return container.cend(); }
+    const_iterator cbegin() const noexcept { return container.cbegin(); }
+    const_iterator cend() const noexcept { return container.cend(); }
 
 private:
     std::vector<T>& container;
@@ -82,11 +84,11 @@ public:
         return container[index];
     }
 
-    void push_back(const T& value) {
+    void pushBack(const T& value) {
         container.push_back(value);
     }
 
-    void push_back(T&& value) {
+    void pushBack(T&& value) {
         container.push_back(std::move(value));
     }
 
@@ -102,8 +104,8 @@ public:
         return DenseRange<T>(container);
     }
 
-    DenseRange<T> byElement() const noexcept {
-        return DenseRange<T>(const_cast<const std::vector<T>&>(container));
+    DenseRange<const T> byElement() const noexcept {
+        return DenseRange<const T>(const_cast<const std::vector<T>&>(container));
     }
 
 private:
@@ -146,13 +148,13 @@ public:
     }
 
     template <typename V1, typename V2>
-    void push_back(V1&& value1, V2&& value2)
+    void pushBack(V1&& value1, V2&& value2)
         requires (
             std::same_as<std::decay_t<V1>, T1> &&
             std::same_as<std::decay_t<V2>, T2>)
     {
-        container1.push_back(std::forward<V1>(value1));
-        container2.push_back(std::forward<V2>(value2));
+        container1.pushBack(std::forward<V1>(value1));
+        container2.pushBack(std::forward<V2>(value2));
     }
 
     template <typename V1, typename V2>
@@ -199,8 +201,8 @@ class IndexMap {
 public:
     IndexMap() = default;
     IndexMap(const IndexMap &) = delete;
-    IndexMap(IndexMap &&) noexcept = delete;
-    IndexMap & operator=(const IndexMap &) = default;
+    IndexMap & operator=(const IndexMap &) = delete;
+    IndexMap(IndexMap &&) noexcept = default;
     IndexMap & operator=(IndexMap &&) noexcept = default;
 
     bool contains(const T& key) const {
@@ -256,7 +258,7 @@ public:
         }
         size_t index = values.size();
         indices.insert(std::forward<KVal>(key), index);
-        values.push_back(std::forward<KVal>(key), std::forward<VVal>(value));
+        values.pushBack(std::forward<KVal>(key), std::forward<VVal>(value));
     }
 
     const V& get(const K& key) const {
@@ -275,7 +277,11 @@ public:
         }
     }
 
-    DenseRange<K> byKey() {
+    DenseRange<K> byKey() noexcept {
+        return values.firstElements();
+    }
+
+    DenseRange<const K> byKey() const noexcept {
         return values.firstElements();
     }
 
