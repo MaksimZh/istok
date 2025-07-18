@@ -124,28 +124,6 @@ TEST_CASE("ECS - component storage", "[unit][ecs]") {
 }
 
 /*
-TEST_CASE("ECS - component storage view", "[unit][ecs]") {
-    static_assert(std::ranges::forward_range<ComponentStorageOf<A>::View>);
-    ComponentStorageOf<A> storage;
-    Entity e0 = fakeEntity(0);
-    Entity e1 = fakeEntity(1);
-    Entity e2 = fakeEntity(2);
-    
-    REQUIRE(isSameEntitySet(storage.getView(), EntityUSet{}));
-    
-    storage.insert(e0, A{0});
-    storage.insert(e1, A{1});
-    storage.insert(e2, A{2});
-
-    REQUIRE(isSameEntitySet(storage.getView(), EntityUSet{e0, e1, e2}));
-
-    storage.remove(e0);
-    storage.remove(e2);
- 
-    REQUIRE(isSameEntitySet(storage.getView(), EntityUSet{e1}));
-}
-
-
 TEST_CASE("ECS - component manager", "[unit][ecs]") {
     ComponentManager manager;
     Entity e0 = fakeEntity(0);
