@@ -25,10 +25,6 @@ struct EntityGeneration {
     constexpr EntityGeneration() : value(0) {}
     explicit constexpr EntityGeneration(uint64_t v) : value(v) {}
     bool operator==(const EntityGeneration& other) const = default;
-
-    void inc() {
-        ++value;
-    }
 };
 
 
@@ -51,46 +47,13 @@ struct Entity {
         return EntityGeneration((value & upperMask) >> 32);
     }
 
-    struct Hash {
+    struct Hasher {
         size_t operator()(const Entity& entity) const {
             return std::hash<uint64_t>()(entity.value);
         }
     };
 };
 
-
-class EntityIndexPool {
-public:
-    EntityIndexPool(size_t initialSize) : nextIndex(initialSize) {}
-
-    EntityIndex getFreeIndex() {
-        assert(!isFull());
-        if (freeIndices.empty()) {
-            size_t index = nextIndex.get();
-            nextIndex.inc();
-            return EntityIndex(index);
-        }
-        EntityIndex index = freeIndices.front();
-        freeIndices.pop();
-        return index;
-    }
-    
-    void freeIndex(EntityIndex index) {
-        freeIndices.push(index);
-    }
-    
-    bool isFull() const {
-        return nextIndex.full() && freeIndices.empty();
-    }
-
-    void extend(size_t size) {
-        nextIndex.extend(size);
-    }
-
-private:
-    LimitedCounter nextIndex;
-    Istok::ECS::Queue<EntityIndex> freeIndices;
-};
 
 /*
 class GenerationArray {

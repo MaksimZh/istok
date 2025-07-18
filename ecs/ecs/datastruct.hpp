@@ -309,13 +309,74 @@ public:
         ++value;
     }
 
-    void extend(size_t size) {
-        sentinel += size;
+    void extend(size_t delta) {
+        sentinel += delta;
     }
 
 private:
     size_t value;
     size_t sentinel;
+};
+
+
+class IndexPool {
+public:
+    IndexPool(size_t initialSize) : nextIndex(initialSize) {}
+
+    size_t getFreeIndex() {
+        assert(!isFull());
+        if (freeIndices.empty()) {
+            size_t index = nextIndex.get();
+            nextIndex.inc();
+            return index;
+        }
+        size_t index = freeIndices.front();
+        freeIndices.pop();
+        return index;
+    }
+    
+    void freeIndex(size_t index) {
+        freeIndices.push(index);
+    }
+    
+    bool isFull() const {
+        return nextIndex.full() && freeIndices.empty();
+    }
+
+    void extend(size_t delta) {
+        nextIndex.extend(delta);
+    }
+
+private:
+    LimitedCounter nextIndex;
+    Queue<size_t> freeIndices;
+};
+
+
+class CounterArray {
+public:
+    CounterArray(size_t initialSize) : values(initialSize) {}
+
+    size_t size() const {
+        return values.size();
+    }
+
+    size_t get(size_t index) const {
+        assert(index < size());
+        return values[index];
+    }
+
+    void inc(size_t index) {
+        assert(index < size());
+        ++values[index];
+    }
+
+    void extend(size_t delta) {
+        values.resize(values.size() + delta);
+    }
+
+private:
+    std::vector<size_t> values;
 };
 
 } // namespace Istok::ECS

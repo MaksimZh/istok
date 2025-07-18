@@ -19,13 +19,6 @@ TEST_CASE("Entity - generation", "[unit][ecs]") {
     REQUIRE(EntityGeneration(42) == EntityGeneration(42));
     REQUIRE(EntityGeneration(42) != EntityGeneration(24));
     REQUIRE(EntityGeneration(42).value == 42);
-
-    EntityGeneration g(0);
-    REQUIRE(g.value == 0);
-    g.inc();
-    REQUIRE(g.value == 1);
-    g.inc();
-    REQUIRE(g.value == 2);
 }
 
 
@@ -43,75 +36,6 @@ TEST_CASE("Entity - value", "[unit][ecs]") {
     Entity e(EntityIndex(42), EntityGeneration(17));
     REQUIRE(e.index() == EntityIndex(42));
     REQUIRE(e.generation() == EntityGeneration(17));
-}
-
-
-TEST_CASE("Entity - index pool", "[unit][ecs]") {
-    EntityIndexPool pool(3);
-    REQUIRE(pool.isFull() == false);
-    
-    SECTION("get index") {
-        EntityIndex index = pool.getFreeIndex();
-        REQUIRE(pool.isFull() == false);
-    }
-
-    SECTION("make full") {
-        std::unordered_set<uint64_t> indices;
-        indices.insert(pool.getFreeIndex().value);
-        indices.insert(pool.getFreeIndex().value);
-        indices.insert(pool.getFreeIndex().value);
-        REQUIRE(pool.isFull() == true);
-        REQUIRE(indices.size() == 3);
-    }
-    
-    SECTION("extend") {
-        pool.extend(2);
-        std::unordered_set<uint64_t> indices;
-        indices.insert(pool.getFreeIndex().value);
-        indices.insert(pool.getFreeIndex().value);
-        indices.insert(pool.getFreeIndex().value);
-        REQUIRE(pool.isFull() == false);
-        indices.insert(pool.getFreeIndex().value);
-        indices.insert(pool.getFreeIndex().value);
-        REQUIRE(pool.isFull() == true);
-        REQUIRE(indices.size() == 5);
-    }
-
-    SECTION("extend full") {
-        std::unordered_set<uint64_t> indices;
-        indices.insert(pool.getFreeIndex().value);
-        indices.insert(pool.getFreeIndex().value);
-        indices.insert(pool.getFreeIndex().value);
-        REQUIRE(pool.isFull() == true);
-        pool.extend(2);
-        REQUIRE(pool.isFull() == false);
-        indices.insert(pool.getFreeIndex().value);
-        indices.insert(pool.getFreeIndex().value);
-        REQUIRE(pool.isFull() == true);
-        REQUIRE(indices.size() == 5);
-    }
-    
-    SECTION("free") {
-        std::unordered_set<uint64_t> indices;
-        indices.insert(pool.getFreeIndex().value);
-        indices.insert(pool.getFreeIndex().value);
-        indices.insert(pool.getFreeIndex().value);
-        REQUIRE(pool.isFull() == true);
-        
-        auto it = indices.begin();
-        auto v1 = *(it++);
-        auto v2 = *(it++);
-        indices.erase(v1);
-        indices.erase(v2);
-        pool.freeIndex(EntityIndex(v1));
-        pool.freeIndex(EntityIndex(v2));
-        REQUIRE(pool.isFull() == false);
-
-        indices.insert(pool.getFreeIndex().value);
-        indices.insert(pool.getFreeIndex().value);
-        REQUIRE(pool.isFull() == true);
-        REQUIRE(indices.size() == 3);
-    }
 }
 
 
