@@ -8,27 +8,14 @@
 #include <vector>
 
 
+namespace Istok::ECS {
+
 struct EntityIndex {
     uint64_t value;
 
     constexpr EntityIndex() : value(0) {}
     explicit constexpr EntityIndex(uint64_t value) : value(value) {}
     bool operator==(const EntityIndex& other) const = default;
-
-    EntityIndex& operator++() {
-        ++value;
-        return *this;
-    }
-
-    EntityIndex operator++(int) {
-        auto tmp = *this;
-        ++*this;
-        return *this;
-    }
-
-    operator size_t() const {
-        return static_cast<size_t>(value);
-    }
 };
 
 
@@ -39,15 +26,8 @@ struct EntityGeneration {
     explicit constexpr EntityGeneration(uint64_t v) : value(v) {}
     bool operator==(const EntityGeneration& other) const = default;
 
-    EntityGeneration& operator++() {
+    void inc() {
         ++value;
-        return *this;
-    }
-
-    EntityGeneration operator++(int) {
-        auto tmp = *this;
-        ++*this;
-        return *this;
     }
 };
 
@@ -79,54 +59,20 @@ struct Entity {
 };
 
 
-class LimitedCounter {
-public:
-    LimitedCounter(size_t value, size_t sentinel)
-        : value(value), sentinel(sentinel) {}
-    
-    bool isFull() const {
-        return value == sentinel;
-    }
-
-    void extendBy(size_t size) {
-        sentinel += size;
-    }
-
-    operator size_t() const {
-        return value;
-    }
-
-    LimitedCounter& operator++() {
-        assert(!isFull());
-        ++value;
-        return *this;
-    }
-
-    LimitedCounter operator++(int) {
-        assert(!isFull());
-        auto tmp = *this;
-        ++*this;
-        return tmp;
-    }
-
-private:
-    size_t value;
-    size_t sentinel;
-};
-
-
 class EntityIndexPool {
 public:
-    EntityIndexPool(size_t initialSize) : nextIndex(0, initialSize) {}
+    EntityIndexPool(size_t initialSize) : nextIndex(initialSize) {}
 
     EntityIndex getFreeIndex() {
         assert(!isFull());
-        if (!freeIndices.empty()) {
-            EntityIndex index = freeIndices.front();
-            freeIndices.pop();
-            return index;
+        if (freeIndices.empty()) {
+            size_t index = nextIndex.get();
+            nextIndex.inc();
+            return EntityIndex(index);
         }
-        return EntityIndex(nextIndex++);
+        EntityIndex index = freeIndices.front();
+        freeIndices.pop();
+        return index;
     }
     
     void freeIndex(EntityIndex index) {
@@ -134,11 +80,11 @@ public:
     }
     
     bool isFull() const {
-        return nextIndex.isFull() && freeIndices.empty();
+        return nextIndex.full() && freeIndices.empty();
     }
 
-    void extendBy(size_t size) {
-        nextIndex.extendBy(size);
+    void extend(size_t size) {
+        nextIndex.extend(size);
     }
 
 private:
@@ -146,7 +92,7 @@ private:
     Istok::ECS::Queue<EntityIndex> freeIndices;
 };
 
-
+/*
 class GenerationArray {
 public:
     GenerationArray(size_t initialSize) : values(initialSize) {}
@@ -235,3 +181,5 @@ public:
 private:
     EntityStorage storage;
 };
+*/
+} // namespace Istok::ECS

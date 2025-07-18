@@ -441,51 +441,44 @@ TEST_CASE("ECS Data Structures - LimitedCounter", "[unit][ecs]") {
     REQUIRE(counter.get() == 0);
     REQUIRE(counter.full() == false);
 
-    SECTION("pre-increment") {
-        ++counter;
+    SECTION("increment") {
+        counter.inc();
         REQUIRE(counter.get() == 1);
         REQUIRE(counter.full() == false);
-    }
-
-    SECTION("post-increment") {
-        auto tmp = counter++;
-        REQUIRE(counter.get() == 1);
-        REQUIRE(counter.full() == false);
-        REQUIRE(tmp.get() == 0);
     }
 
     SECTION("make full") {
-        ++counter;
-        ++counter;
-        ++counter;
+        counter.inc();
+        counter.inc();
+        counter.inc();
         REQUIRE(counter.get() == 3);
         REQUIRE(counter.full() == true);
     }
 
     SECTION("extend") {
         counter.extend(2);
-        ++counter;
-        ++counter;
-        ++counter;
+        counter.inc();
+        counter.inc();
+        counter.inc();
         REQUIRE(counter.get() == 3);
         REQUIRE(counter.full() == false);
-        ++counter;
-        ++counter;
+        counter.inc();
+        counter.inc();
         REQUIRE(counter.get() == 5);
         REQUIRE(counter.full() == true);
     }
 
     SECTION("extend full") {
-        ++counter;
-        ++counter;
-        ++counter;
+        counter.inc();
+        counter.inc();
+        counter.inc();
         REQUIRE(counter.get() == 3);
         REQUIRE(counter.full() == true);
         counter.extend(2);
         REQUIRE(counter.get() == 3);
         REQUIRE(counter.full() == false);
-        ++counter;
-        ++counter;
+        counter.inc();
+        counter.inc();
         REQUIRE(counter.get() == 5);
         REQUIRE(counter.full() == true);
     }

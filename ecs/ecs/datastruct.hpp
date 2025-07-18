@@ -3,6 +3,8 @@
 #pragma once
 
 #include <queue>
+#include <vector>
+#include <unordered_map>
 
 namespace Istok::ECS {
 
@@ -302,17 +304,9 @@ public:
         return value;
     }
 
-    LimitedCounter& operator++() {
-        if (!full()) {
-            ++value;
-        }
-        return *this;
-    }
-
-    LimitedCounter operator++(int) {
-        LimitedCounter temp = *this;
-        ++(*this);
-        return temp;
+    void inc() {
+        assert(!full());
+        ++value;
     }
 
     void extend(size_t size) {

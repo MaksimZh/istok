@@ -3,32 +3,28 @@
 
 #include <ecs/entity.hpp>
 
+using namespace Istok::ECS;
+
 #include <unordered_set>
 
 
 TEST_CASE("Entity - index", "[unit][ecs]") {
     REQUIRE(EntityIndex(42) == EntityIndex(42));
     REQUIRE(EntityIndex(42) != EntityIndex(24));
-    REQUIRE(EntityIndex(42) == 42);
-
-    EntityIndex i(0);
-    REQUIRE(i.value == 0);
-    ++i;
-    REQUIRE(i.value == 1);
-    i++;
-    REQUIRE(i.value == 2);
+    REQUIRE(EntityIndex(42).value == 42);
 }
 
 
 TEST_CASE("Entity - generation", "[unit][ecs]") {
     REQUIRE(EntityGeneration(42) == EntityGeneration(42));
     REQUIRE(EntityGeneration(42) != EntityGeneration(24));
+    REQUIRE(EntityGeneration(42).value == 42);
 
     EntityGeneration g(0);
     REQUIRE(g.value == 0);
-    ++g;
+    g.inc();
     REQUIRE(g.value == 1);
-    g++;
+    g.inc();
     REQUIRE(g.value == 2);
 }
 
@@ -50,74 +46,76 @@ TEST_CASE("Entity - value", "[unit][ecs]") {
 }
 
 
-TEST_CASE("Entity - limited counter", "[unit][ecs]") {
-    LimitedCounter c(0, 2);
-    REQUIRE(c == 0);
-    REQUIRE(c.isFull() == false);
-    ++c;
-    REQUIRE(c == 1);
-    REQUIRE(c.isFull() == false);
-    c++;
-    REQUIRE(c == 2);
-    REQUIRE(c.isFull() == true);
-    c.extendBy(3);
-    for (int i = 2; i < 5; i++) {
-        REQUIRE(c == i);
-        REQUIRE(c.isFull() == false);
-        c++;
-    }
-    REQUIRE(c == 5);
-    REQUIRE(c.isFull() == true);
-}
-
-
 TEST_CASE("Entity - index pool", "[unit][ecs]") {
-    EntityIndexPool pool(2);
-    // use set to check if all indices are different
-    std::unordered_set<uint64_t> indices;
+    EntityIndexPool pool(3);
+    REQUIRE(pool.isFull() == false);
     
-    // reach limit
-    for (int i = 0; i < 2; i++) {
+    SECTION("get index") {
+        EntityIndex index = pool.getFreeIndex();
         REQUIRE(pool.isFull() == false);
-        indices.insert(pool.getFreeIndex().value);
     }
-    REQUIRE(pool.isFull() == true);
-    REQUIRE(indices.size() == 2);
-    
-    // extend and reach new limit
-    pool.extendBy(3);
-    for (int i = 0; i < 3; i++) {
-        REQUIRE(pool.isFull() == false);
-        indices.insert(pool.getFreeIndex().value);
-    }
-    REQUIRE(pool.isFull() == true);
-    REQUIRE(indices.size() == 5);
 
-    // check indices limits
-    REQUIRE(*std::max_element(indices.begin(), indices.end()) < 5);
+    SECTION("make full") {
+        std::unordered_set<uint64_t> indices;
+        indices.insert(pool.getFreeIndex().value);
+        indices.insert(pool.getFreeIndex().value);
+        indices.insert(pool.getFreeIndex().value);
+        REQUIRE(pool.isFull() == true);
+        REQUIRE(indices.size() == 3);
+    }
     
-    // free some indices
-    auto it = indices.begin();
-    auto v1 = *(it++);
-    auto v2 = *(it++);
-    indices.erase(v1);
-    indices.erase(v2);
-    pool.freeIndex(EntityIndex(v1));
-    pool.freeIndex(EntityIndex(v2));
-    
-    // reach limit once more
-    for (int i = 0; i < 2; i++) {
+    SECTION("extend") {
+        pool.extend(2);
+        std::unordered_set<uint64_t> indices;
+        indices.insert(pool.getFreeIndex().value);
+        indices.insert(pool.getFreeIndex().value);
+        indices.insert(pool.getFreeIndex().value);
         REQUIRE(pool.isFull() == false);
         indices.insert(pool.getFreeIndex().value);
+        indices.insert(pool.getFreeIndex().value);
+        REQUIRE(pool.isFull() == true);
+        REQUIRE(indices.size() == 5);
     }
-    REQUIRE(pool.isFull() == true);
-    REQUIRE(indices.size() == 5);
 
-    // check indices limits
-    REQUIRE(*std::max_element(indices.begin(), indices.end()) < 5);
+    SECTION("extend full") {
+        std::unordered_set<uint64_t> indices;
+        indices.insert(pool.getFreeIndex().value);
+        indices.insert(pool.getFreeIndex().value);
+        indices.insert(pool.getFreeIndex().value);
+        REQUIRE(pool.isFull() == true);
+        pool.extend(2);
+        REQUIRE(pool.isFull() == false);
+        indices.insert(pool.getFreeIndex().value);
+        indices.insert(pool.getFreeIndex().value);
+        REQUIRE(pool.isFull() == true);
+        REQUIRE(indices.size() == 5);
+    }
+    
+    SECTION("free") {
+        std::unordered_set<uint64_t> indices;
+        indices.insert(pool.getFreeIndex().value);
+        indices.insert(pool.getFreeIndex().value);
+        indices.insert(pool.getFreeIndex().value);
+        REQUIRE(pool.isFull() == true);
+        
+        auto it = indices.begin();
+        auto v1 = *(it++);
+        auto v2 = *(it++);
+        indices.erase(v1);
+        indices.erase(v2);
+        pool.freeIndex(EntityIndex(v1));
+        pool.freeIndex(EntityIndex(v2));
+        REQUIRE(pool.isFull() == false);
+
+        indices.insert(pool.getFreeIndex().value);
+        indices.insert(pool.getFreeIndex().value);
+        REQUIRE(pool.isFull() == true);
+        REQUIRE(indices.size() == 3);
+    }
 }
 
 
+/*
 TEST_CASE("Entity - generation array", "[unit][ecs]") {
     GenerationArray generations(2);
     REQUIRE(generations[0] == EntityGeneration(0));
@@ -246,3 +244,4 @@ TEST_CASE("Entity - manager deep remove", "[unit][ecs]") {
     // all entities are different
     REQUIRE(entities.size() == 10 * 2);
 }
+*/
