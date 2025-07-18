@@ -490,11 +490,11 @@ TEST_CASE("ECS Data Structures - LimitedCounter", "[unit][ecs]") {
 
 TEST_CASE("ECS Data Structures - IndexPool", "[unit][ecs]") {
     ecs::IndexPool pool(3);
-    REQUIRE(pool.isFull() == false);
+    REQUIRE(pool.full() == false);
     
     SECTION("get index") {
         size_t index = pool.getFreeIndex();
-        REQUIRE(pool.isFull() == false);
+        REQUIRE(pool.full() == false);
     }
 
     SECTION("make full") {
@@ -502,8 +502,35 @@ TEST_CASE("ECS Data Structures - IndexPool", "[unit][ecs]") {
         indices.insert(pool.getFreeIndex());
         indices.insert(pool.getFreeIndex());
         indices.insert(pool.getFreeIndex());
-        REQUIRE(pool.isFull() == true);
+        REQUIRE(pool.full() == true);
         REQUIRE(indices.size() == 3);
+
+        SECTION("extend") {
+            pool.extend(2);
+            REQUIRE(pool.full() == false);
+            indices.insert(pool.getFreeIndex());
+            indices.insert(pool.getFreeIndex());
+            REQUIRE(pool.full() == true);
+            REQUIRE(indices.size() == 5);
+        }
+
+        SECTION("free") {
+            auto it = indices.begin();
+            auto v1 = *(it++);
+            auto v2 = *(it++);
+            indices.erase(v1);
+            indices.erase(v2);
+            pool.freeIndex(v1);
+            pool.freeIndex(v2);
+            REQUIRE(pool.full() == false);
+
+            SECTION("fill again") {
+                indices.insert(pool.getFreeIndex());
+                indices.insert(pool.getFreeIndex());
+                REQUIRE(pool.full() == true);
+                REQUIRE(indices.size() == 3);
+            }
+        }
     }
     
     SECTION("extend") {
@@ -512,47 +539,11 @@ TEST_CASE("ECS Data Structures - IndexPool", "[unit][ecs]") {
         indices.insert(pool.getFreeIndex());
         indices.insert(pool.getFreeIndex());
         indices.insert(pool.getFreeIndex());
-        REQUIRE(pool.isFull() == false);
+        REQUIRE(pool.full() == false);
         indices.insert(pool.getFreeIndex());
         indices.insert(pool.getFreeIndex());
-        REQUIRE(pool.isFull() == true);
+        REQUIRE(pool.full() == true);
         REQUIRE(indices.size() == 5);
-    }
-
-    SECTION("extend full") {
-        std::unordered_set<size_t> indices;
-        indices.insert(pool.getFreeIndex());
-        indices.insert(pool.getFreeIndex());
-        indices.insert(pool.getFreeIndex());
-        REQUIRE(pool.isFull() == true);
-        pool.extend(2);
-        REQUIRE(pool.isFull() == false);
-        indices.insert(pool.getFreeIndex());
-        indices.insert(pool.getFreeIndex());
-        REQUIRE(pool.isFull() == true);
-        REQUIRE(indices.size() == 5);
-    }
-    
-    SECTION("free") {
-        std::unordered_set<size_t> indices;
-        indices.insert(pool.getFreeIndex());
-        indices.insert(pool.getFreeIndex());
-        indices.insert(pool.getFreeIndex());
-        REQUIRE(pool.isFull() == true);
-        
-        auto it = indices.begin();
-        auto v1 = *(it++);
-        auto v2 = *(it++);
-        indices.erase(v1);
-        indices.erase(v2);
-        pool.freeIndex(v1);
-        pool.freeIndex(v2);
-        REQUIRE(pool.isFull() == false);
-
-        indices.insert(pool.getFreeIndex());
-        indices.insert(pool.getFreeIndex());
-        REQUIRE(pool.isFull() == true);
-        REQUIRE(indices.size() == 3);
     }
 }
 

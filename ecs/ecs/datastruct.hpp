@@ -324,7 +324,7 @@ public:
     IndexPool(size_t initialSize) : nextIndex(initialSize) {}
 
     size_t getFreeIndex() {
-        assert(!isFull());
+        assert(!full());
         if (freeIndices.empty()) {
             size_t index = nextIndex.get();
             nextIndex.inc();
@@ -339,7 +339,7 @@ public:
         freeIndices.push(index);
     }
     
-    bool isFull() const {
+    bool full() const {
         return nextIndex.full() && freeIndices.empty();
     }
 

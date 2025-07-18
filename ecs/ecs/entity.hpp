@@ -10,23 +10,6 @@
 
 namespace Istok::ECS {
 
-struct EntityIndex {
-    uint64_t value;
-
-    constexpr EntityIndex() : value(0) {}
-    explicit constexpr EntityIndex(uint64_t value) : value(value) {}
-    bool operator==(const EntityIndex& other) const = default;
-};
-
-
-struct EntityGeneration {
-    uint64_t value;
-
-    constexpr EntityGeneration() : value(0) {}
-    explicit constexpr EntityGeneration(uint64_t v) : value(v) {}
-    bool operator==(const EntityGeneration& other) const = default;
-};
-
 
 struct Entity {
     static constexpr uint64_t lowerMask = 0x00000000ffffffff;
@@ -35,16 +18,16 @@ struct Entity {
     uint64_t value;
 
     constexpr Entity() : value(0) {}
-    constexpr Entity(EntityIndex index, EntityGeneration generation)
-        : value(index.value + (generation.value << 32)) {}
+    constexpr Entity(size_t index, size_t generation)
+        : value(index + (generation << 32)) {}
     bool operator==(const Entity& other) const = default;
     
-    EntityIndex index() const {
-        return EntityIndex(value & lowerMask);
+    uint32_t index() const {
+        return value & lowerMask;
     }
 
-    EntityGeneration generation() const {
-        return EntityGeneration((value & upperMask) >> 32);
+    uint32_t generation() const {
+        return (value & upperMask) >> 32;
     }
 
     struct Hasher {
@@ -55,72 +38,45 @@ struct Entity {
 };
 
 
-/*
-class GenerationArray {
-public:
-    GenerationArray(size_t initialSize) : values(initialSize) {}
-
-    size_t size() const {
-        return values.size();
-    }
-
-    EntityGeneration& operator[](size_t index) {
-        assert(index < values.size());
-        return values[index];
-    }
-
-    const EntityGeneration& operator[](size_t index) const {
-        assert(index < values.size());
-        return values[index];
-    }
-
-    void extendBy(size_t size) {
-        values.resize(values.size() + size);
-    }
-
-private:
-    std::vector<EntityGeneration> values;
-};
-
-
 class EntityStorage {
 public:
     EntityStorage(size_t initialSize)
         : indexPool(initialSize), generations(initialSize) {}
-    
-    Entity create() {
-        EntityIndex index = indexPool.getFreeIndex();
-        return Entity(index, generations[index]);
-    }
 
     size_t size() const {
         return generations.size();
     }
 
+    bool full() const {
+        return indexPool.full();
+    }
+    
+    Entity create() {
+        size_t index = indexPool.getFreeIndex();
+        return Entity(index, generations.get(index));
+    }
+
     void destroy(Entity e) {
         indexPool.freeIndex(e.index());
-        generations[e.index()]++;
+        generations.inc(e.index());
     }
     
     bool isValid(Entity e) const {
-        return generations[e.index()] == e.generation();
+        return generations.get(e.index()) == e.generation();
     }
-
-    bool isFull() const {
-        return indexPool.isFull();
-    }
-    
-    void extendBy(size_t size) {
-        indexPool.extendBy(size);
-        generations.extendBy(size);
+   
+    void extend(size_t delta) {
+        indexPool.extend(delta);
+        generations.extend(delta);
     }
 
 private:
-    EntityIndexPool indexPool;
-    GenerationArray generations;
+    IndexPool indexPool;
+    CounterArray generations;
 };
 
 
+/*
 class EntityManager {
 public:
     EntityManager(size_t initialCapacity)

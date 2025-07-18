@@ -8,106 +8,94 @@ using namespace Istok::ECS;
 #include <unordered_set>
 
 
-TEST_CASE("Entity - index", "[unit][ecs]") {
-    REQUIRE(EntityIndex(42) == EntityIndex(42));
-    REQUIRE(EntityIndex(42) != EntityIndex(24));
-    REQUIRE(EntityIndex(42).value == 42);
-}
-
-
-TEST_CASE("Entity - generation", "[unit][ecs]") {
-    REQUIRE(EntityGeneration(42) == EntityGeneration(42));
-    REQUIRE(EntityGeneration(42) != EntityGeneration(24));
-    REQUIRE(EntityGeneration(42).value == 42);
-}
-
-
 TEST_CASE("Entity - value", "[unit][ecs]") {
-    REQUIRE(
-        Entity(EntityIndex(42), EntityGeneration(17)) ==
-        Entity(EntityIndex(42), EntityGeneration(17)));
-    REQUIRE(
-        Entity(EntityIndex(42), EntityGeneration(17)) !=
-        Entity(EntityIndex(24), EntityGeneration(17)));
-    REQUIRE(
-        Entity(EntityIndex(42), EntityGeneration(17)) !=
-        Entity(EntityIndex(42), EntityGeneration(71)));
-
-    Entity e(EntityIndex(42), EntityGeneration(17));
-    REQUIRE(e.index() == EntityIndex(42));
-    REQUIRE(e.generation() == EntityGeneration(17));
-}
-
-
-/*
-TEST_CASE("Entity - generation array", "[unit][ecs]") {
-    GenerationArray generations(2);
-    REQUIRE(generations[0] == EntityGeneration(0));
-    REQUIRE(generations[1] == EntityGeneration(0));
-    generations[1]++;
-    REQUIRE(generations[1] == EntityGeneration(1));
-    generations.extendBy(3);
-    REQUIRE(generations[0] == EntityGeneration(0));
-    REQUIRE(generations[1] == EntityGeneration(1));
-    REQUIRE(generations[2] == EntityGeneration(0));
-    REQUIRE(generations[3] == EntityGeneration(0));
-    REQUIRE(generations[4] == EntityGeneration(0));
+    REQUIRE(Entity(42, 17) == Entity(42, 17));
+    REQUIRE(Entity(42, 17) != Entity(24, 17));
+    REQUIRE(Entity(42, 17) != Entity(42, 71));
+    Entity e(42, 17);
+    REQUIRE(e.index() == 42);
+    REQUIRE(e.generation() == 17);
 }
 
 
 TEST_CASE("Entity - storage", "[unit][ecs]") {
-    EntityStorage storage(2);
-    // use set to check if all entities are different
-    std::unordered_set<Entity, Entity::Hash> entities;
-    
-    REQUIRE(storage.size() == 2);
-    REQUIRE(storage.isFull() == false);
-    Entity e0 = storage.create();
-    REQUIRE(storage.isFull() == false);
-    REQUIRE(storage.isValid(e0) == true);
-    Entity e1 = storage.create();
-    REQUIRE(storage.isFull() == true);
-    REQUIRE(storage.isValid(e1) == true);
-    
-    // check if entities are different
-    entities.insert(e0);
-    entities.insert(e1);
-    REQUIRE(entities.size() == 2);
+    EntityStorage storage(3);
+    REQUIRE(storage.size() == 3);
+    REQUIRE(storage.full() == false);
 
-    // extend and reach new limit
-    storage.extendBy(3);
-    REQUIRE(storage.size() == 5);
-    for (int i = 0; i < 3; i++) {
-        REQUIRE(storage.isFull() == false);
-        entities.insert(storage.create());
+    SECTION("create") {
+        Entity e = storage.create();
+        REQUIRE(storage.full() == false);
+        REQUIRE(storage.isValid(e) == true);
     }
-    REQUIRE(storage.isFull() == true);
-    REQUIRE(entities.size() == 5);
 
-    // destroy some entities
-    storage.destroy(e0);
-    REQUIRE(storage.isFull() == false);
-    REQUIRE(storage.isValid(e0) == false);
-    storage.destroy(e1);
-    REQUIRE(storage.isFull() == false);
-    REQUIRE(storage.isValid(e1) == false);
-    
-    // create new entities
-    Entity e2 = storage.create();
-    Entity e3 = storage.create();
-    REQUIRE(storage.isFull() == true);
-    REQUIRE(storage.isValid(e0) == false);
-    REQUIRE(storage.isValid(e1) == false);
-    REQUIRE(storage.isValid(e2) == true);
-    REQUIRE(storage.isValid(e3) == true);
+    SECTION("make full") {
+        std::unordered_set<Entity, Entity::Hasher> entities;
+        entities.insert(storage.create());
+        entities.insert(storage.create());
+        entities.insert(storage.create());
+        REQUIRE(entities.size() == 3);
+        REQUIRE(storage.full() == true);
+        for (const auto& e: entities) {
+            REQUIRE(storage.isValid(e) == true);
+        }
 
-    // check if all entities (valid and not) are different
-    entities.insert(e2);
-    entities.insert(e3);
-    REQUIRE(entities.size() == 7);
+        SECTION("extend") {
+            storage.extend(2);
+            REQUIRE(storage.size() == 5);
+            REQUIRE(storage.full() == false);
+            entities.insert(storage.create());
+            entities.insert(storage.create());
+            REQUIRE(storage.full() == true);
+            REQUIRE(entities.size() == 5);
+            for (const auto& e: entities) {
+                REQUIRE(storage.isValid(e) == true);
+            }
+        }
+
+        SECTION("destroy") {
+            auto it = entities.begin();
+            auto e1 = *(it++);
+            auto e2 = *(it++);
+            storage.destroy(e1);
+            storage.destroy(e2);
+            REQUIRE(storage.full() == false);
+            REQUIRE(storage.isValid(e1) == false);
+            REQUIRE(storage.isValid(e2) == false);
+
+            SECTION("insert new") {
+                entities.insert(storage.create());
+                entities.insert(storage.create());
+                REQUIRE(storage.full() == true);
+                // all entities (old and new) are different
+                REQUIRE(entities.size() == 5);
+                entities.erase(e1);
+                entities.erase(e2);
+                for (const auto& e: entities) {
+                    REQUIRE(storage.isValid(e) == true);
+                }
+            }
+        }
+    }
+
+    SECTION("extend") {
+        storage.extend(2);
+        REQUIRE(storage.size() == 5);
+        std::unordered_set<Entity, Entity::Hasher> entities;
+        entities.insert(storage.create());
+        entities.insert(storage.create());
+        entities.insert(storage.create());
+        REQUIRE(entities.size() == 3);
+        REQUIRE(storage.full() == false);
+        entities.insert(storage.create());
+        entities.insert(storage.create());
+        REQUIRE(storage.full() == true);
+        REQUIRE(entities.size() == 5);
+    }
 }
 
 
+/*
 TEST_CASE("Entity - manager", "[unit][ecs]") {
     EntityManager manager(2);
     // use set to check if all entities are different
