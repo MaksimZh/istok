@@ -262,6 +262,12 @@ public:
         values.pushBack(std::forward<KVal>(key), std::forward<VVal>(value));
     }
 
+    V& get(const K& key) {
+        assert(contains(key));
+        size_t index = indices.get(key);
+        return values.second(index);
+    }
+
     const V& get(const K& key) const {
         assert(contains(key));
         size_t index = indices.get(key);

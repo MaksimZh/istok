@@ -6,6 +6,7 @@
 using namespace Istok::ECS;
 
 #include <unordered_set>
+using EntityUSet = std::unordered_set<Entity, Entity::Hasher>;
 
 
 TEST_CASE("Entity - value", "[unit][ecs]") {
@@ -30,7 +31,7 @@ TEST_CASE("Entity - storage", "[unit][ecs]") {
     }
 
     SECTION("make full") {
-        std::unordered_set<Entity, Entity::Hasher> entities;
+        EntityUSet entities;
         entities.insert(storage.create());
         entities.insert(storage.create());
         entities.insert(storage.create());
@@ -81,7 +82,7 @@ TEST_CASE("Entity - storage", "[unit][ecs]") {
     SECTION("extend") {
         storage.extend(2);
         REQUIRE(storage.size() == 5);
-        std::unordered_set<Entity, Entity::Hasher> entities;
+        EntityUSet entities;
         entities.insert(storage.create());
         entities.insert(storage.create());
         entities.insert(storage.create());
@@ -109,7 +110,7 @@ TEST_CASE("Entity - manager", "[unit][ecs]") {
     }
 
     SECTION("many entities") {
-        std::unordered_set<Entity, Entity::Hasher> entities;
+        EntityUSet entities;
         // create much more entities than initial capacity
         for (int i = 0; i < 20; i++) {
             entities.insert(manager.create());
@@ -148,7 +149,7 @@ TEST_CASE("Entity - manager", "[unit][ecs]") {
     }
 
     SECTION("mass destruction") {
-        std::unordered_set<Entity, Entity::Hasher> entities;
+        EntityUSet entities;
         for (int i = 0; i < 10; i++) {
             // all old entities (if any) must be invalid
             for (const Entity& e : entities) {

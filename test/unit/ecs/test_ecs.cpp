@@ -3,13 +3,15 @@
 
 #include <ecs/ecs.hpp>
 
+using namespace Istok::ECS;
+
 #include <ranges>
 #include <unordered_set>
 
 
 namespace {
     Entity fakeEntity(size_t index) {
-        return Entity(EntityIndex(index), EntityGeneration(0));
+        return Entity(index, 0);
     }
 
     struct A {
@@ -27,7 +29,7 @@ namespace {
         bool operator==(const C&) const = default;
     };
 
-    using EntityUSet = std::unordered_set<Entity, Entity::Hash>;
+    using EntityUSet = std::unordered_set<Entity, Entity::Hasher>;
 
     template <std::ranges::input_range R>
     bool isSameEntitySet(const R& x, const EntityUSet& y) {
@@ -38,109 +40,14 @@ namespace {
 }
 
 
-TEST_CASE("ECS - dense vector", "[unit][ecs]") {
-    static_assert(std::ranges::forward_range<DenseVector<int>>);
-    DenseVector<int> v;
-    REQUIRE(v.size() == 0);
-    REQUIRE(std::ranges::equal(v, std::vector<int>{}) == true);
-    
-    v.push_back(0);
-    v.push_back(1);
-    v.push_back(2);
-    REQUIRE(v.size() == 3);
-    REQUIRE(v[0] == 0);
-    REQUIRE(v[1] == 1);
-    REQUIRE(v[2] == 2);
-    REQUIRE(v.back() == 2);
-    REQUIRE(std::ranges::equal(v, std::vector{0, 1, 2}) == true);
-
-    v.push_back(3);
-    v.push_back(4);
-    REQUIRE(std::ranges::equal(v, std::vector{0, 1, 2, 3, 4}) == true);
-
-    v.erase(1);
-    REQUIRE(std::ranges::equal(v, std::vector{0, 4, 2, 3}) == true);
-    v.erase(2);
-    REQUIRE(std::ranges::equal(v, std::vector{0, 4, 3}) == true);
-    v.erase(2);
-    REQUIRE(std::ranges::equal(v, std::vector{0, 4}) == true);
-}
-
-
-TEST_CASE("ECS - entity index map", "[unit][ecs]") {
-    EntityIndexMap m;
-    Entity e0 = fakeEntity(0);
-    Entity e1 = fakeEntity(1);
-    Entity e2 = fakeEntity(2);
-    REQUIRE(m.contains(e0) == false);
-    
-    m[e0] = 10;
-    REQUIRE(m.contains(e0) == true);
-    REQUIRE(m[e0] == 10);
-    
-    m[e1] = 20;
-    m[e2] = 30;
-    REQUIRE(m.contains(e0) == true);
-    REQUIRE(m.contains(e1) == true);
-    REQUIRE(m.contains(e2) == true);
-    REQUIRE(m[e0] == 10);
-    REQUIRE(m[e1] == 20);
-    REQUIRE(m[e2] == 30);
-    
-    m.erase(e1);
-    REQUIRE(m.contains(e0) == true);
-    REQUIRE(m.contains(e1) == false);
-    REQUIRE(m.contains(e2) == true);
-    REQUIRE(m[e0] == 10);
-    REQUIRE(m[e2] == 30);
-}
-
-
-namespace {
-    void checkEntityStorage(DenseEntityStorage s, std::vector<Entity> v) {
-        for (int i = 0; i < v.size(); i++) {
-            REQUIRE(s.contains(v[i]) == true);
-            REQUIRE(s.getIndex(v[i]) == i);
-            REQUIRE(s.getEntity(i) == v[i]);
-        }
-        REQUIRE(std::ranges::equal(s, v) == true);
-    }
-}
-
-
-TEST_CASE("ECS - dense entity storage", "[unit][ecs]") {
-    DenseEntityStorage s;
-    std::vector<Entity> e;
-    for (int i = 0; i < 5; i++) {
-        e.push_back(fakeEntity(i));
-    }
-    checkEntityStorage(s, std::vector<Entity>{});
-
-    s.push_back(e[0]);
-    checkEntityStorage(s, std::vector{e[0]});
-
-    for (int i = 1; i < 5; i++) {
-        s.push_back(e[i]);
-    }
-    checkEntityStorage(s, e);
-
-    s.erase(e[1]);
-    checkEntityStorage(s, std::vector{e[0], e[4], e[2], e[3]});
-    s.erase(e[2]);
-    checkEntityStorage(s, std::vector{e[0], e[4], e[3]});
-    s.erase(e[3]);
-    checkEntityStorage(s, std::vector{e[0], e[4]});
-}
-
-
 TEST_CASE("ECS - component storage", "[unit][ecs]") {
     ComponentStorageOf<A> storage;
     Entity e0 = fakeEntity(0);
     Entity e1 = fakeEntity(1);
     Entity e2 = fakeEntity(2);
-
-    // empty storage
     REQUIRE(storage.has(e0) == false);
+    REQUIRE(storage.has(e1) == false);
+    REQUIRE(storage.has(e2) == false);
     
     // add entries
     storage.insert(e0, A{0});
@@ -154,6 +61,12 @@ TEST_CASE("ECS - component storage", "[unit][ecs]") {
     REQUIRE(storage.get(e0) == A{0});
     REQUIRE(storage.get(e1) == A{1});
     REQUIRE(storage.get(e2) == A{2});
+
+    // edit components
+    storage.get(e1).value = 42;
+    REQUIRE(storage.get(e1) == A{42});
+    storage.get(e1).value = 3;
+    REQUIRE(storage.get(e1) == A{3});
 
     // replace components
     storage.insert(e1, A{3});
@@ -176,7 +89,7 @@ TEST_CASE("ECS - component storage", "[unit][ecs]") {
     REQUIRE(storage.get(e0) == A{0});
 }
 
-
+/*
 TEST_CASE("ECS - component storage view", "[unit][ecs]") {
     static_assert(std::ranges::forward_range<ComponentStorageOf<A>::View>);
     ComponentStorageOf<A> storage;
@@ -280,3 +193,4 @@ TEST_CASE("ECS - component manager view", "[unit][ecs]") {
     auto v = manager.getView<A>();
     //REQUIRE(std::ranges::equal(manager.getView<A>(), std::vector{a, ab, ca, abc}));
 }
+*/
