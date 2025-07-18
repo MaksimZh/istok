@@ -76,15 +76,14 @@ private:
 };
 
 
-/*
 class EntityManager {
 public:
     EntityManager(size_t initialCapacity)
         : storage(initialCapacity) {}
     
     Entity create() {
-        if (storage.isFull()) {
-            storage.extendBy(storage.size());
+        if (storage.full()) {
+            storage.extend(storage.size());
         }
         return storage.create();
     }
@@ -100,5 +99,5 @@ public:
 private:
     EntityStorage storage;
 };
-*/
+
 } // namespace Istok::ECS
