@@ -290,4 +290,38 @@ private:
 };
 
 
+class LimitedCounter {
+public:
+    explicit LimitedCounter(size_t sentinel) : value(0), sentinel(sentinel) {}
+
+    bool full() const {
+        return value >= sentinel;
+    }
+
+    size_t get() const {
+        return value;
+    }
+
+    LimitedCounter& operator++() {
+        if (!full()) {
+            ++value;
+        }
+        return *this;
+    }
+
+    LimitedCounter operator++(int) {
+        LimitedCounter temp = *this;
+        ++(*this);
+        return temp;
+    }
+
+    void extend(size_t size) {
+        sentinel += size;
+    }
+
+private:
+    size_t value;
+    size_t sentinel;
+};
+
 } // namespace Istok::ECS
