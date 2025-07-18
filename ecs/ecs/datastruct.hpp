@@ -4,8 +4,7 @@
 
 #include <queue>
 
-namespace Istok {
-namespace ECS {
+namespace Istok::ECS {
 
 template <typename T>
 class Queue {
@@ -291,5 +290,4 @@ private:
 };
 
 
-} // namespace ECS
-} // namespace Istok
+} // namespace Istok::ECS
