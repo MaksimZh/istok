@@ -347,11 +347,13 @@ TEST_CASE("ECS Data Structures - DenseMap", "[unit][ecs]") {
     ecs::DenseMap<A, B, A::Hasher> map;
 
     REQUIRE(map.contains(A(0)) == false);
+    REQUIRE(map.size() == 0);
     REQUIRE(std::ranges::equal(map.byKey(), std::vector<A>{}));
 
     SECTION("single value") {
         map.insert(A(1), B(10));
         REQUIRE(map.contains(A(1)) == true);
+        REQUIRE(map.size() == 1);
         REQUIRE(std::ranges::equal(map.byKey(), std::vector{A(1)}));
         REQUIRE(map.get(A(1)) == B(10));
 
@@ -364,6 +366,7 @@ TEST_CASE("ECS Data Structures - DenseMap", "[unit][ecs]") {
         SECTION("erase") {
             map.erase(A(1));
             REQUIRE(map.contains(A(1)) == false);
+            REQUIRE(map.size() == 0);
             REQUIRE(std::ranges::equal(map.byKey(), std::vector<A>{}));
         }
     }
@@ -372,6 +375,7 @@ TEST_CASE("ECS Data Structures - DenseMap", "[unit][ecs]") {
         A key(1);
         B value(10);
         map.insert(key, value);
+        REQUIRE(map.size() == 1);
         REQUIRE(std::ranges::equal(map.byKey(), std::vector{A(1)}));
         REQUIRE(map.get(A(1)) == B(10));
     }
@@ -386,6 +390,7 @@ TEST_CASE("ECS Data Structures - DenseMap", "[unit][ecs]") {
         REQUIRE(map.contains(A(2)) == true);
         REQUIRE(map.contains(A(3)) == true);
         REQUIRE(map.contains(A(4)) == true);
+        REQUIRE(map.size() == 4);
         REQUIRE(std::ranges::equal(map.byKey(), std::vector{
             A(1), A(2), A(3), A(4)}));
         REQUIRE(map.get(A(1)) == B(10));
@@ -405,6 +410,7 @@ TEST_CASE("ECS Data Structures - DenseMap", "[unit][ecs]") {
 
         SECTION("erase last") {
             map.erase(A(4));
+            REQUIRE(map.size() == 3);
             REQUIRE(std::ranges::equal(map.byKey(), std::vector{
                 A(1), A(2), A(3)}));
             REQUIRE(map.get(A(1)) == B(10));
@@ -414,6 +420,7 @@ TEST_CASE("ECS Data Structures - DenseMap", "[unit][ecs]") {
 
         SECTION("erase middle") {
             map.erase(A(2));
+            REQUIRE(map.size() == 3);
             REQUIRE(std::ranges::equal(map.byKey(), std::vector{
                 A(1), A(4), A(3)}));
             REQUIRE(map.get(A(1)) == B(10));
@@ -424,14 +431,17 @@ TEST_CASE("ECS Data Structures - DenseMap", "[unit][ecs]") {
         SECTION("erase many") {
             map.erase(A(2));
             map.erase(A(3));
+            REQUIRE(map.size() == 2);
             REQUIRE(std::ranges::equal(map.byKey(), std::vector{
                 A(1), A(4)}));
             REQUIRE(map.get(A(1)) == B(10));
             REQUIRE(map.get(A(4)) == B(40));
             map.erase(A(1));
+            REQUIRE(map.size() == 1);
             REQUIRE(std::ranges::equal(map.byKey(), std::vector{A(4)}));
             REQUIRE(map.get(A(4)) == B(40));
             map.erase(A(4));
+            REQUIRE(map.size() == 0);
             REQUIRE(std::ranges::equal(map.byKey(), std::vector<A>{}));
         }
     }

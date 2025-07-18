@@ -242,6 +242,10 @@ public:
     DenseMap(DenseMap&&) noexcept = default;
     DenseMap& operator=(DenseMap&&) noexcept = default;
 
+    size_t size() const {
+        return values.size();
+    }
+
     bool contains(const K& key) const {
         return indices.contains(key);
     }
@@ -279,7 +283,7 @@ public:
         size_t index = indices.get(key);
         indices.erase(key);
         values.erase(index);
-        if (index < values.size()) {
+        if (index < size()) {
             indices.insert(values.first(index), index);
         }
     }

@@ -26,6 +26,10 @@ public:
     ComponentStorageOf(const ComponentStorageOf&) = delete;
     ComponentStorageOf& operator=(const ComponentStorageOf&) = delete;
     
+    size_t size() const {
+        return container.size();
+    }    
+    
     bool has(Entity e) const override {
         return container.contains(e);
     }

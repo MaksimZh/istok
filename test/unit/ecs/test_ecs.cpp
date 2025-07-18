@@ -42,51 +42,85 @@ namespace {
 
 TEST_CASE("ECS - component storage", "[unit][ecs]") {
     ComponentStorageOf<A> storage;
-    Entity e0 = fakeEntity(0);
-    Entity e1 = fakeEntity(1);
-    Entity e2 = fakeEntity(2);
-    REQUIRE(storage.has(e0) == false);
-    REQUIRE(storage.has(e1) == false);
-    REQUIRE(storage.has(e2) == false);
-    
-    // add entries
-    storage.insert(e0, A{0});
-    REQUIRE(storage.has(e0) == true);
-    REQUIRE(storage.get(e0) == A{0});
-    storage.insert(e1, A{1});
-    storage.insert(e2, A{2});
-    REQUIRE(storage.has(e0) == true);
-    REQUIRE(storage.has(e1) == true);
-    REQUIRE(storage.has(e2) == true);
-    REQUIRE(storage.get(e0) == A{0});
-    REQUIRE(storage.get(e1) == A{1});
-    REQUIRE(storage.get(e2) == A{2});
+    REQUIRE(storage.size() == 0);
+    REQUIRE(isSameEntitySet(storage.byEntity(), EntityUSet{}));
 
-    // edit components
-    storage.get(e1).value = 42;
-    REQUIRE(storage.get(e1) == A{42});
-    storage.get(e1).value = 3;
-    REQUIRE(storage.get(e1) == A{3});
+    SECTION("single entity") {
+        Entity e = fakeEntity(0);
+        REQUIRE(storage.has(e) == false);
+        storage.insert(e, A{0});
+        REQUIRE(storage.has(e) == true);
+        REQUIRE(storage.get(e) == A{0});
+        REQUIRE(storage.size() == 1);
+        REQUIRE(isSameEntitySet(storage.byEntity(), EntityUSet{e}));
 
-    // replace components
-    storage.insert(e1, A{3});
-    storage.insert(e2, A{4});
-    REQUIRE(storage.get(e0) == A{0});
-    REQUIRE(storage.get(e1) == A{3});
-    REQUIRE(storage.get(e2) == A{4});
+        SECTION("edit") {
+            storage.get(e).value = 42;
+            REQUIRE(storage.get(e) == A{42});
+        }
 
-    // remove entry
-    storage.remove(e1);
-    REQUIRE(storage.has(e0) == true);
-    REQUIRE(storage.has(e1) == false);
-    REQUIRE(storage.has(e2) == true);
-    REQUIRE(storage.get(e0) == A{0});
-    REQUIRE(storage.get(e2) == A{4});
-    storage.remove(e2);
-    REQUIRE(storage.has(e0) == true);
-    REQUIRE(storage.has(e1) == false);
-    REQUIRE(storage.has(e2) == false);
-    REQUIRE(storage.get(e0) == A{0});
+        SECTION("replace") {
+            storage.insert(e, A{42});
+            REQUIRE(storage.get(e) == A{42});
+        }
+
+        SECTION("remove") {
+            storage.remove(e);
+            REQUIRE(storage.has(e) == false);
+            REQUIRE(storage.size() == 0);
+            REQUIRE(isSameEntitySet(storage.byEntity(), EntityUSet{}));
+        }
+    }
+
+
+    SECTION("many entities") {
+        Entity e0 = fakeEntity(0);
+        Entity e1 = fakeEntity(1);
+        Entity e2 = fakeEntity(2);
+        REQUIRE(storage.has(e0) == false);
+        REQUIRE(storage.has(e1) == false);
+        REQUIRE(storage.has(e2) == false);
+        storage.insert(e0, A{0});
+        storage.insert(e1, A{1});
+        storage.insert(e2, A{2});
+        REQUIRE(storage.has(e0) == true);
+        REQUIRE(storage.has(e1) == true);
+        REQUIRE(storage.has(e2) == true);
+        REQUIRE(storage.get(e0) == A{0});
+        REQUIRE(storage.get(e1) == A{1});
+        REQUIRE(storage.get(e2) == A{2});
+        REQUIRE(storage.size() == 3);
+        REQUIRE(isSameEntitySet(storage.byEntity(), EntityUSet{e0, e1, e2}));
+
+        SECTION("edit") {
+            storage.get(e1).value = 42;
+            REQUIRE(storage.get(e1) == A{42});
+        }
+
+        SECTION("replace") {
+            storage.insert(e1, A{42});
+            REQUIRE(storage.get(e1) == A{42});
+        }
+
+        SECTION("remove") {
+            storage.remove(e1);
+            REQUIRE(storage.has(e0) == true);
+            REQUIRE(storage.has(e1) == false);
+            REQUIRE(storage.has(e2) == true);
+            REQUIRE(storage.get(e0) == A{0});
+            REQUIRE(storage.get(e2) == A{2});
+            REQUIRE(storage.size() == 2);
+            REQUIRE(isSameEntitySet(storage.byEntity(), EntityUSet{e0, e2}));
+            
+            storage.remove(e2);
+            REQUIRE(storage.has(e0) == true);
+            REQUIRE(storage.has(e1) == false);
+            REQUIRE(storage.has(e2) == false);
+            REQUIRE(storage.get(e0) == A{0});
+            REQUIRE(storage.size() == 1);
+            REQUIRE(isSameEntitySet(storage.byEntity(), EntityUSet{e0}));
+        }
+    }
 }
 
 /*
