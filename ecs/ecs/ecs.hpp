@@ -56,7 +56,7 @@ private:
     DenseMap<Entity, Component, Entity::Hasher> container;
 };
 
-/*
+
 class ComponentManager {
 public:
     ComponentManager() {}
@@ -98,7 +98,7 @@ public:
         }
     }
 
-
+    /*
     class View {
     public:
         explicit View(std::vector<ComponentStorage::View> source)
@@ -128,7 +128,7 @@ public:
         return View(std::vector<ComponentStorage::View>{
             prepareStorage<Components>().getView()...});
     }
-
+    */
 
 private:
     using StoragesType = std::unordered_map<
@@ -164,5 +164,5 @@ private:
         return static_cast<ComponentStorageOf<Component>*>(it->second.get());
     }
 };
-*/
+
 } // namespace Istok::ECS

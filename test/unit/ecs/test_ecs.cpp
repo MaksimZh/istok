@@ -123,48 +123,83 @@ TEST_CASE("ECS - component storage", "[unit][ecs]") {
     }
 }
 
-/*
+
 TEST_CASE("ECS - component manager", "[unit][ecs]") {
     ComponentManager manager;
-    Entity e0 = fakeEntity(0);
-    Entity e1 = fakeEntity(1);
     
-    // adding and checking components
-    REQUIRE(manager.has<A>(e0) == false);
-    REQUIRE(manager.has<B>(e0) == false);
-    REQUIRE(manager.has<C>(e0) == false);
-    manager.add(e0, A{0});
-    REQUIRE(manager.has<A>(e0) == true);
-    REQUIRE(manager.has<B>(e0) == false);
-    REQUIRE(manager.has<C>(e0) == false);
-    manager.add(e0, B{0});
-    manager.add(e1, B{1});
-    manager.add(e1, C{1});
-    REQUIRE(manager.has<A>(e0) == true);
-    REQUIRE(manager.has<B>(e0) == true);
-    REQUIRE(manager.has<C>(e0) == false);
-    REQUIRE(manager.has<A>(e1) == false);
-    REQUIRE(manager.has<B>(e1) == true);
-    REQUIRE(manager.has<C>(e1) == true);
+    SECTION("one entity") {
+        Entity e0 = fakeEntity(0);
+        REQUIRE(manager.has<A>(e0) == false);
+        REQUIRE(manager.has<B>(e0) == false);
+        REQUIRE(manager.has<C>(e0) == false);
+        manager.add(e0, A{0});
+        REQUIRE(manager.has<A>(e0) == true);
+        REQUIRE(manager.has<B>(e0) == false);
+        REQUIRE(manager.has<C>(e0) == false);
+        REQUIRE(manager.get<A>(e0) == A{0});
+        manager.add(e0, B{0});
+        REQUIRE(manager.has<A>(e0) == true);
+        REQUIRE(manager.has<B>(e0) == true);
+        REQUIRE(manager.has<C>(e0) == false);
+        REQUIRE(manager.get<A>(e0) == A{0});
+        REQUIRE(manager.get<B>(e0) == B{0});
 
-    // reading components
-    REQUIRE(manager.get<A>(e0) == A{0});
-    REQUIRE(manager.get<B>(e0) == B{0});
-    REQUIRE(manager.get<B>(e1) == B{1});
-    REQUIRE(manager.get<C>(e1) == C{1});
+        SECTION("remove") {
+            manager.remove<A>(e0);
+            REQUIRE(manager.has<A>(e0) == false);
+            REQUIRE(manager.has<B>(e0) == true);
+            REQUIRE(manager.has<C>(e0) == false);
+            REQUIRE(manager.get<B>(e0) == B{0});
+        }
+    }
 
-    // removing components
-    manager.remove<A>(e0);
-    manager.remove<C>(e1);
-    REQUIRE(manager.has<A>(e0) == false);
-    REQUIRE(manager.has<B>(e0) == true);
-    REQUIRE(manager.has<C>(e0) == false);
-    REQUIRE(manager.has<A>(e1) == false);
-    REQUIRE(manager.has<B>(e1) == true);
-    REQUIRE(manager.has<C>(e1) == false);
+    SECTION("many entities") {
+        Entity e0 = fakeEntity(0);
+        Entity e1 = fakeEntity(1);
+        Entity e2 = fakeEntity(2);
+        manager.add(e0, A{0});
+        manager.add(e0, B{0});
+        manager.add(e1, B{1});
+        manager.add(e1, C{1});
+        manager.add(e2, A{2});
+        manager.add(e2, C{2});
+        REQUIRE(manager.has<A>(e0) == true);
+        REQUIRE(manager.has<B>(e0) == true);
+        REQUIRE(manager.has<C>(e0) == false);
+        REQUIRE(manager.has<A>(e1) == false);
+        REQUIRE(manager.has<B>(e1) == true);
+        REQUIRE(manager.has<C>(e1) == true);
+        REQUIRE(manager.has<A>(e2) == true);
+        REQUIRE(manager.has<B>(e2) == false);
+        REQUIRE(manager.has<C>(e2) == true);
+        REQUIRE(manager.get<A>(e0) == A{0});
+        REQUIRE(manager.get<B>(e0) == B{0});
+        REQUIRE(manager.get<B>(e1) == B{1});
+        REQUIRE(manager.get<C>(e1) == C{1});
+        REQUIRE(manager.get<A>(e2) == A{2});
+        REQUIRE(manager.get<C>(e2) == C{2});
+
+        SECTION("remove") {
+            manager.remove<A>(e0);
+            manager.remove<B>(e1);
+            manager.remove<C>(e2);
+            REQUIRE(manager.has<A>(e0) == false);
+            REQUIRE(manager.has<B>(e0) == true);
+            REQUIRE(manager.has<C>(e0) == false);
+            REQUIRE(manager.has<A>(e1) == false);
+            REQUIRE(manager.has<B>(e1) == false);
+            REQUIRE(manager.has<C>(e1) == true);
+            REQUIRE(manager.has<A>(e2) == true);
+            REQUIRE(manager.has<B>(e2) == false);
+            REQUIRE(manager.has<C>(e2) == false);
+            REQUIRE(manager.get<B>(e0) == B{0});
+            REQUIRE(manager.get<C>(e1) == C{1});
+            REQUIRE(manager.get<A>(e2) == A{2});
+        }
+    }
 }
 
-
+/*
 TEST_CASE("ECS - component manager clean", "[unit][ecs]") {
     ComponentManager manager;
     Entity e = fakeEntity(0);
