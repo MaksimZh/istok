@@ -131,10 +131,10 @@ public:
     */
 
 private:
-    using StoragesType = std::unordered_map<
+    std::unordered_map<
         std::type_index,
-        std::unique_ptr<ComponentStorage>>;
-    StoragesType storages;
+        std::unique_ptr<ComponentStorage>
+    > storages;
 
     template <typename Component>
     constexpr std::type_index key() const {
