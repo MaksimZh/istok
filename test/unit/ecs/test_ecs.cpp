@@ -197,6 +197,13 @@ TEST_CASE("ECS - component manager", "[unit][ecs]") {
             REQUIRE(manager.has<C>(e0) == false);
             REQUIRE(manager.get<B>(e0) == B{0});
         }
+
+        SECTION("clean") {
+            manager.clean(e0);
+            REQUIRE(manager.has<A>(e0) == false);
+            REQUIRE(manager.has<B>(e0) == false);
+            REQUIRE(manager.has<C>(e0) == false);
+        }
     }
 
     SECTION("many entities") {
@@ -242,26 +249,45 @@ TEST_CASE("ECS - component manager", "[unit][ecs]") {
             REQUIRE(manager.get<C>(e1) == C{1});
             REQUIRE(manager.get<A>(e2) == A{2});
         }
+
+        SECTION("clean") {
+            manager.clean(e0);
+            REQUIRE(manager.has<A>(e0) == false);
+            REQUIRE(manager.has<B>(e0) == false);
+            REQUIRE(manager.has<C>(e0) == false);
+            REQUIRE(manager.has<A>(e1) == false);
+            REQUIRE(manager.has<B>(e1) == true);
+            REQUIRE(manager.has<C>(e1) == true);
+            REQUIRE(manager.has<A>(e2) == true);
+            REQUIRE(manager.has<B>(e2) == false);
+            REQUIRE(manager.has<C>(e2) == true);
+
+            manager.clean(e1);
+            REQUIRE(manager.has<A>(e0) == false);
+            REQUIRE(manager.has<B>(e0) == false);
+            REQUIRE(manager.has<C>(e0) == false);
+            REQUIRE(manager.has<A>(e1) == false);
+            REQUIRE(manager.has<B>(e1) == false);
+            REQUIRE(manager.has<C>(e1) == false);
+            REQUIRE(manager.has<A>(e2) == true);
+            REQUIRE(manager.has<B>(e2) == false);
+            REQUIRE(manager.has<C>(e2) == true);
+
+            manager.clean(e2);
+            REQUIRE(manager.has<A>(e0) == false);
+            REQUIRE(manager.has<B>(e0) == false);
+            REQUIRE(manager.has<C>(e0) == false);
+            REQUIRE(manager.has<A>(e1) == false);
+            REQUIRE(manager.has<B>(e1) == false);
+            REQUIRE(manager.has<C>(e1) == false);
+            REQUIRE(manager.has<A>(e2) == false);
+            REQUIRE(manager.has<B>(e2) == false);
+            REQUIRE(manager.has<C>(e2) == false);
+        }
     }
 }
 
 /*
-TEST_CASE("ECS - component manager clean", "[unit][ecs]") {
-    ComponentManager manager;
-    Entity e = fakeEntity(0);
-    manager.add(e, A{0});
-    manager.add(e, B{0});
-    manager.add(e, C{0});
-    REQUIRE(manager.has<A>(e) == true);
-    REQUIRE(manager.has<B>(e) == true);
-    REQUIRE(manager.has<C>(e) == true);
-    manager.clean(e);
-    REQUIRE(manager.has<A>(e) == false);
-    REQUIRE(manager.has<B>(e) == false);
-    REQUIRE(manager.has<C>(e) == false);
-}
-
-
 TEST_CASE("ECS - component manager view", "[unit][ecs]") {
     ComponentManager manager;
     Entity a = fakeEntity(0);

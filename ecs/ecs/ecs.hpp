@@ -166,15 +166,14 @@ public:
         storage.remove(e);
     }
 
-    /*
     void clean(Entity e) {
-        for (const auto& [key, value] : storages) {
-            if (value->has(e)) {
-                value->remove(e);
+        for (auto& s : storages.byStorage()) {
+            if (s.has(e)) {
+                s.remove(e);
             }
         }
     }
-    */
+
     /*
     class View {
     public:
