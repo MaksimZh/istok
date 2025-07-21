@@ -1,3 +1,4 @@
+// test_ecs.cpp
 // Copyright 2025 Maksim Sergeevich Zholudev. All rights reserved
 #include <catch.hpp>
 
@@ -35,6 +36,16 @@ namespace {
     bool isSameEntitySet(const R& x, const EntityUSet& y) {
         EntityUSet xs(std::ranges::begin(x), std::ranges::end(x));
         bool allUnique = std::ranges::size(x) == xs.size();
+        return allUnique && xs == y;
+    }
+
+    using StorageUSet = std::unordered_set<ComponentStorage*>;
+
+    template <std::ranges::input_range R>
+    bool isSameStorageSet(const R& x, const StorageUSet& y) {
+        auto ptrs = x | std::views::transform([](auto& v) {return &v;});
+        StorageUSet xs(ptrs.begin(), ptrs.end());
+        bool allUnique = std::ranges::size(ptrs) == xs.size();
         return allUnique && xs == y;
     }
 }
@@ -135,8 +146,8 @@ TEST_CASE("ECS - component storage manager", "[unit][ecs]") {
         REQUIRE(manager.hasStorage<A>() == true);
         REQUIRE(manager.hasStorage<B>() == false);
         REQUIRE(manager.hasStorage<C>() == false);
-        ComponentStorageOf<A>& a1 = manager.getStorage<A>();
-        REQUIRE(&a == &a1);
+        REQUIRE(&manager.getStorage<A>() == &a);
+        REQUIRE(isSameStorageSet(manager.byStorage(), StorageUSet{&a}));
     }
 
     SECTION("many") {
@@ -145,16 +156,16 @@ TEST_CASE("ECS - component storage manager", "[unit][ecs]") {
         REQUIRE(manager.hasStorage<A>() == true);
         REQUIRE(manager.hasStorage<B>() == true);
         REQUIRE(manager.hasStorage<C>() == false);
-        ComponentStorageOf<A>& a1 = manager.getStorage<A>();
-        ComponentStorageOf<B>& b1 = manager.getStorage<B>();
-        REQUIRE(&a == &a1);
-        REQUIRE(&b == &b1);
+        REQUIRE(&manager.getStorage<A>() == &a);
+        REQUIRE(&manager.getStorage<B>() == &b);
+        REQUIRE(isSameStorageSet(manager.byStorage(), StorageUSet{&a, &b}));
+
         ComponentStorageOf<C>& c = manager.getOrCreateStorage<C>();
         REQUIRE(manager.hasStorage<A>() == true);
         REQUIRE(manager.hasStorage<B>() == true);
         REQUIRE(manager.hasStorage<C>() == true);
-        ComponentStorageOf<C>& c1 = manager.getStorage<C>();
-        REQUIRE(&c == &c1);
+        REQUIRE(&manager.getStorage<C>() == &c);
+        REQUIRE(isSameStorageSet(manager.byStorage(), StorageUSet{&a, &b, &c}));
     }
 }
 

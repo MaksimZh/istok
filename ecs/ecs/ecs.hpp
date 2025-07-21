@@ -8,6 +8,7 @@
 #include <typeindex>
 #include <memory>
 #include <vector>
+#include <ranges>
 
 namespace Istok::ECS {
 
@@ -105,6 +106,13 @@ public:
         return *static_cast<ComponentStorageOf<Component>*>(it->second.get());
     }
 
+    auto byStorage() {
+        return storages
+            | std::views::values
+            | std::views::transform(
+                [](auto& ptr) -> ComponentStorage& { return *ptr; });
+    }
+
 private:
     std::unordered_map<
         std::type_index,
@@ -121,37 +129,44 @@ private:
 
 class ComponentManager {
 public:
-    ComponentManager() {}
+    ComponentManager() = default;
+    ComponentManager(const ComponentManager&) = delete;
+    ComponentManager& operator=(const ComponentManager&) = delete;
+    ComponentManager(ComponentManager&&) noexcept = default;
+    ComponentManager& operator=(ComponentManager&&) noexcept = default;
 
     template<typename Component>
     bool has(Entity e) const {
-        const ComponentStorageOf<Component>* storage = viewStorage<Component>();
-        if (storage == nullptr) {
-            return false;
-        }
-        return storage->has(e);
+        return storages.hasStorage<Component>() &&
+            storages.getStorage<Component>().has(e);
     }
 
     template<typename Component>
     void add(Entity e, Component&& component) {
-        ComponentStorageOf<Component>& storage = prepareStorage<Component>();
+        ComponentStorageOf<Component>& storage =
+            storages.getOrCreateStorage<Component>();
         storage.insert(e, std::move(component));
     }
 
     template<typename Component>
     Component& get(Entity e) {
-        ComponentStorageOf<Component>& storage = prepareStorage<Component>();
+        assert(storages.hasStorage<Component>());
+        ComponentStorageOf<Component>& storage = 
+            storages.getStorage<Component>();
         assert(storage.has(e));
         return storage.get(e);
     }
 
     template<typename Component>
     void remove(Entity e) {
-        ComponentStorageOf<Component>& storage = prepareStorage<Component>();
+        assert(storages.hasStorage<Component>());
+        ComponentStorageOf<Component>& storage = 
+            storages.getStorage<Component>();
         assert(storage.has(e));
         storage.remove(e);
     }
 
+    /*
     void clean(Entity e) {
         for (const auto& [key, value] : storages) {
             if (value->has(e)) {
@@ -159,7 +174,7 @@ public:
             }
         }
     }
-
+    */
     /*
     class View {
     public:
@@ -193,38 +208,7 @@ public:
     */
 
 private:
-    std::unordered_map<
-        std::type_index,
-        std::unique_ptr<ComponentStorage>
-    > storages;
-
-    template <typename Component>
-    constexpr std::type_index key() const {
-        static std::type_index index(typeid(Component));
-        return index;
-    }
-
-    template <typename Component>
-    ComponentStorageOf<Component>& prepareStorage() {
-        auto it = storages.find(key<Component>());
-        if (it == storages.end()) {
-            auto result = storages.emplace(
-                key<Component>(),
-                std::make_unique<ComponentStorageOf<Component>>());
-            assert(result.second == true);
-            it = result.first;
-        }
-        return *static_cast<ComponentStorageOf<Component>*>(it->second.get());
-    }
-
-    template <typename Component>
-    const ComponentStorageOf<Component>* viewStorage() const {
-        auto it = storages.find(key<Component>());
-        if (it == storages.end()) {
-            return nullptr;
-        }
-        return static_cast<ComponentStorageOf<Component>*>(it->second.get());
-    }
+    ComponentStorageManager storages;
 };
 
 } // namespace Istok::ECS
