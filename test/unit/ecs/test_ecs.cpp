@@ -136,6 +136,25 @@ TEST_CASE("ECS - component storage manager", "[unit][ecs]") {
         REQUIRE(manager.hasStorage<B>() == false);
         REQUIRE(manager.hasStorage<C>() == false);
         ComponentStorageOf<A>& a1 = manager.getStorage<A>();
+        REQUIRE(&a == &a1);
+    }
+
+    SECTION("many") {
+        ComponentStorageOf<A>& a = manager.getOrCreateStorage<A>();
+        ComponentStorageOf<B>& b = manager.getOrCreateStorage<B>();
+        REQUIRE(manager.hasStorage<A>() == true);
+        REQUIRE(manager.hasStorage<B>() == true);
+        REQUIRE(manager.hasStorage<C>() == false);
+        ComponentStorageOf<A>& a1 = manager.getStorage<A>();
+        ComponentStorageOf<B>& b1 = manager.getStorage<B>();
+        REQUIRE(&a == &a1);
+        REQUIRE(&b == &b1);
+        ComponentStorageOf<C>& c = manager.getOrCreateStorage<C>();
+        REQUIRE(manager.hasStorage<A>() == true);
+        REQUIRE(manager.hasStorage<B>() == true);
+        REQUIRE(manager.hasStorage<C>() == true);
+        ComponentStorageOf<C>& c1 = manager.getStorage<C>();
+        REQUIRE(&c == &c1);
     }
 }
 
