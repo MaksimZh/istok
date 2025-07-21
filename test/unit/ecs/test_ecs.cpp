@@ -124,6 +124,22 @@ TEST_CASE("ECS - component storage", "[unit][ecs]") {
 }
 
 
+TEST_CASE("ECS - component storage manager", "[unit][ecs]") {
+    ComponentStorageManager manager;
+    REQUIRE(manager.hasStorage<A>() == false);
+    REQUIRE(manager.hasStorage<B>() == false);
+    REQUIRE(manager.hasStorage<C>() == false);
+
+    SECTION("single") {
+        ComponentStorageOf<A>& a = manager.getOrCreateStorage<A>();
+        REQUIRE(manager.hasStorage<A>() == true);
+        REQUIRE(manager.hasStorage<B>() == false);
+        REQUIRE(manager.hasStorage<C>() == false);
+        ComponentStorageOf<A>& a1 = manager.getStorage<A>();
+    }
+}
+
+
 TEST_CASE("ECS - component manager", "[unit][ecs]") {
     ComponentManager manager;
     

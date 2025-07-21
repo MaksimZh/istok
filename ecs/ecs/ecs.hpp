@@ -13,6 +13,12 @@ namespace Istok::ECS {
 
 class ComponentStorage {
 public:
+    ComponentStorage() = default;
+    ComponentStorage(const ComponentStorage&) = delete;
+    ComponentStorage& operator=(const ComponentStorage&) = delete;
+    ComponentStorage(ComponentStorage&&) noexcept = default;
+    ComponentStorage& operator=(ComponentStorage&&) noexcept = default;
+    
     virtual bool has(Entity e) const = 0;
     virtual void remove(Entity e) = 0;
     virtual DenseRange<Entity> byEntity() = 0;
@@ -22,9 +28,11 @@ public:
 template <typename Component>
 class ComponentStorageOf: public ComponentStorage {
 public:
-    ComponentStorageOf() {};
+    ComponentStorageOf() = default;
     ComponentStorageOf(const ComponentStorageOf&) = delete;
     ComponentStorageOf& operator=(const ComponentStorageOf&) = delete;
+    ComponentStorageOf(ComponentStorageOf&&) noexcept = default;
+    ComponentStorageOf& operator=(ComponentStorageOf&&) noexcept = default;
     
     size_t size() const {
         return container.size();
@@ -54,6 +62,60 @@ public:
 
 private:
     DenseMap<Entity, Component, Entity::Hasher> container;
+};
+
+
+class ComponentStorageManager {
+public:
+    ComponentStorageManager() = default;
+    ComponentStorageManager(const ComponentStorageManager&) = delete;
+    ComponentStorageManager& operator=(const ComponentStorageManager&) = delete;
+    ComponentStorageManager(ComponentStorageManager&&) noexcept = default;
+    ComponentStorageManager& operator=(ComponentStorageManager&&) noexcept = default;
+
+    template<typename Component>
+    bool hasStorage() const {
+        return storages.contains(key<Component>());
+    }
+
+    template <typename Component>
+    const ComponentStorageOf<Component>& getStorage() const {
+        auto it = storages.find(key<Component>());
+        assert(it != storages.end());
+        return *static_cast<ComponentStorageOf<Component>*>(it->second.get());
+    }
+
+    template <typename Component>
+    ComponentStorageOf<Component>& getStorage() {
+        return const_cast<ComponentStorageOf<Component>&>(
+            static_cast<const ComponentStorageManager*>(this)
+                -> getStorage<Component>());
+    }
+
+    template <typename Component>
+    ComponentStorageOf<Component>& getOrCreateStorage() {
+        auto it = storages.find(key<Component>());
+        if (it == storages.end()) {
+            auto result = storages.emplace(
+                key<Component>(),
+                std::make_unique<ComponentStorageOf<Component>>());
+            assert(result.second == true);
+            it = result.first;
+        }
+        return *static_cast<ComponentStorageOf<Component>*>(it->second.get());
+    }
+
+private:
+    std::unordered_map<
+        std::type_index,
+        std::unique_ptr<ComponentStorage>
+    > storages;
+
+    template <typename Component>
+    constexpr std::type_index key() const {
+        static std::type_index index(typeid(Component));
+        return index;
+    }
 };
 
 
