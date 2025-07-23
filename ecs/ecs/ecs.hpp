@@ -151,6 +151,78 @@ private:
 };
 
 
+class EntityStorageIterator {
+public:
+    using element_type = Entity;
+    using difference_type = ptrdiff_t;
+
+    EntityStorageIterator() = default;
+    EntityStorageIterator(
+        DenseSafeScanner<Entity> start,
+        const EntityStorageFilter& filter)
+        : current(start), filter(&filter) {}
+
+    const Entity& operator*() const { return *current.get(); }
+
+    EntityStorageIterator& operator++() {
+        do {
+            current.inc();
+        } while (!current.finished() && !(*filter)(*current.get()));
+        return *this;
+    }
+
+    EntityStorageIterator operator++(int) {
+        auto tmp = *this;
+        ++(*this);
+        return tmp;
+    }
+
+    bool operator==(const EntityStorageIterator& other) const = default;
+
+private:
+    DenseSafeScanner<Entity> current;
+    const EntityStorageFilter* filter;
+};
+
+
+class EntityStorageRange {
+public:
+    using iterator = EntityStorageIterator;
+    using const_iterator = EntityStorageIterator;
+
+    EntityStorageRange(DenseRange<Entity> base, EntityStorageFilter filter)
+        : base(base), filter(filter) {}
+    
+    iterator begin() noexcept {
+        return EntityStorageIterator(
+            DenseSafeScanner<Entity>(base.begin(), base.end()),
+            filter);
+    }
+    
+    iterator end() noexcept {
+        return EntityStorageIterator(
+            DenseSafeScanner<Entity>(base.end(), base.end()),
+            filter);
+    }
+
+    iterator begin() const noexcept {
+        return EntityStorageIterator(
+            DenseSafeScanner<Entity>(base.begin(), base.end()),
+            filter);
+    }
+    
+    iterator end() const noexcept {
+        return EntityStorageIterator(
+            DenseSafeScanner<Entity>(base.end(), base.end()),
+            filter);
+    }
+
+private:
+    DenseRange<Entity> base;
+    EntityStorageFilter filter;
+};
+
+
 class ComponentManager {
 public:
     ComponentManager() = default;
@@ -200,7 +272,7 @@ public:
 
 
     template<typename... Components>
-    auto view() {
+    EntityStorageRange view() {
         std::vector<std::reference_wrapper<ComponentStorage>> found{
             storages.getOrCreateStorage<Components>()...};
         assert(found.size() > 0);
@@ -209,9 +281,9 @@ public:
             [](const ComponentStorage& a, const ComponentStorage& b) {
                 return a.size() < b.size();
             });
-        return found.at(0).get().byEntity()
-            | std::views::filter(
-                EntityStorageFilter(found | std::views::drop(1)));
+        return EntityStorageRange(
+            found.at(0).get().byEntity(),
+            EntityStorageFilter(found | std::views::drop(1)));
     }
 
 

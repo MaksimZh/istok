@@ -77,6 +77,35 @@ private:
 
 
 template <typename T>
+class DenseSafeScanner {
+public:
+    DenseSafeScanner() = default;
+    DenseSafeScanner(DenseIterator<const T> current, DenseIterator<const T> sentinel)
+        : current(current), sentinel(sentinel) {}
+
+    bool finished() const {
+        return current == sentinel;
+    }
+
+    const DenseIterator<const T>& get() const {
+        return current;
+    }
+    
+    void inc() {
+        if (!finished()) {
+            ++current;
+        }
+    }
+    
+    bool operator==(const DenseSafeScanner& other) const = default;
+
+private:
+    DenseIterator<const T> current;
+    DenseIterator<const T> sentinel;
+};
+
+
+template <typename T>
 class DenseRange {
 public:
     using iterator = DenseIterator<T>;

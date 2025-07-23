@@ -173,6 +173,7 @@ TEST_CASE("ECS - component storage manager", "[unit][ecs]") {
     }
 }
 
+static_assert(std::forward_iterator<EntityStorageIterator>);
 
 TEST_CASE("ECS - component manager", "[unit][ecs]") {
     ComponentManager manager;
@@ -210,7 +211,7 @@ TEST_CASE("ECS - component manager", "[unit][ecs]") {
         }
 
         SECTION("view") {
-            //REQUIRE(isSameEntitySet(manager.view<A>(), EntityUSet{e0}));
+            REQUIRE(isSameEntitySet(manager.view<A>(), EntityUSet{e0}));
         }
     }
 
