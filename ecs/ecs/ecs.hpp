@@ -136,6 +136,10 @@ public:
         std::ranges::range_reference_t<R>, ComponentStorage&>
     explicit EntityStorageFilter(R&& storages)
         : storages(std::ranges::begin(storages), std::ranges::end(storages)) {}
+    EntityStorageFilter(const EntityStorageFilter&) = delete;
+    EntityStorageFilter& operator=(const EntityStorageFilter&) = delete;
+    EntityStorageFilter(EntityStorageFilter&&) = default;
+    EntityStorageFilter& operator=(EntityStorageFilter&&) = default;
 
     bool operator()(Entity e) const {
         for (const auto& s : storages) {
@@ -197,8 +201,8 @@ public:
     using iterator = EntityStorageIterator;
     using const_iterator = EntityStorageIterator;
 
-    EntityStorageRange(DenseRange<Entity> base, EntityStorageFilter filter)
-        : base(base), filter(filter) {}
+    EntityStorageRange(DenseRange<Entity> base, EntityStorageFilter&& filter)
+        : base(base), filter(std::move(filter)) {}
     
     iterator begin() noexcept {
         return EntityStorageIterator(
