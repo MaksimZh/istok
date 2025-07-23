@@ -309,30 +309,3 @@ TEST_CASE("ECS - component manager", "[unit][ecs]") {
         }
     }
 }
-
-/*
-TEST_CASE("ECS - component manager view", "[unit][ecs]") {
-    ComponentManager manager;
-    Entity a = fakeEntity(0);
-    Entity b = fakeEntity(1);
-    Entity c = fakeEntity(2);
-    Entity ab = fakeEntity(3);
-    Entity bc = fakeEntity(4);
-    Entity ca = fakeEntity(5);
-    Entity abc = fakeEntity(6);
-    manager.add(a, A{0});
-    manager.add(b, B{1});
-    manager.add(c, C{2});
-    manager.add(ab, A{3});
-    manager.add(ab, B{3});
-    manager.add(bc, B{4});
-    manager.add(bc, C{4});
-    manager.add(ca, C{5});
-    manager.add(ca, A{5});
-    manager.add(abc, A{6});
-    manager.add(abc, B{6});
-    manager.add(abc, C{6});
-    auto v = manager.getView<A>();
-    //REQUIRE(std::ranges::equal(manager.getView<A>(), std::vector{a, ab, ca, abc}));
-}
-*/
