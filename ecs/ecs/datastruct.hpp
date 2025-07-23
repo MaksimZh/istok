@@ -5,6 +5,7 @@
 #include <queue>
 #include <vector>
 #include <unordered_map>
+#include <ranges>
 
 namespace Istok::ECS {
 
@@ -43,22 +44,57 @@ private:
 
 
 template <typename T>
-class DenseRange {
+class DenseIteratorX {
 public:
-    using iterator = typename std::vector<T>::iterator;
-    using const_iterator = typename std::vector<T>::const_iterator;
+    using element_type = T;
+    using difference_type = ptrdiff_t;
 
-    DenseRange(std::vector<T>& container) : container(container) {}
+    DenseIteratorX() = default;
+    DenseIteratorX(T* start) : current(start) {}
 
-    iterator begin() noexcept { return container.begin(); }
-    iterator end() noexcept { return container.end(); }
-    const_iterator begin() const noexcept { return container.cbegin(); }
-    const_iterator end() const noexcept { return container.cend(); }
-    const_iterator cbegin() const noexcept { return container.cbegin(); }
-    const_iterator cend() const noexcept { return container.cend(); }
+    T& operator*() const { return *current; }
+
+    DenseIteratorX& operator++() {
+        ++current;
+        return *this;
+    }
+
+    DenseIteratorX operator++(int) {
+        auto tmp = *this;
+        ++(*this);
+        return tmp;
+    }
+
+    bool operator==(const DenseIteratorX& other) const = default;
+
+    operator DenseIteratorX<const T>() const {
+        return DenseIteratorX<const T>(current);
+    }
 
 private:
-    std::vector<T>& container;
+    T* current;
+};
+
+
+template <typename T>
+class DenseRangeX {
+public:
+    using iterator = DenseIteratorX<T>;
+    using const_iterator = DenseIteratorX<const T>;
+    
+    DenseRangeX(DenseIteratorX<T> start, DenseIteratorX<T> sentinel)
+        : start(start), sentinel(sentinel) {}
+    
+    iterator begin() noexcept { return start; }
+    iterator end() noexcept { return sentinel; }
+    const_iterator begin() const noexcept { return start; }
+    const_iterator end() const noexcept { return sentinel; }
+    const_iterator cbegin() const noexcept { return start; }
+    const_iterator cend() const noexcept { return sentinel; }
+
+private:
+    DenseIteratorX<T> start;
+    DenseIteratorX<T> sentinel;
 };
 
 
@@ -101,12 +137,14 @@ public:
         container.pop_back();
     }
 
-    DenseRange<T> byElement() noexcept {
-        return DenseRange<T>(container);
+    DenseRangeX<T> byElement() noexcept {
+        T* start = container.data();
+        return DenseRangeX<T>(start, start + container.size());
     }
 
-    DenseRange<const T> byElement() const noexcept {
-        return DenseRange<const T>(const_cast<const std::vector<T>&>(container));
+    DenseRangeX<const T> byElement() const noexcept {
+        const T* start = container.data();
+        return DenseRangeX<T>(start, start + container.size());
     }
 
 private:
@@ -175,19 +213,19 @@ public:
         container2.erase(index);
     }
 
-    DenseRange<T1> firstElements() noexcept {
+    DenseRangeX< T1> firstElements() noexcept {
         return container1.byElement();
     }
 
-    DenseRange<const T1> firstElements() const noexcept {
+    DenseRangeX<const T1> firstElements() const noexcept {
         return container1.byElement();
     }
 
-    DenseRange<T2> secondElements() noexcept {
+    DenseRangeX< T2> secondElements() noexcept {
         return container2.byElement();
     }
 
-    DenseRange<const T2> secondElements() const noexcept {
+    DenseRangeX<const T2> secondElements() const noexcept {
         return container2.byElement();
     }
 
@@ -288,11 +326,11 @@ public:
         }
     }
 
-    DenseRange<K> byKey() noexcept {
+    DenseRangeX< K> byKey() noexcept {
         return values.firstElements();
     }
 
-    DenseRange<const K> byKey() const noexcept {
+    DenseRangeX<const K> byKey() const noexcept {
         return values.firstElements();
     }
 

@@ -34,8 +34,9 @@ namespace {
 
     template <std::ranges::input_range R>
     bool isSameEntitySet(const R& x, const EntityUSet& y) {
-        EntityUSet xs(std::ranges::begin(x), std::ranges::end(x));
-        bool allUnique = std::ranges::size(x) == xs.size();
+        std::vector<Entity> xv(std::ranges::begin(x), std::ranges::end(x));
+        EntityUSet xs(xv.begin(), xv.end());
+        bool allUnique = (xv.size() == xs.size());
         return allUnique && xs == y;
     }
 
@@ -203,6 +204,10 @@ TEST_CASE("ECS - component manager", "[unit][ecs]") {
             REQUIRE(manager.has<A>(e0) == false);
             REQUIRE(manager.has<B>(e0) == false);
             REQUIRE(manager.has<C>(e0) == false);
+        }
+
+        SECTION("view") {
+            //REQUIRE(isSameEntitySet(manager.view<A>(), EntityUSet{e0}));
         }
     }
 

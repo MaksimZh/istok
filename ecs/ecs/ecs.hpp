@@ -1,3 +1,4 @@
+// ecs.hpp
 // Copyright 2025 Maksim Sergeevich Zholudev. All rights reserved
 #pragma once
 
@@ -20,9 +21,10 @@ public:
     ComponentStorage(ComponentStorage&&) noexcept = default;
     ComponentStorage& operator=(ComponentStorage&&) noexcept = default;
     
+    virtual size_t size() const = 0;
     virtual bool has(Entity e) const = 0;
     virtual void remove(Entity e) = 0;
-    virtual DenseRange<Entity> byEntity() = 0;
+    virtual DenseRangeX<Entity> byEntity() = 0;
 };
 
 
@@ -35,7 +37,7 @@ public:
     ComponentStorageOf(ComponentStorageOf&&) noexcept = default;
     ComponentStorageOf& operator=(ComponentStorageOf&&) noexcept = default;
     
-    size_t size() const {
+    size_t size() const override {
         return container.size();
     }    
     
@@ -57,7 +59,7 @@ public:
         container.erase(e);
     }
 
-    DenseRange<Entity> byEntity() override {
+    DenseRangeX<Entity> byEntity() override {
         return container.byKey();
     }
 
@@ -127,6 +129,28 @@ private:
 };
 
 
+class EntityStorageFilter {
+public:
+    template <std::ranges::forward_range R>
+    requires std::convertible_to<
+        std::ranges::range_reference_t<R>, ComponentStorage&>
+    explicit EntityStorageFilter(R&& storages)
+        : storages(std::ranges::begin(storages), std::ranges::end(storages)) {}
+
+    bool operator()(Entity e) const {
+        for (const auto& s : storages) {
+            if (!s.get().has(e)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+private:
+    std::vector<std::reference_wrapper<ComponentStorage>> storages;
+};
+
+
 class ComponentManager {
 public:
     ComponentManager() = default;
@@ -174,37 +198,22 @@ public:
         }
     }
 
-    /*
-    class View {
-    public:
-        explicit View(std::vector<ComponentStorage::View> source)
-            : storages(std::move(source)) {
-            std::sort(
-                storages.begin(), storages.end(),
-                [](const ComponentStorage::View& a, const ComponentStorage::View& b) {
-                    return a.size() < b.size();
-                });
-        }
-
-        class Iterator {
-        public:
-            using difference_type = std::ptrdiff_t;
-            using value_type = Entity;
-
-            Iterator() {}
-        };
-
-    private:
-        std::vector<ComponentStorage::View> storages;
-    };
-
 
     template<typename... Components>
-    View getView() {
-        return View(std::vector<ComponentStorage::View>{
-            prepareStorage<Components>().getView()...});
+    auto view() {
+        std::vector<std::reference_wrapper<ComponentStorage>> found{
+            storages.getOrCreateStorage<Components>()...};
+        assert(found.size() > 0);
+        std::sort(
+            found.begin(), found.end(),
+            [](const ComponentStorage& a, const ComponentStorage& b) {
+                return a.size() < b.size();
+            });
+        return found.at(0).get().byEntity()
+            | std::views::filter(
+                EntityStorageFilter(found | std::views::drop(1)));
     }
-    */
+
 
 private:
     ComponentStorageManager storages;

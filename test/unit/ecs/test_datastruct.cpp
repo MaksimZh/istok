@@ -92,8 +92,11 @@ TEST_CASE("ECS Data Structures - Queue", "[unit][ecs]") {
     }
 }
 
-
-static_assert(std::ranges::forward_range<ecs::DenseRange<A>>);
+static_assert(std::forward_iterator<ecs::DenseIteratorX<A>>);
+static_assert(std::forward_iterator<ecs::DenseIteratorX<const A>>);
+static_assert(std::ranges::forward_range<ecs::DenseRangeX<A>>);
+static_assert(std::ranges::forward_range<ecs::DenseRangeX<const A>>);
+static_assert(std::ranges::forward_range<const ecs::DenseRangeX<A>>);
 
 TEST_CASE("ECS Data Structures - DenseArray", "[unit][ecs]") {
     ecs::DenseArray<A> array;
