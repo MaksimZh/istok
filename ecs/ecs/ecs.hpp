@@ -160,14 +160,15 @@ public:
     EntityStorageIterator(
         DenseSafeScanner<Entity> start,
         const EntityStorageFilter& filter)
-        : current(start), filter(&filter) {}
+        : current(start), filter(&filter) {
+            seek();
+        }
 
     const Entity& operator*() const { return *current.get(); }
 
     EntityStorageIterator& operator++() {
-        do {
-            current.inc();
-        } while (!current.finished() && !(*filter)(*current.get()));
+        current.inc();
+        seek();
         return *this;
     }
 
@@ -182,6 +183,12 @@ public:
 private:
     DenseSafeScanner<Entity> current;
     const EntityStorageFilter* filter;
+
+    void seek() {
+        while (!current.finished() && !(*filter)(*current.get())) {
+            current.inc();
+        }
+    }
 };
 
 
