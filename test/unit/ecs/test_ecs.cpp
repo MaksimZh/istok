@@ -44,9 +44,12 @@ namespace {
 
     template <std::ranges::input_range R>
     bool isSameStorageSet(const R& x, const StorageUSet& y) {
-        auto ptrs = x | std::views::transform([](auto& v) {return &v;});
-        StorageUSet xs(ptrs.begin(), ptrs.end());
-        bool allUnique = std::ranges::size(ptrs) == xs.size();
+        std::vector<ComponentStorage*> xv;
+        for (auto& v : x) {
+            xv.push_back(&v);
+        }
+        StorageUSet xs(xv.begin(), xv.end());
+        bool allUnique = (xv.size() == xs.size());
         return allUnique && xs == y;
     }
 }

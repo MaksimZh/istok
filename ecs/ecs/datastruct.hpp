@@ -44,31 +44,31 @@ private:
 
 
 template <typename T>
-class DenseIteratorX {
+class DenseIterator {
 public:
     using element_type = T;
     using difference_type = ptrdiff_t;
 
-    DenseIteratorX() = default;
-    DenseIteratorX(T* start) : current(start) {}
+    DenseIterator() = default;
+    DenseIterator(T* start) : current(start) {}
 
     T& operator*() const { return *current; }
 
-    DenseIteratorX& operator++() {
+    DenseIterator& operator++() {
         ++current;
         return *this;
     }
 
-    DenseIteratorX operator++(int) {
+    DenseIterator operator++(int) {
         auto tmp = *this;
         ++(*this);
         return tmp;
     }
 
-    bool operator==(const DenseIteratorX& other) const = default;
+    bool operator==(const DenseIterator& other) const = default;
 
-    operator DenseIteratorX<const T>() const {
-        return DenseIteratorX<const T>(current);
+    operator DenseIterator<const T>() const {
+        return DenseIterator<const T>(current);
     }
 
 private:
@@ -77,12 +77,12 @@ private:
 
 
 template <typename T>
-class DenseRangeX {
+class DenseRange {
 public:
-    using iterator = DenseIteratorX<T>;
-    using const_iterator = DenseIteratorX<const T>;
+    using iterator = DenseIterator<T>;
+    using const_iterator = DenseIterator<const T>;
     
-    DenseRangeX(DenseIteratorX<T> start, DenseIteratorX<T> sentinel)
+    DenseRange(DenseIterator<T> start, DenseIterator<T> sentinel)
         : start(start), sentinel(sentinel) {}
     
     iterator begin() noexcept { return start; }
@@ -93,8 +93,8 @@ public:
     const_iterator cend() const noexcept { return sentinel; }
 
 private:
-    DenseIteratorX<T> start;
-    DenseIteratorX<T> sentinel;
+    DenseIterator<T> start;
+    DenseIterator<T> sentinel;
 };
 
 
@@ -137,14 +137,14 @@ public:
         container.pop_back();
     }
 
-    DenseRangeX<T> byElement() noexcept {
+    DenseRange<T> byElement() noexcept {
         T* start = container.data();
-        return DenseRangeX<T>(start, start + container.size());
+        return DenseRange<T>(start, start + container.size());
     }
 
-    DenseRangeX<const T> byElement() const noexcept {
+    DenseRange<const T> byElement() const noexcept {
         const T* start = container.data();
-        return DenseRangeX<T>(start, start + container.size());
+        return DenseRange<T>(start, start + container.size());
     }
 
 private:
@@ -213,19 +213,19 @@ public:
         container2.erase(index);
     }
 
-    DenseRangeX< T1> firstElements() noexcept {
+    DenseRange< T1> firstElements() noexcept {
         return container1.byElement();
     }
 
-    DenseRangeX<const T1> firstElements() const noexcept {
+    DenseRange<const T1> firstElements() const noexcept {
         return container1.byElement();
     }
 
-    DenseRangeX< T2> secondElements() noexcept {
+    DenseRange< T2> secondElements() noexcept {
         return container2.byElement();
     }
 
-    DenseRangeX<const T2> secondElements() const noexcept {
+    DenseRange<const T2> secondElements() const noexcept {
         return container2.byElement();
     }
 
@@ -326,11 +326,11 @@ public:
         }
     }
 
-    DenseRangeX< K> byKey() noexcept {
+    DenseRange< K> byKey() noexcept {
         return values.firstElements();
     }
 
-    DenseRangeX<const K> byKey() const noexcept {
+    DenseRange<const K> byKey() const noexcept {
         return values.firstElements();
     }
 

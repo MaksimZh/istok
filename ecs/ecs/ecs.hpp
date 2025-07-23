@@ -24,7 +24,7 @@ public:
     virtual size_t size() const = 0;
     virtual bool has(Entity e) const = 0;
     virtual void remove(Entity e) = 0;
-    virtual DenseRangeX<Entity> byEntity() = 0;
+    virtual DenseRange<Entity> byEntity() = 0;
 };
 
 
@@ -59,7 +59,7 @@ public:
         container.erase(e);
     }
 
-    DenseRangeX<Entity> byEntity() override {
+    DenseRange<Entity> byEntity() override {
         return container.byKey();
     }
 
