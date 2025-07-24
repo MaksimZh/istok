@@ -6,6 +6,8 @@
 #include "entity.hpp"
 #include "component.hpp"
 
+#include <cassert>
+
 namespace Istok::ECS {
 
 class EntityComponentManager {
@@ -15,7 +17,7 @@ public:
     EntityComponentManager(EntityComponentManager&&) = default;
     EntityComponentManager& operator=(EntityComponentManager&&) = default;
 
-    EntityComponentManager(size_t initialCapacity)
+    EntityComponentManager(size_t initialCapacity = 1024)
         : entities(initialCapacity) {}
 
     bool isValidEntity(Entity e) const {

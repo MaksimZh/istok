@@ -2,6 +2,7 @@
 // Copyright 2025 Maksim Sergeevich Zholudev. All rights reserved
 #pragma once
 
+#include <cassert>
 #include <queue>
 #include <vector>
 #include <unordered_map>
