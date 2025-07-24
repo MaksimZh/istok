@@ -1,6 +1,7 @@
 // test_component.cpp
 // Copyright 2025 Maksim Sergeevich Zholudev. All rights reserved
 #include <catch.hpp>
+#include "helper.hpp"
 
 #include <ecs/component.hpp>
 
@@ -29,16 +30,6 @@ namespace {
         int value;
         bool operator==(const C&) const = default;
     };
-
-    using EntityUSet = std::unordered_set<Entity, Entity::Hasher>;
-
-    template <std::ranges::input_range R>
-    bool isSameEntitySet(const R& x, const EntityUSet& y) {
-        std::vector<Entity> xv(std::ranges::begin(x), std::ranges::end(x));
-        EntityUSet xs(xv.begin(), xv.end());
-        bool allUnique = (xv.size() == xs.size());
-        return allUnique && xs == y;
-    }
 
     using StorageUSet = std::unordered_set<ComponentStorage*>;
 

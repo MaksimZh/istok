@@ -1,12 +1,10 @@
 // Copyright 2025 Maksim Sergeevich Zholudev. All rights reserved
 #include <catch.hpp>
+#include "helper.hpp"
 
 #include <ecs/entity.hpp>
 
 using namespace Istok::ECS;
-
-#include <unordered_set>
-using EntityUSet = std::unordered_set<Entity, Entity::Hasher>;
 
 
 TEST_CASE("Entity - value", "[unit][ecs]") {

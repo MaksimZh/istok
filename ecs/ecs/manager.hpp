@@ -8,6 +8,37 @@
 
 namespace Istok::ECS {
 
+class EntityComponentManager {
+public:
+    EntityComponentManager(const EntityComponentManager&) = delete;
+    EntityComponentManager& operator=(const EntityComponentManager&) = delete;
+    EntityComponentManager(EntityComponentManager&&) = default;
+    EntityComponentManager& operator=(EntityComponentManager&&) = default;
 
+    EntityComponentManager(size_t initialCapacity)
+        : entities(initialCapacity) {}
+
+    Entity createEntity() {
+        return entities.create();
+    }
+
+    bool entityExists(Entity e) const {
+        return entities.isValid(e);
+    }
+
+    template <typename Component>
+    bool hasComponent(Entity e) const {
+        return components.has<Component>(e);
+    }
+
+    template <typename Component>
+    void addComponent(Entity e, Component&& component) {
+        components.add(e, std::move(component));
+    }
+
+private:
+    EntityManager entities;
+    ComponentManager components;
+};
 
 } // namespace Istok::ECS
