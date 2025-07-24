@@ -7,6 +7,7 @@
 namespace ecs = Istok::ECS;
 
 #include <unordered_set>
+#include <ranges>
 
 
 namespace {
@@ -32,6 +33,14 @@ namespace {
                 return std::hash<int>()(obj.value);
             }
         };
+    };
+
+    struct FakeContainer {
+        std::unordered_set<A, A::Hasher> data;
+
+        bool has(const A& a) const {
+            return data.contains(a);
+        }
     };
 }
 
@@ -591,5 +600,86 @@ TEST_CASE("ECS Data Structures - CounterArray", "[unit][ecs]") {
         REQUIRE(array.get(2) == 1);
         REQUIRE(array.get(3) == 0);
         REQUIRE(array.get(4) == 0);
+    }
+}
+
+
+TEST_CASE("ECS Data Structures - ContainerFilter", "[unit][ecs]") {
+    FakeContainer c123({A{1}, A{2}, A{3}});
+    FakeContainer c234({A{2}, A{3}, A{4}});
+    FakeContainer c1234({A{1}, A{2}, A{3}, A{4}});
+    FakeContainer c12({A{1}, A{2}});
+    FakeContainer c23({A{2}, A{3}});
+
+    SECTION("empty") {
+        ecs::ContainerFilter<FakeContainer> filter;
+        REQUIRE(filter(A{0}) == true);
+    }
+
+    SECTION("single+") {
+        ecs::ContainerFilter<FakeContainer> filter(
+            std::vector<std::reference_wrapper<FakeContainer>>{c123});
+        REQUIRE(filter(A{0}) == false);
+        REQUIRE(filter(A{1}) == true);
+        REQUIRE(filter(A{2}) == true);
+        REQUIRE(filter(A{3}) == true);
+        REQUIRE(filter(A{4}) == false);
+    }
+
+    SECTION("single-") {
+        ecs::ContainerFilter<FakeContainer> filter(
+            std::views::empty<std::reference_wrapper<FakeContainer>>,
+            std::vector<std::reference_wrapper<FakeContainer>>{c123});
+        REQUIRE(filter(A{0}) == true);
+        REQUIRE(filter(A{1}) == false);
+        REQUIRE(filter(A{2}) == false);
+        REQUIRE(filter(A{3}) == false);
+        REQUIRE(filter(A{4}) == true);
+    }
+
+    SECTION("single+-") {
+        ecs::ContainerFilter<FakeContainer> filter(
+            std::vector<std::reference_wrapper<FakeContainer>>{c1234},
+            std::vector<std::reference_wrapper<FakeContainer>>{c23});
+        REQUIRE(filter(A{0}) == false);
+        REQUIRE(filter(A{1}) == true);
+        REQUIRE(filter(A{2}) == false);
+        REQUIRE(filter(A{3}) == false);
+        REQUIRE(filter(A{4}) == true);
+        REQUIRE(filter(A{5}) == false);
+    }
+
+    SECTION("multi+") {
+        ecs::ContainerFilter<FakeContainer> filter(
+            std::vector<std::reference_wrapper<FakeContainer>>{c123, c234});
+        REQUIRE(filter(A{0}) == false);
+        REQUIRE(filter(A{1}) == false);
+        REQUIRE(filter(A{2}) == true);
+        REQUIRE(filter(A{3}) == true);
+        REQUIRE(filter(A{4}) == false);
+    }
+
+    SECTION("multi-") {
+        ecs::ContainerFilter<FakeContainer> filter(
+            std::views::empty<std::reference_wrapper<FakeContainer>>,
+            std::vector<std::reference_wrapper<FakeContainer>>{c123, c234});
+        REQUIRE(filter(A{0}) == true);
+        REQUIRE(filter(A{1}) == false);
+        REQUIRE(filter(A{2}) == false);
+        REQUIRE(filter(A{3}) == false);
+        REQUIRE(filter(A{4}) == false);
+        REQUIRE(filter(A{5}) == true);
+    }
+
+    SECTION("multi+-") {
+        ecs::ContainerFilter<FakeContainer> filter(
+            std::vector<std::reference_wrapper<FakeContainer>>{c1234},
+            std::vector<std::reference_wrapper<FakeContainer>>{c23});
+        REQUIRE(filter(A{0}) == false);
+        REQUIRE(filter(A{1}) == true);
+        REQUIRE(filter(A{2}) == false);
+        REQUIRE(filter(A{3}) == false);
+        REQUIRE(filter(A{4}) == true);
+        REQUIRE(filter(A{5}) == false);
     }
 }

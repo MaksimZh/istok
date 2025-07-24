@@ -457,4 +457,51 @@ private:
     std::vector<size_t> values;
 };
 
+
+template <typename C>
+class ContainerFilter {
+public:
+    ContainerFilter() = default;
+
+    template <std::ranges::forward_range R>
+    explicit ContainerFilter(R&& positive)
+            : positive(
+                std::ranges::begin(positive),
+                std::ranges::end(positive)) {}
+
+    template <std::ranges::forward_range R, std::ranges::forward_range RN>
+    explicit ContainerFilter(R&& positive, RN&& negative)
+            : positive(
+                std::ranges::begin(positive),
+                std::ranges::end(positive)),
+            negative(
+                std::ranges::begin(negative),
+                std::ranges::end(negative)) {}
+    
+    ContainerFilter(const ContainerFilter&) = delete;
+    ContainerFilter& operator=(const ContainerFilter&) = delete;
+    ContainerFilter(ContainerFilter&&) = default;
+    ContainerFilter& operator=(ContainerFilter&&) = default;
+
+    template <typename T>
+    bool operator()(T x) const {
+        for (const C& c : positive) {
+            if (!c.has(x)) {
+                return false;
+            }
+        }
+        for (const C& c : negative) {
+            if (c.has(x)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+private:
+    std::vector<std::reference_wrapper<C>> positive;
+    std::vector<std::reference_wrapper<C>> negative;
+};
+
+
 } // namespace Istok::ECS
