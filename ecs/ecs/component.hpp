@@ -176,8 +176,8 @@ public:
     using iterator = EntityStorageIterator;
     using const_iterator = EntityStorageIterator;
 
-    EntityStorageRange(DenseRange<Entity> base, ContainerFilter<ComponentStorage>&& filter)
-        : base(base), filter(std::move(filter)) {}
+    EntityStorageRange(DenseRange<Entity> base, ContainerFilter<ComponentStorage> filter)
+        : base(base), filter(filter) {}
     
     iterator begin() noexcept {
         return EntityStorageIterator(
@@ -191,21 +191,52 @@ public:
             filter);
     }
 
-    iterator begin() const noexcept {
+    const_iterator begin() const noexcept {
         return EntityStorageIterator(
             DenseSafeScanner<Entity>(base.begin(), base.end()),
             filter);
     }
     
-    iterator end() const noexcept {
+    const_iterator end() const noexcept {
         return EntityStorageIterator(
             DenseSafeScanner<Entity>(base.end(), base.end()),
             filter);
     }
 
+    template <std::ranges::forward_range RN>
+    EntityStorageRange exclude(RN&& neg) const {
+        return EntityStorageRange(base, filter.exclude(neg));
+    }
+
 private:
     DenseRange<Entity> base;
     ContainerFilter<ComponentStorage> filter;
+};
+
+
+class EntityView {
+public:
+    using iterator = EntityStorageIterator;
+    using const_iterator = EntityStorageIterator;
+
+    EntityView(ComponentStorageManager& storages, EntityStorageRange range)
+        : storages(&storages), range(range) {}
+    
+    iterator begin() noexcept { return range.begin(); }
+    iterator end() noexcept { return range.end(); }
+    const_iterator begin() const noexcept { return range.begin(); }
+    const_iterator end() const noexcept { return range.end(); }
+
+    template<typename... Components>
+    EntityView exclude() {
+        std::vector<std::reference_wrapper<ComponentStorage>> found{
+            storages->getOrCreateStorage<Components>()...};
+        return EntityView(*storages, range.exclude(found));
+    }
+
+private:
+    ComponentStorageManager* storages;
+    EntityStorageRange range;
 };
 
 
@@ -258,7 +289,7 @@ public:
 
 
     template<typename... Components>
-    EntityStorageRange view() {
+    EntityView view() {
         std::vector<std::reference_wrapper<ComponentStorage>> found{
             storages.getOrCreateStorage<Components>()...};
         assert(found.size() > 0);
@@ -267,9 +298,11 @@ public:
             [](const ComponentStorage& a, const ComponentStorage& b) {
                 return a.size() < b.size();
             });
-        return EntityStorageRange(
-            found.at(0).get().byEntity(),
-            ContainerFilter<ComponentStorage>(found | std::views::drop(1)));
+        return EntityView(
+            storages,
+            EntityStorageRange(
+                found.at(0).get().byEntity(),
+                ContainerFilter<ComponentStorage>(found | std::views::drop(1))));
     }
 
 

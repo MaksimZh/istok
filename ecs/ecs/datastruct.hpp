@@ -478,11 +478,6 @@ public:
                 std::ranges::begin(negative),
                 std::ranges::end(negative)) {}
     
-    ContainerFilter(const ContainerFilter&) = delete;
-    ContainerFilter& operator=(const ContainerFilter&) = delete;
-    ContainerFilter(ContainerFilter&&) = default;
-    ContainerFilter& operator=(ContainerFilter&&) = default;
-
     template <typename T>
     bool operator()(T x) const {
         for (const C& c : positive) {

@@ -61,7 +61,7 @@ public:
     }
 
     template<typename... Components>
-    EntityStorageRange view() {
+    EntityView view() {
         return components.view<Components...>();
     }
 

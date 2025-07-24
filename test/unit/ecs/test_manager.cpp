@@ -236,5 +236,9 @@ TEST_CASE("ECS - manager", "[unit][ecs]") {
         REQUIRE(isSameEntitySet(manager.view<B, C>(), EntityUSet{bc, abc}));
         REQUIRE(isSameEntitySet(manager.view<A, C>(), EntityUSet{ac, abc}));
         REQUIRE(isSameEntitySet(manager.view<A, B, C>(), EntityUSet{abc}));
+        REQUIRE(isSameEntitySet(
+            manager.view<A>().exclude<B>(),
+            EntityUSet{a, ac}));
+
     }
 }
