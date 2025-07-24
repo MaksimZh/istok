@@ -130,32 +130,6 @@ private:
 };
 
 
-class EntityStorageFilter {
-public:
-    template <std::ranges::forward_range R>
-    requires std::convertible_to<
-        std::ranges::range_reference_t<R>, ComponentStorage&>
-    explicit EntityStorageFilter(R&& storages)
-        : storages(std::ranges::begin(storages), std::ranges::end(storages)) {}
-    EntityStorageFilter(const EntityStorageFilter&) = delete;
-    EntityStorageFilter& operator=(const EntityStorageFilter&) = delete;
-    EntityStorageFilter(EntityStorageFilter&&) = default;
-    EntityStorageFilter& operator=(EntityStorageFilter&&) = default;
-
-    bool operator()(Entity e) const {
-        for (const auto& s : storages) {
-            if (!s.get().has(e)) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-private:
-    std::vector<std::reference_wrapper<ComponentStorage>> storages;
-};
-
-
 class EntityStorageIterator {
 public:
     using element_type = Entity;
@@ -164,7 +138,7 @@ public:
     EntityStorageIterator() = default;
     EntityStorageIterator(
         DenseSafeScanner<Entity> start,
-        const EntityStorageFilter& filter)
+        const ContainerFilter<ComponentStorage>& filter)
         : current(start), filter(&filter) {
             seek();
         }
@@ -187,7 +161,7 @@ public:
 
 private:
     DenseSafeScanner<Entity> current;
-    const EntityStorageFilter* filter;
+    const ContainerFilter<ComponentStorage>* filter;
 
     void seek() {
         while (!current.finished() && !(*filter)(*current.get())) {
@@ -202,7 +176,7 @@ public:
     using iterator = EntityStorageIterator;
     using const_iterator = EntityStorageIterator;
 
-    EntityStorageRange(DenseRange<Entity> base, EntityStorageFilter&& filter)
+    EntityStorageRange(DenseRange<Entity> base, ContainerFilter<ComponentStorage>&& filter)
         : base(base), filter(std::move(filter)) {}
     
     iterator begin() noexcept {
@@ -231,7 +205,7 @@ public:
 
 private:
     DenseRange<Entity> base;
-    EntityStorageFilter filter;
+    ContainerFilter<ComponentStorage> filter;
 };
 
 
@@ -295,7 +269,7 @@ public:
             });
         return EntityStorageRange(
             found.at(0).get().byEntity(),
-            EntityStorageFilter(found | std::views::drop(1)));
+            ContainerFilter<ComponentStorage>(found | std::views::drop(1)));
     }
 
 
