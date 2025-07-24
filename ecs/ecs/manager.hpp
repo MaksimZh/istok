@@ -22,7 +22,7 @@ public:
         return entities.create();
     }
 
-    bool entityExists(Entity e) const {
+    bool isValidEntity(Entity e) const {
         return entities.isValid(e);
     }
 
@@ -34,6 +34,15 @@ public:
     template <typename Component>
     void addComponent(Entity e, Component&& component) {
         components.add(e, std::move(component));
+    }
+
+    template <typename Component>
+    void removeComponent(Entity e) {
+        components.remove<Component>(e);
+    }
+
+    void destroyEntity(Entity e) {
+        entities.destroy(e);
     }
 
 private:
