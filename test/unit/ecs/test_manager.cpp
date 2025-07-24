@@ -30,6 +30,7 @@ namespace {
 
 TEST_CASE("ECS - manager", "[unit][ecs]") {
     EntityComponentManager manager(3);
+    REQUIRE(isSameEntitySet(manager.view<A>(), EntityUSet{}));
 
     SECTION("single entity") {
         Entity e0 = manager.createEntity();
@@ -37,29 +38,53 @@ TEST_CASE("ECS - manager", "[unit][ecs]") {
         REQUIRE(manager.hasComponent<A>(e0) == false);
         REQUIRE(manager.hasComponent<B>(e0) == false);
         REQUIRE(manager.hasComponent<C>(e0) == false);
+        REQUIRE(isSameEntitySet(manager.view<A>(), EntityUSet{}));
+
         manager.addComponent(e0, A{0});
         REQUIRE(manager.hasComponent<A>(e0) == true);
         REQUIRE(manager.hasComponent<B>(e0) == false);
         REQUIRE(manager.hasComponent<C>(e0) == false);
+        REQUIRE(isSameEntitySet(manager.view<A>(), EntityUSet{e0}));
+        REQUIRE(isSameEntitySet(manager.view<A, B>(), EntityUSet{}));
+        REQUIRE(manager.getComponent<A>(e0) == A{0});
+
         manager.addComponent(e0, B{0});
         REQUIRE(manager.hasComponent<A>(e0) == true);
         REQUIRE(manager.hasComponent<B>(e0) == true);
         REQUIRE(manager.hasComponent<C>(e0) == false);
+        REQUIRE(isSameEntitySet(manager.view<A, B>(), EntityUSet{e0}));
+        REQUIRE(manager.getComponent<A>(e0) == A{0});
+        REQUIRE(manager.getComponent<B>(e0) == B{0});
+
+        SECTION("change component") {
+            manager.getComponent<A>(e0).value = 42;
+            REQUIRE(manager.getComponent<A>(e0) == A{42});
+            REQUIRE(manager.getComponent<B>(e0) == B{0});
+        }
 
         SECTION("remove components") {
             manager.removeComponent<A>(e0);
             REQUIRE(manager.hasComponent<A>(e0) == false);
             REQUIRE(manager.hasComponent<B>(e0) == true);
             REQUIRE(manager.hasComponent<C>(e0) == false);
+            REQUIRE(isSameEntitySet(manager.view<A>(), EntityUSet{}));
+            REQUIRE(isSameEntitySet(manager.view<B>(), EntityUSet{e0}));
             manager.removeComponent<B>(e0);
             REQUIRE(manager.hasComponent<A>(e0) == false);
             REQUIRE(manager.hasComponent<B>(e0) == false);
             REQUIRE(manager.hasComponent<C>(e0) == false);
+            REQUIRE(isSameEntitySet(manager.view<A>(), EntityUSet{}));
+            REQUIRE(isSameEntitySet(manager.view<B>(), EntityUSet{}));
         }
 
         SECTION("destroy entity") {
             manager.destroyEntity(e0);
             REQUIRE(manager.isValidEntity(e0) == false);
+            REQUIRE(manager.hasComponent<A>(e0) == false);
+            REQUIRE(manager.hasComponent<B>(e0) == false);
+            REQUIRE(manager.hasComponent<C>(e0) == false);
+            REQUIRE(isSameEntitySet(manager.view<A>(), EntityUSet{}));
+            REQUIRE(isSameEntitySet(manager.view<B>(), EntityUSet{}));
         }
     }
 
@@ -94,6 +119,31 @@ TEST_CASE("ECS - manager", "[unit][ecs]") {
         REQUIRE(manager.hasComponent<A>(e2) == true);
         REQUIRE(manager.hasComponent<B>(e2) == false);
         REQUIRE(manager.hasComponent<C>(e2) == true);
+        REQUIRE(isSameEntitySet(manager.view<A>(), EntityUSet{e0, e2}));
+        REQUIRE(isSameEntitySet(manager.view<B>(), EntityUSet{e0, e1}));
+        REQUIRE(isSameEntitySet(manager.view<C>(), EntityUSet{e1, e2}));
+        REQUIRE(isSameEntitySet(manager.view<A, B>(), EntityUSet{e0}));
+        REQUIRE(isSameEntitySet(manager.view<B, C>(), EntityUSet{e1}));
+        REQUIRE(isSameEntitySet(manager.view<A, C>(), EntityUSet{e2}));
+        REQUIRE(isSameEntitySet(manager.view<A, B, C>(), EntityUSet{}));
+        REQUIRE(manager.getComponent<A>(e0) == A{0});
+        REQUIRE(manager.getComponent<B>(e0) == B{0});
+        REQUIRE(manager.getComponent<B>(e1) == B{1});
+        REQUIRE(manager.getComponent<C>(e1) == C{1});
+        REQUIRE(manager.getComponent<A>(e2) == A{2});
+        REQUIRE(manager.getComponent<C>(e2) == C{2});
+
+        SECTION("change component") {
+            manager.getComponent<A>(e0).value = 42;
+            manager.getComponent<B>(e1).value = 17;
+            manager.getComponent<C>(e2).value = 39;
+            REQUIRE(manager.getComponent<A>(e0) == A{42});
+            REQUIRE(manager.getComponent<B>(e0) == B{0});
+            REQUIRE(manager.getComponent<B>(e1) == B{17});
+            REQUIRE(manager.getComponent<C>(e1) == C{1});
+            REQUIRE(manager.getComponent<A>(e2) == A{2});
+            REQUIRE(manager.getComponent<C>(e2) == C{39});
+        }
 
         SECTION("remove components") {
             manager.removeComponent<A>(e0);
@@ -108,6 +158,16 @@ TEST_CASE("ECS - manager", "[unit][ecs]") {
             REQUIRE(manager.hasComponent<A>(e2) == true);
             REQUIRE(manager.hasComponent<B>(e2) == false);
             REQUIRE(manager.hasComponent<C>(e2) == false);
+            REQUIRE(isSameEntitySet(manager.view<A>(), EntityUSet{e2}));
+            REQUIRE(isSameEntitySet(manager.view<B>(), EntityUSet{e0}));
+            REQUIRE(isSameEntitySet(manager.view<C>(), EntityUSet{e1}));
+            REQUIRE(isSameEntitySet(manager.view<A, B>(), EntityUSet{}));
+            REQUIRE(isSameEntitySet(manager.view<B, C>(), EntityUSet{}));
+            REQUIRE(isSameEntitySet(manager.view<A, C>(), EntityUSet{}));
+            REQUIRE(isSameEntitySet(manager.view<A, B, C>(), EntityUSet{}));
+            REQUIRE(manager.getComponent<B>(e0) == B{0});
+            REQUIRE(manager.getComponent<C>(e1) == C{1});
+            REQUIRE(manager.getComponent<A>(e2) == A{2});
         }
 
         SECTION("destroy entity") {
@@ -147,5 +207,34 @@ TEST_CASE("ECS - manager", "[unit][ecs]") {
             for (auto e : old) { REQUIRE(manager.isValidEntity(e) == false); }
             for (auto e : entities) { REQUIRE(manager.isValidEntity(e) == true); }
         }
+    }
+
+    SECTION("all ABC combinations") {
+        Entity a = manager.createEntity();
+        manager.addComponent(a, A{0});
+        Entity b = manager.createEntity();
+        manager.addComponent(b, B{1});
+        Entity c = manager.createEntity();
+        manager.addComponent(c, C{2});
+        Entity ab = manager.createEntity();
+        manager.addComponent(ab, A{3});
+        manager.addComponent(ab, B{4});
+        Entity ac = manager.createEntity();
+        manager.addComponent(ac, A{5});
+        manager.addComponent(ac, C{6});
+        Entity bc = manager.createEntity();
+        manager.addComponent(bc, B{7});
+        manager.addComponent(bc, C{8});
+        Entity abc = manager.createEntity();
+        manager.addComponent(abc, A{9});
+        manager.addComponent(abc, B{10});
+        manager.addComponent(abc, C{11});
+        REQUIRE(isSameEntitySet(manager.view<A>(), EntityUSet{a, ab, ac, abc}));
+        REQUIRE(isSameEntitySet(manager.view<B>(), EntityUSet{b, ab, bc, abc}));
+        REQUIRE(isSameEntitySet(manager.view<C>(), EntityUSet{c, ac, bc, abc}));
+        REQUIRE(isSameEntitySet(manager.view<A, B>(), EntityUSet{ab, abc}));
+        REQUIRE(isSameEntitySet(manager.view<B, C>(), EntityUSet{bc, abc}));
+        REQUIRE(isSameEntitySet(manager.view<A, C>(), EntityUSet{ac, abc}));
+        REQUIRE(isSameEntitySet(manager.view<A, B, C>(), EntityUSet{abc}));
     }
 }

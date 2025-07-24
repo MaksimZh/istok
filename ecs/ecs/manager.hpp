@@ -18,10 +18,6 @@ public:
     EntityComponentManager(size_t initialCapacity)
         : entities(initialCapacity) {}
 
-    Entity createEntity() {
-        return entities.create();
-    }
-
     bool isValidEntity(Entity e) const {
         return entities.isValid(e);
     }
@@ -29,6 +25,27 @@ public:
     template <typename Component>
     bool hasComponent(Entity e) const {
         return components.has<Component>(e);
+    }
+
+    template <typename Component>
+    Component& getComponent(Entity e) {
+        assert(hasComponent<Component>(e));
+        return components.get<Component>(e);
+    }
+
+    template <typename Component>
+    const Component& getComponent(Entity e) const {
+        return components.get<Component>(e);
+    }
+
+    Entity createEntity() {
+        return entities.create();
+    }
+
+    void destroyEntity(Entity e) {
+        assert(isValidEntity(e));
+        components.clean(e);
+        entities.destroy(e);
     }
 
     template <typename Component>
@@ -41,8 +58,9 @@ public:
         components.remove<Component>(e);
     }
 
-    void destroyEntity(Entity e) {
-        entities.destroy(e);
+    template<typename... Components>
+    EntityStorageRange view() {
+        return components.view<Components...>();
     }
 
 private:
