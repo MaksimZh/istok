@@ -1,4 +1,4 @@
-// test_ecs.cpp
+// test_component.cpp
 // Copyright 2025 Maksim Sergeevich Zholudev. All rights reserved
 #include <catch.hpp>
 
