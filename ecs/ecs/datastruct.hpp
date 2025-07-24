@@ -498,6 +498,16 @@ public:
         return true;
     }
 
+    template <std::ranges::forward_range RN>
+    ContainerFilter exclude(RN&& neg) const {
+        std::vector<std::reference_wrapper<C>> newNegative(negative);
+        for (auto& n : neg) {
+            newNegative.push_back(n);
+        }
+        return ContainerFilter(positive, newNegative);
+    }
+
+
 private:
     std::vector<std::reference_wrapper<C>> positive;
     std::vector<std::reference_wrapper<C>> negative;

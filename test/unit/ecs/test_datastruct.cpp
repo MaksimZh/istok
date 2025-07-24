@@ -673,10 +673,41 @@ TEST_CASE("ECS Data Structures - ContainerFilter", "[unit][ecs]") {
 
     SECTION("multi+-") {
         ecs::ContainerFilter<FakeContainer> filter(
-            std::vector<std::reference_wrapper<FakeContainer>>{c1234},
-            std::vector<std::reference_wrapper<FakeContainer>>{c23});
+            std::vector<std::reference_wrapper<FakeContainer>>{c1234, c234},
+            std::vector<std::reference_wrapper<FakeContainer>>{c12, c23});
+        REQUIRE(filter(A{0}) == false);
+        REQUIRE(filter(A{1}) == false);
+        REQUIRE(filter(A{2}) == false);
+        REQUIRE(filter(A{3}) == false);
+        REQUIRE(filter(A{4}) == true);
+        REQUIRE(filter(A{5}) == false);
+    }
+
+    SECTION("exclude new") {
+        ecs::ContainerFilter<FakeContainer> filter =
+            ecs::ContainerFilter<FakeContainer>(
+                std::vector<std::reference_wrapper<FakeContainer>>{c1234}
+            ).exclude(
+                std::vector<std::reference_wrapper<FakeContainer>>{c23}
+            );
         REQUIRE(filter(A{0}) == false);
         REQUIRE(filter(A{1}) == true);
+        REQUIRE(filter(A{2}) == false);
+        REQUIRE(filter(A{3}) == false);
+        REQUIRE(filter(A{4}) == true);
+        REQUIRE(filter(A{5}) == false);
+    }
+
+    SECTION("exclude add") {
+        ecs::ContainerFilter<FakeContainer> filter =
+            ecs::ContainerFilter<FakeContainer>(
+                std::vector<std::reference_wrapper<FakeContainer>>{c1234},
+                std::vector<std::reference_wrapper<FakeContainer>>{c23}
+            ).exclude(
+                std::vector<std::reference_wrapper<FakeContainer>>{c12}
+            );
+        REQUIRE(filter(A{0}) == false);
+        REQUIRE(filter(A{1}) == false);
         REQUIRE(filter(A{2}) == false);
         REQUIRE(filter(A{3}) == false);
         REQUIRE(filter(A{4}) == true);
