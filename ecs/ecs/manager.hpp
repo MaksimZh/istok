@@ -23,18 +23,18 @@ public:
     }
 
     template <typename Component>
-    bool hasComponent(Entity e) const {
+    bool has(Entity e) const {
         return components.has<Component>(e);
     }
 
     template <typename Component>
-    Component& getComponent(Entity e) {
-        assert(hasComponent<Component>(e));
+    Component& get(Entity e) {
+        assert(has<Component>(e));
         return components.get<Component>(e);
     }
 
     template <typename Component>
-    const Component& getComponent(Entity e) const {
+    const Component& get(Entity e) const {
         return components.get<Component>(e);
     }
 
@@ -49,12 +49,12 @@ public:
     }
 
     template <typename Component>
-    void addComponent(Entity e, Component&& component) {
-        components.add(e, std::move(component));
+    void insert(Entity e, Component&& component) {
+        components.insert(e, std::move(component));
     }
 
     template <typename Component>
-    void removeComponent(Entity e) {
+    void remove(Entity e) {
         components.remove<Component>(e);
     }
 

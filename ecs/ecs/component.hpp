@@ -250,7 +250,7 @@ public:
     }
 
     template<typename Component>
-    void add(Entity e, Component&& component) {
+    void insert(Entity e, Component&& component) {
         ComponentStorageOf<Component>& storage =
             storages.getOrCreateStorage<Component>();
         storage.insert(e, std::move(component));
