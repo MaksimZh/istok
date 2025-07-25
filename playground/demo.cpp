@@ -64,10 +64,58 @@ private:
 
 namespace ecs = Istok::ECS;
 
-struct Floating {};
+struct NeedsSysWindow {};
+
+struct SysWindowLink {
+    SysWindow* sysWindow;
+};
 
 int main() {
     ecs::EntityComponentManager manager;
-    std::cout << "Hello!" << std::endl;
+    {
+        ecs::Entity window = manager.createEntity();
+        manager.insert(window, NeedsSysWindow{});
+        manager.insert(window, Position<int>(100, 200));
+        manager.insert(window, Size<int>(400, 300));
+    }
+    {
+        ecs::Entity window = manager.createEntity();
+        manager.insert(window, NeedsSysWindow{});
+        manager.insert(window, Position<int>(600, 300));
+        manager.insert(window, Size<int>(300, 200));
+    }
+
+    std::vector<std::unique_ptr<SysWindow>> sysWindows;
+    for (auto e : manager.view<NeedsSysWindow, Position<int>, Size<int>>()) {
+        sysWindows.push_back(
+            std::make_unique<SysWindow>(
+                "Istok",
+                manager.get<Position<int>>(e),
+                manager.get<Size<int>>(e)));
+        sysWindows.back()->show();
+        manager.remove<NeedsSysWindow>(e);
+        manager.insert(e, SysWindowLink{sysWindows.back().get()});
+    }
+
+    ModernGLContext gl(sysWindows.front()->getDC());
+
+    while (true) {
+        MSG msg;
+        GetMessageW(&msg, NULL, 0, 0);
+        if (msg.message == WM_QUIT) {
+            break;
+        }
+        TranslateMessage(&msg);
+        DispatchMessage(&msg);
+
+        for (auto e : manager.view<SysWindowLink>()) {
+            SysWindow* sysWindow = manager.get<SysWindowLink>(e).sysWindow;
+            wglMakeCurrent(sysWindow->getDC(), gl.getGL());
+            glClearColor(0.0f, 0.0f, 0.5f, 1.0f);
+            glClear(GL_COLOR_BUFFER_BIT);
+            SwapBuffers(sysWindow->getDC());
+        }
+    }
+
     return 0;
 }
