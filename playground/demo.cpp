@@ -76,25 +76,15 @@ struct ScreenPosition {
 };
 
 
-int main() {
-    ecs::EntityComponentManager manager;
-    {
-        ecs::Entity window = manager.createEntity();
-        manager.insert(window, NeedsSysWindow{});
-        manager.insert(window, ScreenPosition(100, 200));
-        manager.insert(window, Size<int>(400, 300));
-    }
-    {
-        ecs::Entity window = manager.createEntity();
-        manager.insert(window, NeedsSysWindow{});
-        manager.insert(window, ScreenPosition(600, 300));
-        manager.insert(window, Size<int>(300, 200));
-    }
+class SysWindowSystem {
+public:
+    SysWindowSystem() = default;
+    SysWindowSystem(const SysWindowSystem&) = delete;
+    SysWindowSystem& operator=(const SysWindowSystem&) = delete;
+    SysWindowSystem(SysWindowSystem&&) = default;
+    SysWindowSystem& operator=(SysWindowSystem&&) = default;
 
-    std::vector<std::unique_ptr<SysWindow>> sysWindows;
-    std::unique_ptr<ModernGLContext> gl;
-
-    while (true) {
+    void run(ecs::EntityComponentManager& manager) {
         for (auto e : manager.view<NeedsSysWindow, ScreenPosition, Size<int>>()) {
             ScreenPosition pos = manager.get<ScreenPosition>(e);
             sysWindows.push_back(
@@ -111,14 +101,6 @@ int main() {
             gl = std::make_unique<ModernGLContext>(sysWindows.front()->getDC());
         }
 
-        MSG msg;
-        GetMessageW(&msg, NULL, 0, 0);
-        if (msg.message == WM_QUIT) {
-            break;
-        }
-        TranslateMessage(&msg);
-        DispatchMessage(&msg);
-
         for (auto e : manager.view<SysWindowLink>()) {
             SysWindow* sysWindow = manager.get<SysWindowLink>(e).sysWindow;
             wglMakeCurrent(sysWindow->getDC(), gl->getGL());
@@ -126,6 +108,40 @@ int main() {
             glClear(GL_COLOR_BUFFER_BIT);
             SwapBuffers(sysWindow->getDC());
         }
+    }
+
+private:
+    std::vector<std::unique_ptr<SysWindow>> sysWindows;
+    std::unique_ptr<ModernGLContext> gl;
+};
+
+int main() {
+    ecs::EntityComponentManager manager;
+    {
+        ecs::Entity window = manager.createEntity();
+        manager.insert(window, NeedsSysWindow{});
+        manager.insert(window, ScreenPosition(100, 200));
+        manager.insert(window, Size<int>(400, 300));
+    }
+    {
+        ecs::Entity window = manager.createEntity();
+        manager.insert(window, NeedsSysWindow{});
+        manager.insert(window, ScreenPosition(600, 300));
+        manager.insert(window, Size<int>(300, 200));
+    }
+
+    SysWindowSystem sysWindowSystem;
+
+    while (true) {
+        sysWindowSystem.run(manager);
+        
+        MSG msg;
+        GetMessageW(&msg, NULL, 0, 0);
+        if (msg.message == WM_QUIT) {
+            break;
+        }
+        TranslateMessage(&msg);
+        DispatchMessage(&msg);
     }
 
     std::cout << "end" << std::endl;
