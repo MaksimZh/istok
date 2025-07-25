@@ -86,20 +86,24 @@ int main() {
     }
 
     std::vector<std::unique_ptr<SysWindow>> sysWindows;
-    for (auto e : manager.view<NeedsSysWindow, Position<int>, Size<int>>()) {
-        sysWindows.push_back(
-            std::make_unique<SysWindow>(
-                "Istok",
-                manager.get<Position<int>>(e),
-                manager.get<Size<int>>(e)));
-        sysWindows.back()->show();
-        manager.remove<NeedsSysWindow>(e);
-        manager.insert(e, SysWindowLink{sysWindows.back().get()});
-    }
-
-    ModernGLContext gl(sysWindows.front()->getDC());
+    std::unique_ptr<ModernGLContext> gl;
 
     while (true) {
+        for (auto e : manager.view<NeedsSysWindow, Position<int>, Size<int>>()) {
+            sysWindows.push_back(
+                std::make_unique<SysWindow>(
+                    "Istok",
+                    manager.get<Position<int>>(e),
+                    manager.get<Size<int>>(e)));
+            sysWindows.back()->show();
+            manager.remove<NeedsSysWindow>(e);
+            manager.insert(e, SysWindowLink{sysWindows.back().get()});
+        }
+
+        if (!gl && sysWindows.size() > 0) {
+            gl = std::make_unique<ModernGLContext>(sysWindows.front()->getDC());
+        }
+
         MSG msg;
         GetMessageW(&msg, NULL, 0, 0);
         if (msg.message == WM_QUIT) {
@@ -110,12 +114,14 @@ int main() {
 
         for (auto e : manager.view<SysWindowLink>()) {
             SysWindow* sysWindow = manager.get<SysWindowLink>(e).sysWindow;
-            wglMakeCurrent(sysWindow->getDC(), gl.getGL());
+            wglMakeCurrent(sysWindow->getDC(), gl->getGL());
             glClearColor(0.0f, 0.0f, 0.5f, 1.0f);
             glClear(GL_COLOR_BUFFER_BIT);
             SwapBuffers(sysWindow->getDC());
         }
     }
+
+    std::cout << "end" << std::endl;
 
     return 0;
 }
