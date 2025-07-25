@@ -70,18 +70,24 @@ struct SysWindowLink {
     SysWindow* sysWindow;
 };
 
+struct ScreenPosition {
+    int left;
+    int top;
+};
+
+
 int main() {
     ecs::EntityComponentManager manager;
     {
         ecs::Entity window = manager.createEntity();
         manager.insert(window, NeedsSysWindow{});
-        manager.insert(window, Position<int>(100, 200));
+        manager.insert(window, ScreenPosition(100, 200));
         manager.insert(window, Size<int>(400, 300));
     }
     {
         ecs::Entity window = manager.createEntity();
         manager.insert(window, NeedsSysWindow{});
-        manager.insert(window, Position<int>(600, 300));
+        manager.insert(window, ScreenPosition(600, 300));
         manager.insert(window, Size<int>(300, 200));
     }
 
@@ -89,11 +95,12 @@ int main() {
     std::unique_ptr<ModernGLContext> gl;
 
     while (true) {
-        for (auto e : manager.view<NeedsSysWindow, Position<int>, Size<int>>()) {
+        for (auto e : manager.view<NeedsSysWindow, ScreenPosition, Size<int>>()) {
+            ScreenPosition pos = manager.get<ScreenPosition>(e);
             sysWindows.push_back(
                 std::make_unique<SysWindow>(
                     "Istok",
-                    manager.get<Position<int>>(e),
+                    Position<int>(pos.left, pos.top),
                     manager.get<Size<int>>(e)));
             sysWindows.back()->show();
             manager.remove<NeedsSysWindow>(e);
