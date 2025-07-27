@@ -194,11 +194,10 @@ int main() {
     manager.set(window, Children{{menu}});
     manager.set(menu, Parent{window});
 
-    locateWindows(manager, window);
-
     SysWindowSystem sysWindowSystem;
 
     while (true) {
+        locateWindows(manager, window);
         sysWindowSystem.run(manager);
         
         MSG msg;

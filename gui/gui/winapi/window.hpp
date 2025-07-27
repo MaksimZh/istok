@@ -2,21 +2,14 @@
 #pragma once
 
 #include <windows.h>
+#include <windowsx.h>
 #include <dwmapi.h>
 #include <stdexcept>
 
 #include <gui/core/tools.hpp>
 
 
-LRESULT CALLBACK windowProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
-    switch (msg) {
-    case WM_DESTROY:
-        PostQuitMessage(0);
-        return 0;
-    default:
-        return DefWindowProc(hWnd, msg, wParam, lParam);
-    }
-}
+LRESULT CALLBACK windowProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 class WndClassHandler {
 public:
@@ -270,7 +263,9 @@ class SysWindow {
 public:
     SysWindow() = default;
     
-    SysWindow(const std::string& title, Position<int> position, Size<int> size, bool isTool = false)
+    SysWindow(
+        const std::string& title, Position<int> position, Size<int> size,
+        bool isTool = false)
         : wnd(
             isTool ? WS_EX_TOOLWINDOW : NULL,
             getWndClass(),
@@ -278,7 +273,7 @@ public:
             WS_POPUP,
             position.x, position.y,
             size.width, size.height,
-            NULL, NULL, getHInstance(), nullptr),
+            NULL, NULL, getHInstance(), this),
         dc(wnd)
     {
         setPixelFormat();
@@ -314,6 +309,36 @@ public:
         return wnd.get();
     }
 
+    
+    LRESULT handleMessage(UINT msg, WPARAM wParam, LPARAM lParam) {
+        switch (msg) {
+        case WM_DESTROY:
+            PostQuitMessage(0);
+            return 0;
+        case WM_NCHITTEST: {
+            POINT point = {GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)};
+            RECT rect;
+            GetWindowRect(wnd, &rect);
+            bool lb = point.x - rect.left < 4;
+            bool rb = rect.right - point.x < 4;
+            bool tb = point.y - rect.top < 4;
+            bool bb = rect.bottom - point.y < 4;
+            if (lb && tb) return HTTOPLEFT;
+            if (rb && tb) return HTTOPRIGHT;
+            if (lb && bb) return HTBOTTOMLEFT;
+            if (rb && bb) return HTBOTTOMRIGHT;
+            if (lb) return HTLEFT;
+            if (rb) return HTRIGHT;
+            if (tb) return HTTOP;
+            if (bb) return HTBOTTOM;
+            if (point.y - rect.top < 32) return HTCAPTION;
+            return HTCLIENT;
+        }
+        default:
+            return DefWindowProc(wnd, msg, wParam, lParam);
+        }
+    }
+
 private:
 
     static HINSTANCE getHInstance() {
@@ -335,7 +360,6 @@ private:
 
     WndHandler wnd;
     DCHandler dc;
-
 
     void setPixelFormat() {
         PIXELFORMATDESCRIPTOR pfd = {};
@@ -368,3 +392,21 @@ private:
         DwmEnableBlurBehindWindow(wnd, &bb);
     }
 };
+
+
+LRESULT CALLBACK windowProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
+    if (SysWindow* sw = reinterpret_cast<SysWindow*>(
+        GetWindowLongPtr(hWnd, GWLP_USERDATA)))
+    {
+        return sw->handleMessage(msg, wParam, lParam);
+    }
+
+    if (msg != WM_CREATE) {
+        return DefWindowProc(hWnd, msg, wParam, lParam);
+    }
+
+    CREATESTRUCT* createStruct = reinterpret_cast<CREATESTRUCT*>(lParam);
+    SysWindow* sw = static_cast<SysWindow*>(createStruct->lpCreateParams);
+    SetWindowLongPtr(hWnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(sw));
+    return DefWindowProc(hWnd, msg, wParam, lParam);
+}
