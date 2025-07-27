@@ -66,13 +66,41 @@ namespace ecs = Istok::ECS;
 
 struct NeedsSysWindow {};
 
+struct ToShow {};
+
+struct Visible {};
+
 struct SysWindowLink {
     SysWindow* sysWindow;
+};
+
+struct Parent {
+    ecs::Entity entity;
+};
+
+struct Children {
+    std::vector<ecs::Entity> entities;
+};
+
+struct LocalPosition {
+    int left;
+    int top;
+};
+
+struct RenderingPosition {
+    int left;
+    int top;
 };
 
 struct ScreenPosition {
     int left;
     int top;
+};
+
+struct Color {
+    float r;
+    float g;
+    float b;
 };
 
 
@@ -85,28 +113,42 @@ public:
     SysWindowSystem& operator=(SysWindowSystem&&) = default;
 
     void run(ecs::EntityComponentManager& manager) {
-        for (auto e : manager.view<NeedsSysWindow, ScreenPosition, Size<int>>()) {
-            ScreenPosition pos = manager.get<ScreenPosition>(e);
+        for (auto e : manager.view<NeedsSysWindow>()) {
+            Size<int> size = manager.has<Size<int>>(e)
+                ? manager.get<Size<int>>(e)
+                : Size<int>(64, 64);
+            ScreenPosition pos = manager.has<ScreenPosition>(e)
+                ? manager.get<ScreenPosition>(e)
+                : ScreenPosition(0, 0);
             sysWindows.push_back(
                 std::make_unique<SysWindow>(
                     "Istok",
                     Position<int>(pos.left, pos.top),
-                    manager.get<Size<int>>(e)));
-            sysWindows.back()->show();
+                    size
+                ));
+            SysWindow* sw = sysWindows.back().get();
             manager.remove<NeedsSysWindow>(e);
-            manager.insert(e, SysWindowLink{sysWindows.back().get()});
+            manager.insert(e, SysWindowLink{sw});
+        }
+
+        for (auto e : manager.view<SysWindowLink, ToShow>()) {
+            SysWindow* sysWindow = manager.get<SysWindowLink>(e).sysWindow;
+            sysWindow->show();
+            manager.remove<ToShow>(e);
+            manager.insert(e, Visible{});
         }
 
         if (!gl && sysWindows.size() > 0) {
             gl = std::make_unique<ModernGLContext>(sysWindows.front()->getDC());
         }
 
-        for (auto e : manager.view<SysWindowLink>()) {
-            SysWindow* sysWindow = manager.get<SysWindowLink>(e).sysWindow;
-            wglMakeCurrent(sysWindow->getDC(), gl->getGL());
-            glClearColor(0.0f, 0.0f, 0.5f, 1.0f);
+        for (auto e : manager.view<SysWindowLink, Visible, Color>()) {
+            SysWindow* sw = manager.get<SysWindowLink>(e).sysWindow;
+            wglMakeCurrent(sw->getDC(), gl->getGL());
+            Color color = manager.get<Color>(e);
+            glClearColor(color.r, color.g, color.b, 1.0f);
             glClear(GL_COLOR_BUFFER_BIT);
-            SwapBuffers(sysWindow->getDC());
+            SwapBuffers(sw->getDC());
         }
     }
 
@@ -117,18 +159,21 @@ private:
 
 int main() {
     ecs::EntityComponentManager manager;
-    {
-        ecs::Entity window = manager.createEntity();
-        manager.insert(window, NeedsSysWindow{});
-        manager.insert(window, ScreenPosition(100, 200));
-        manager.insert(window, Size<int>(400, 300));
-    }
-    {
-        ecs::Entity window = manager.createEntity();
-        manager.insert(window, NeedsSysWindow{});
-        manager.insert(window, ScreenPosition(600, 300));
-        manager.insert(window, Size<int>(300, 200));
-    }
+    ecs::Entity window = manager.createEntity();
+    manager.insert(window, NeedsSysWindow{});
+    manager.insert(window, ToShow{});
+    manager.insert(window, ScreenPosition(200, 100));
+    manager.insert(window, Size<int>(400, 300));
+    manager.insert(window, Color(0, 0, 0.5));
+    ecs::Entity menu = manager.createEntity();
+    manager.insert(menu, NeedsSysWindow{});
+    manager.insert(menu, LocalPosition(100, 50));
+    manager.insert(menu, Size<int>(100, 500));
+    manager.insert(menu, Color(0, 0.5, 0));
+    manager.insert(menu, ToShow{});
+    
+    manager.insert(window, Children{{menu}});
+    manager.insert(menu, Parent{window});
 
     SysWindowSystem sysWindowSystem;
 
