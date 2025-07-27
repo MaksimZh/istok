@@ -66,6 +66,8 @@ namespace ecs = Istok::ECS;
 
 struct NeedsSysWindow {};
 
+struct IsToolWindow {};
+
 struct ToShow {};
 
 struct Visible {};
@@ -124,7 +126,8 @@ public:
                 std::make_unique<SysWindow>(
                     "Istok",
                     Position<int>(pos.left, pos.top),
-                    size
+                    size,
+                    manager.has<IsToolWindow>(e)
                 ));
             SysWindow* sw = sysWindows.back().get();
             manager.remove<NeedsSysWindow>(e);
@@ -182,6 +185,7 @@ int main() {
     manager.set(window, Color(0, 0, 0.5));
     ecs::Entity menu = manager.createEntity();
     manager.set(menu, NeedsSysWindow{});
+    manager.set(menu, IsToolWindow{});
     manager.set(menu, LocalPosition(100, 50));
     manager.set(menu, Size<int>(100, 500));
     manager.set(menu, Color(0, 0.5, 0));

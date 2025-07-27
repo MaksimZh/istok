@@ -270,9 +270,9 @@ class SysWindow {
 public:
     SysWindow() = default;
     
-    SysWindow(const std::string& title, Position<int> position, Size<int> size)
+    SysWindow(const std::string& title, Position<int> position, Size<int> size, bool isTool = false)
         : wnd(
-            NULL,
+            isTool ? WS_EX_TOOLWINDOW : NULL,
             getWndClass(),
             toUTF16(title).c_str(),
             WS_POPUP,
