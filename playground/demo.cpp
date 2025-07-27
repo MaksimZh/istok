@@ -157,6 +157,21 @@ private:
     std::unique_ptr<ModernGLContext> gl;
 };
 
+
+void locateWindows(ecs::EntityComponentManager& manager, ecs::Entity root) {
+    if (!manager.has<Children>(root) || !manager.has<ScreenPosition>(root)) {
+        return;
+    }
+    ScreenPosition screen = manager.get<ScreenPosition>(root);
+    for (auto e : manager.get<Children>(root).entities) {
+        LocalPosition local = manager.get<LocalPosition>(e);
+        manager.set(e, ScreenPosition(
+            screen.left + local.left,
+            screen.top + local.top));
+    }
+}
+
+
 int main() {
     ecs::EntityComponentManager manager;
     ecs::Entity window = manager.createEntity();
@@ -174,6 +189,8 @@ int main() {
     
     manager.set(window, Children{{menu}});
     manager.set(menu, Parent{window});
+
+    locateWindows(manager, window);
 
     SysWindowSystem sysWindowSystem;
 
