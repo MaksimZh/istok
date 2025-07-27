@@ -40,7 +40,7 @@ TEST_CASE("ECS - manager", "[unit][ecs]") {
         REQUIRE(manager.has<C>(e0) == false);
         REQUIRE(isSameEntitySet(manager.view<A>(), EntityUSet{}));
 
-        manager.insert(e0, A{0});
+        manager.set(e0, A{0});
         REQUIRE(manager.has<A>(e0) == true);
         REQUIRE(manager.has<B>(e0) == false);
         REQUIRE(manager.has<C>(e0) == false);
@@ -48,7 +48,7 @@ TEST_CASE("ECS - manager", "[unit][ecs]") {
         REQUIRE(isSameEntitySet(manager.view<A, B>(), EntityUSet{}));
         REQUIRE(manager.get<A>(e0) == A{0});
 
-        manager.insert(e0, B{0});
+        manager.set(e0, B{0});
         REQUIRE(manager.has<A>(e0) == true);
         REQUIRE(manager.has<B>(e0) == true);
         REQUIRE(manager.has<C>(e0) == false);
@@ -104,12 +104,12 @@ TEST_CASE("ECS - manager", "[unit][ecs]") {
         REQUIRE(manager.has<A>(e2) == false);
         REQUIRE(manager.has<B>(e2) == false);
         REQUIRE(manager.has<C>(e2) == false);
-        manager.insert(e0, A{0});
-        manager.insert(e0, B{0});
-        manager.insert(e1, B{1});
-        manager.insert(e1, C{1});
-        manager.insert(e2, A{2});
-        manager.insert(e2, C{2});
+        manager.set(e0, A{0});
+        manager.set(e0, B{0});
+        manager.set(e1, B{1});
+        manager.set(e1, C{1});
+        manager.set(e2, A{2});
+        manager.set(e2, C{2});
         REQUIRE(manager.has<A>(e0) == true);
         REQUIRE(manager.has<B>(e0) == true);
         REQUIRE(manager.has<C>(e0) == false);
@@ -211,24 +211,24 @@ TEST_CASE("ECS - manager", "[unit][ecs]") {
 
     SECTION("all ABC combinations") {
         Entity a = manager.createEntity();
-        manager.insert(a, A{0});
+        manager.set(a, A{0});
         Entity b = manager.createEntity();
-        manager.insert(b, B{1});
+        manager.set(b, B{1});
         Entity c = manager.createEntity();
-        manager.insert(c, C{2});
+        manager.set(c, C{2});
         Entity ab = manager.createEntity();
-        manager.insert(ab, A{3});
-        manager.insert(ab, B{4});
+        manager.set(ab, A{3});
+        manager.set(ab, B{4});
         Entity ac = manager.createEntity();
-        manager.insert(ac, A{5});
-        manager.insert(ac, C{6});
+        manager.set(ac, A{5});
+        manager.set(ac, C{6});
         Entity bc = manager.createEntity();
-        manager.insert(bc, B{7});
-        manager.insert(bc, C{8});
+        manager.set(bc, B{7});
+        manager.set(bc, C{8});
         Entity abc = manager.createEntity();
-        manager.insert(abc, A{9});
-        manager.insert(abc, B{10});
-        manager.insert(abc, C{11});
+        manager.set(abc, A{9});
+        manager.set(abc, B{10});
+        manager.set(abc, C{11});
         REQUIRE(isSameEntitySet(manager.view<A>(), EntityUSet{a, ab, ac, abc}));
         REQUIRE(isSameEntitySet(manager.view<B>(), EntityUSet{b, ab, bc, abc}));
         REQUIRE(isSameEntitySet(manager.view<C>(), EntityUSet{c, ac, bc, abc}));

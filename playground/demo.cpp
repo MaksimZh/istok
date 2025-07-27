@@ -128,14 +128,14 @@ public:
                 ));
             SysWindow* sw = sysWindows.back().get();
             manager.remove<NeedsSysWindow>(e);
-            manager.insert(e, SysWindowLink{sw});
+            manager.set(e, SysWindowLink{sw});
         }
 
         for (auto e : manager.view<SysWindowLink, ToShow>()) {
             SysWindow* sysWindow = manager.get<SysWindowLink>(e).sysWindow;
             sysWindow->show();
             manager.remove<ToShow>(e);
-            manager.insert(e, Visible{});
+            manager.set(e, Visible{});
         }
 
         if (!gl && sysWindows.size() > 0) {
@@ -160,20 +160,20 @@ private:
 int main() {
     ecs::EntityComponentManager manager;
     ecs::Entity window = manager.createEntity();
-    manager.insert(window, NeedsSysWindow{});
-    manager.insert(window, ToShow{});
-    manager.insert(window, ScreenPosition(200, 100));
-    manager.insert(window, Size<int>(400, 300));
-    manager.insert(window, Color(0, 0, 0.5));
+    manager.set(window, NeedsSysWindow{});
+    manager.set(window, ToShow{});
+    manager.set(window, ScreenPosition(200, 100));
+    manager.set(window, Size<int>(400, 300));
+    manager.set(window, Color(0, 0, 0.5));
     ecs::Entity menu = manager.createEntity();
-    manager.insert(menu, NeedsSysWindow{});
-    manager.insert(menu, LocalPosition(100, 50));
-    manager.insert(menu, Size<int>(100, 500));
-    manager.insert(menu, Color(0, 0.5, 0));
-    manager.insert(menu, ToShow{});
+    manager.set(menu, NeedsSysWindow{});
+    manager.set(menu, LocalPosition(100, 50));
+    manager.set(menu, Size<int>(100, 500));
+    manager.set(menu, Color(0, 0.5, 0));
+    manager.set(menu, ToShow{});
     
-    manager.insert(window, Children{{menu}});
-    manager.insert(menu, Parent{window});
+    manager.set(window, Children{{menu}});
+    manager.set(menu, Parent{window});
 
     SysWindowSystem sysWindowSystem;
 

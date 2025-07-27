@@ -51,7 +51,7 @@ public:
     }
 
     template <typename Component>
-    void insert(Entity e, Component&& component) {
+    void set(Entity e, Component&& component) {
         components.insert(e, std::move(component));
     }
 
