@@ -10,6 +10,9 @@
 #include <set>
 #include <iostream>
 #include <cmath>
+#include <thread>
+#include <semaphore>
+#include <atomic>
 
 /*
 class WinAPIMonitorManager {
@@ -106,6 +109,18 @@ struct Color {
 };
 
 
+std::binary_semaphore sem{0};
+std::atomic_bool keepGoing;
+
+void threadProc() {
+    while (keepGoing) {
+        sem.acquire();
+        std::cout << "bump" << std::endl;
+    }
+    std::cout << "end bumping" << std::endl;
+}
+
+
 class SysWindowSystem {
 public:
     SysWindowSystem() = default;
@@ -127,7 +142,8 @@ public:
                     "Istok",
                     Position<int>(pos.left, pos.top),
                     size,
-                    manager.has<IsToolWindow>(e)
+                    manager.has<IsToolWindow>(e),
+                    sem
                 ));
             SysWindow* sw = sysWindows.back().get();
             manager.remove<NeedsSysWindow>(e);
@@ -162,6 +178,12 @@ private:
 
 
 void locateWindows(ecs::EntityComponentManager& manager, ecs::Entity root) {
+    if (manager.has<SysWindowLink>(root)) {
+        SysWindow* sw = manager.get<SysWindowLink>(root).sysWindow;
+        RECT rect;
+        GetWindowRect(sw->getHWND(), &rect);
+        manager.set(root, ScreenPosition(rect.left, rect.top));
+    }
     if (!manager.has<Children>(root) || !manager.has<ScreenPosition>(root)) {
         return;
     }
@@ -171,6 +193,7 @@ void locateWindows(ecs::EntityComponentManager& manager, ecs::Entity root) {
         manager.set(e, ScreenPosition(
             screen.left + local.left,
             screen.top + local.top));
+        locateWindows(manager, e);
     }
 }
 
@@ -195,19 +218,25 @@ int main() {
     manager.set(menu, Parent{window});
 
     SysWindowSystem sysWindowSystem;
+    keepGoing = true;
+    std::thread bumper(threadProc);
 
     while (true) {
         locateWindows(manager, window);
         sysWindowSystem.run(manager);
-        
+
         MSG msg;
-        GetMessageW(&msg, NULL, 0, 0);
+        GetMessage(&msg, NULL, 0, 0);
         if (msg.message == WM_QUIT) {
             break;
         }
         TranslateMessage(&msg);
         DispatchMessage(&msg);
     }
+
+    keepGoing = false;
+    sem.release();
+    bumper.join();
 
     std::cout << "end" << std::endl;
 

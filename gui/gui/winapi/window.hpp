@@ -1,13 +1,15 @@
 // Copyright 2025 Maksim Sergeevich Zholudev. All rights reserved
 #pragma once
 
+#include <cassert>
 #include <windows.h>
 #include <windowsx.h>
 #include <dwmapi.h>
 #include <stdexcept>
+#include <iostream>
+#include <semaphore>
 
 #include <gui/core/tools.hpp>
-
 
 LRESULT CALLBACK windowProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
@@ -265,7 +267,7 @@ public:
     
     SysWindow(
         const std::string& title, Position<int> position, Size<int> size,
-        bool isTool = false)
+        bool isTool, std::binary_semaphore& sem)
         : wnd(
             isTool ? WS_EX_TOOLWINDOW : NULL,
             getWndClass(),
@@ -274,7 +276,7 @@ public:
             position.x, position.y,
             size.width, size.height,
             NULL, NULL, getHInstance(), this),
-        dc(wnd)
+        dc(wnd), sem(&sem)
     {
         setPixelFormat();
         enableTransparency();
@@ -334,6 +336,10 @@ public:
             if (point.y - rect.top < 32) return HTCAPTION;
             return HTCLIENT;
         }
+        case WM_MOVING:
+            assert(sem);
+            sem->release();
+            return TRUE;
         default:
             return DefWindowProc(wnd, msg, wParam, lParam);
         }
@@ -360,6 +366,7 @@ private:
 
     WndHandler wnd;
     DCHandler dc;
+    std::binary_semaphore* sem;
 
     void setPixelFormat() {
         PIXELFORMATDESCRIPTOR pfd = {};
