@@ -8,8 +8,43 @@
 #include <stdexcept>
 #include <iostream>
 #include <semaphore>
+#include <mutex>
+#include <queue>
 
 #include <gui/core/tools.hpp>
+
+
+template <typename T>
+class MessageQueue {
+public:
+    void wait() {
+        if (container.empty()) {
+            sem.acquire();
+        }
+    }
+
+    void push(T&& value) {
+        std::lock_guard lock(mut);
+        container.push(value);
+        sem.release();
+    }
+    
+    void pop() {
+        std::lock_guard lock(mut);
+        container.pop();
+    }
+
+    T& front() {
+        std::lock_guard lock(mut);
+        return container.front();
+    }
+
+private:
+    std::mutex mut;
+    std::binary_semaphore sem{0};
+    std::queue<T> container;
+};
+
 
 LRESULT CALLBACK windowProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
@@ -267,7 +302,7 @@ public:
     
     SysWindow(
         const std::string& title, Position<int> position, Size<int> size,
-        bool isTool, std::binary_semaphore& sem)
+        bool isTool, MessageQueue<bool>& messageQueue)
         : wnd(
             isTool ? WS_EX_TOOLWINDOW : NULL,
             getWndClass(),
@@ -276,7 +311,7 @@ public:
             position.x, position.y,
             size.width, size.height,
             NULL, NULL, getHInstance(), this),
-        dc(wnd), sem(&sem)
+        dc(wnd), messageQueue(&messageQueue)
     {
         setPixelFormat();
         enableTransparency();
@@ -337,8 +372,8 @@ public:
             return HTCLIENT;
         }
         case WM_MOVING:
-            assert(sem);
-            sem->release();
+            assert(messageQueue);
+            messageQueue->push(true);
             return TRUE;
         default:
             return DefWindowProc(wnd, msg, wParam, lParam);
@@ -366,7 +401,7 @@ private:
 
     WndHandler wnd;
     DCHandler dc;
-    std::binary_semaphore* sem;
+    MessageQueue<bool>* messageQueue;
 
     void setPixelFormat() {
         PIXELFORMATDESCRIPTOR pfd = {};

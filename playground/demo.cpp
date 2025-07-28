@@ -11,8 +11,7 @@
 #include <iostream>
 #include <cmath>
 #include <thread>
-#include <semaphore>
-#include <atomic>
+
 
 /*
 class WinAPIMonitorManager {
@@ -109,17 +108,19 @@ struct Color {
 };
 
 
-std::binary_semaphore sem{0};
-std::atomic_bool keepGoing;
-
-void threadProc() {
-    while (keepGoing) {
-        sem.acquire();
+void threadProc(MessageQueue<bool>& q) {
+    while (true) {
+        q.wait();
+        if (q.front() == false) {
+            break;
+        }
+        q.pop();
         std::cout << "bump" << std::endl;
     }
-    std::cout << "end bumping" << std::endl;
+    std::cout << "thread end" << std::endl;
 }
 
+MessageQueue<bool> messageQueue;
 
 class SysWindowSystem {
 public:
@@ -143,7 +144,7 @@ public:
                     Position<int>(pos.left, pos.top),
                     size,
                     manager.has<IsToolWindow>(e),
-                    sem
+                    messageQueue
                 ));
             SysWindow* sw = sysWindows.back().get();
             manager.remove<NeedsSysWindow>(e);
@@ -218,8 +219,7 @@ int main() {
     manager.set(menu, Parent{window});
 
     SysWindowSystem sysWindowSystem;
-    keepGoing = true;
-    std::thread bumper(threadProc);
+    std::thread bumper(threadProc, std::ref(messageQueue));
 
     while (true) {
         locateWindows(manager, window);
@@ -234,8 +234,7 @@ int main() {
         DispatchMessage(&msg);
     }
 
-    keepGoing = false;
-    sem.release();
+    messageQueue.push(false);
     bumper.join();
 
     std::cout << "end" << std::endl;
