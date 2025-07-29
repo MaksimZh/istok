@@ -13,11 +13,35 @@
 
 #include <gui/core/tools.hpp>
 
+constexpr UINT WM_APP_QUEUE = WM_APP + 1;
+
+template <typename T>
+class SimpleQueue {
+public:
+    bool empty() const {
+        return container.empty();
+    }
+
+    void push(T&& value) {
+        container.push(std::move(value));
+    }
+    
+    T take() {
+        assert(!container.empty());
+        T value = std::move(container.front());
+        container.pop();
+        return value;
+    }
+
+private:
+    std::queue<T> container;
+};
+
 
 template <typename T>
 class MessageQueue {
 public:
-    bool empty() const {
+    bool empty() {
         std::lock_guard lock(mut);
         return container.empty();
     }
@@ -32,9 +56,7 @@ public:
         {
             std::lock_guard lock(mut);
             if (!container.empty()) {
-                T value = std::move(container.front());
-                container.pop();
-                return value;
+                return container.take();
             }
         }
         sem.acquire();
@@ -44,7 +66,39 @@ public:
 private:
     std::mutex mut;
     std::binary_semaphore sem{0};
-    std::queue<T> container;
+    SimpleQueue<T> container;
+};
+
+
+template <typename T>
+class GUIMessageQueue {
+public:
+    bool empty() {
+        std::lock_guard lock(mut);
+        return container.empty();
+    }
+
+    void push(T&& value) {
+        std::lock_guard lock(mut);
+        container.push(std::move(value));
+        PostMessage(target, WM_APP_QUEUE, NULL, NULL);
+    }
+    
+    T take() {
+        std::lock_guard lock(mut);
+        assert(!container.empty());
+        return container.take();
+    }
+
+    void setTarget(HWND hWnd) {
+        std::lock_guard lock(mut);
+        target = hWnd;
+    }
+
+private:
+    std::mutex mut;
+    HWND target;
+    SimpleQueue<T> container;
 };
 
 
@@ -304,7 +358,9 @@ public:
     
     SysWindow(
         const std::string& title, Position<int> position, Size<int> size,
-        bool isTool, MessageQueue<bool>& messageQueue)
+        bool isTool,
+        MessageQueue<bool>& messageQueue,
+        GUIMessageQueue<int>& inQueue)
         : wnd(
             isTool ? WS_EX_TOOLWINDOW : NULL,
             getWndClass(),
@@ -313,7 +369,7 @@ public:
             position.x, position.y,
             size.width, size.height,
             NULL, NULL, getHInstance(), this),
-        dc(wnd), messageQueue(&messageQueue)
+        dc(wnd), messageQueue(&messageQueue), inQueue(&inQueue)
     {
         setPixelFormat();
         enableTransparency();
@@ -377,6 +433,11 @@ public:
             assert(messageQueue);
             messageQueue->push(true);
             return TRUE;
+        case WM_APP_QUEUE:
+            assert(inQueue);
+            assert(!inQueue->empty());
+            std::cout << inQueue->take() << " " << wnd.get() << std::endl;
+            return 0;
         default:
             return DefWindowProc(wnd, msg, wParam, lParam);
         }
@@ -404,6 +465,7 @@ private:
     WndHandler wnd;
     DCHandler dc;
     MessageQueue<bool>* messageQueue;
+    GUIMessageQueue<int>* inQueue;
 
     void setPixelFormat() {
         PIXELFORMATDESCRIPTOR pfd = {};

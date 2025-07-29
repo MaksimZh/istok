@@ -108,14 +108,19 @@ struct Color {
 };
 
 
-void threadProc(MessageQueue<bool>& q) {
-    while (q.take()) {
+void threadProc(
+        MessageQueue<bool>& inQueue,
+        GUIMessageQueue<int>& outQueue) {
+    int counter = 0;
+    while (inQueue.take()) {
         std::cout << "bump" << std::endl;
+        outQueue.push(counter++);
     }
     std::cout << "thread end" << std::endl;
 }
 
 MessageQueue<bool> messageQueue;
+GUIMessageQueue<int> guiQueue;
 
 class SysWindowSystem {
 public:
@@ -139,7 +144,7 @@ public:
                     Position<int>(pos.left, pos.top),
                     size,
                     manager.has<IsToolWindow>(e),
-                    messageQueue
+                    messageQueue, guiQueue
                 ));
             SysWindow* sw = sysWindows.back().get();
             manager.remove<NeedsSysWindow>(e);
@@ -214,7 +219,13 @@ int main() {
     manager.set(menu, Parent{window});
 
     SysWindowSystem sysWindowSystem;
-    std::thread bumper(threadProc, std::ref(messageQueue));
+    locateWindows(manager, window);
+    sysWindowSystem.run(manager);
+    guiQueue.setTarget(manager.get<SysWindowLink>(window).sysWindow->getHWND());
+    std::thread bumper(
+        threadProc,
+        std::ref(messageQueue),
+        std::ref(guiQueue));
 
     while (true) {
         locateWindows(manager, window);
