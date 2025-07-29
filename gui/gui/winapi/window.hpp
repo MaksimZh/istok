@@ -17,26 +17,28 @@
 template <typename T>
 class MessageQueue {
 public:
-    void wait() {
-        if (container.empty()) {
-            sem.acquire();
-        }
+    bool empty() const {
+        std::lock_guard lock(mut);
+        return container.empty();
     }
 
     void push(T&& value) {
         std::lock_guard lock(mut);
-        container.push(value);
+        container.push(std::move(value));
         sem.release();
     }
     
-    void pop() {
-        std::lock_guard lock(mut);
-        container.pop();
-    }
-
-    T& front() {
-        std::lock_guard lock(mut);
-        return container.front();
+    T take() {
+        {
+            std::lock_guard lock(mut);
+            if (!container.empty()) {
+                T value = std::move(container.front());
+                container.pop();
+                return value;
+            }
+        }
+        sem.acquire();
+        return take();
     }
 
 private:

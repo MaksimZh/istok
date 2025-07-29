@@ -109,12 +109,7 @@ struct Color {
 
 
 void threadProc(MessageQueue<bool>& q) {
-    while (true) {
-        q.wait();
-        if (q.front() == false) {
-            break;
-        }
-        q.pop();
+    while (q.take()) {
         std::cout << "bump" << std::endl;
     }
     std::cout << "thread end" << std::endl;
