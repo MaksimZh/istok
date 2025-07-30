@@ -102,6 +102,68 @@ private:
 };
 
 
+template <typename Q>
+class QueueIn;
+
+template <typename Q>
+class QueueOut;
+
+template <typename Q, typename... Args>
+std::pair<QueueIn<Q>, QueueOut<Q>> makeQueueAdapters(Args&&... args) {
+    auto container = std::make_shared<Q>(args...);
+    return std::make_pair(
+        QueueIn<Q>(container),
+        QueueOut<Q>(container));
+}
+
+
+template <typename Q>
+class QueueIn {
+public:
+    QueueIn() = delete;
+    QueueIn(const QueueIn&) = delete;
+    QueueIn& operator=(const QueueIn&) = delete;
+    QueueIn(QueueIn&&) = default;
+    QueueIn& operator=(QueueIn&&) = default;
+    
+    void push(Q::value_type&& value) {
+        container->push(value);
+    }
+
+private:
+    std::shared_ptr<Q> container;
+
+    QueueIn(std::shared_ptr<Q> container) : container(container) {}
+    
+    template <typename... Args>
+    friend std::pair<QueueIn<Q>, QueueOut<Q>>
+        makeQueueAdapters<Q, Args...>(Args&&... args);
+};
+
+
+template <typename Q>
+class QueueOut {
+public:
+    QueueOut() = delete;
+    QueueOut(const QueueOut&) = delete;
+    QueueOut& operator=(const QueueOut&) = delete;
+    QueueOut(QueueOut&&) = default;
+    QueueOut& operator=(QueueOut&&) = default;
+    
+    bool empty() { return container->empty(); }
+    Q::value_type take() { return container->take(); }
+
+private:
+    std::shared_ptr<Q> container;
+
+    QueueOut(std::shared_ptr<Q> container) : container(container) {}
+
+    template <typename... Args>
+    friend std::pair<QueueIn<Q>, QueueOut<Q>>
+        makeQueueAdapters<Q, Args...>(Args&&... args);
+};
+
+
 LRESULT CALLBACK windowProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 class WndClassHandler {
