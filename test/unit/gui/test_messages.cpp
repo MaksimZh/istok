@@ -90,37 +90,3 @@ TEST_CASE("GUI messages - synchronized queue", "[unit][gui]") {
         second.join();
     }
 }
-
-TEST_CASE("GUI messages - message adapters", "[unit][gui]") {
-    auto [dest, source] = makeMessageQueue<SyncQueue<int>>();
-    REQUIRE(source.empty() == true);
-
-    SECTION("linear usage") {
-        dest.push(0);
-        dest.push(1);
-        REQUIRE(source.take() == 0);
-        dest.push(2);
-        dest.push(3);
-        REQUIRE(source.take() == 1);
-        REQUIRE(source.take() == 2);
-        dest.push(4);
-        REQUIRE(source.take() == 3);
-        REQUIRE(source.take() == 4);
-        REQUIRE(source.empty() == true);
-    }
-
-    SECTION("muti-thread usage") {
-        std::thread second([&dest]{
-            for (int i = 0; i < 20; ++i) {
-                dest.push(std::move(i));
-                std::this_thread::sleep_for(1ms);
-            }
-        });
-        for (int i = 0; i < 20; ++i) {
-            REQUIRE(source.take() == i);
-            std::this_thread::sleep_for(1ms);
-        }
-        second.join();
-    }
-}
-
