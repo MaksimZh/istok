@@ -58,6 +58,44 @@ TEST_CASE("GUI messages - simple queue", "[unit][gui]") {
 }
 
 
+TEST_CASE("GUI messages - waiting queue", "[unit][gui]") {
+    WaitingQueue<int> queue;
+    REQUIRE(queue.empty() == true);
+
+    SECTION("linear usage") {
+        std::mutex mut;
+        std::unique_lock lock(mut);
+        queue.push(0);
+        queue.push(1);
+        REQUIRE(queue.take(lock) == 0);
+        queue.push(2);
+        queue.push(3);
+        REQUIRE(queue.take(lock) == 1);
+        REQUIRE(queue.take(lock) == 2);
+        queue.push(4);
+        REQUIRE(queue.take(lock) == 3);
+        REQUIRE(queue.take(lock) == 4);
+        REQUIRE(queue.empty() == true);
+    }
+
+    SECTION("waiting") {
+        std::mutex mut;
+        std::thread second([&]{
+            for (int i = 0; i < 20; ++i) {
+                std::this_thread::sleep_for(1ms);
+                std::lock_guard lock(mut);
+                queue.push(std::move(i));
+            }
+        });
+        for (int i = 0; i < 20; ++i) {
+            std::unique_lock lock(mut);
+            REQUIRE(queue.take(lock) == i);
+        }
+        second.join();
+    }
+}
+
+
 TEST_CASE("GUI messages - synchronized queue", "[unit][gui]") {
     SyncQueue<int> queue;
     REQUIRE(queue.empty() == true);
