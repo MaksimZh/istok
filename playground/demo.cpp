@@ -1,4 +1,5 @@
 #include <ecs.hpp>
+#include <gui/core/messages.hpp>
 #include <gui/winapi/window.hpp>
 #include <gui/winapi/gl.hpp>
 
@@ -109,7 +110,7 @@ struct Color {
 
 
 void threadProc(
-        MessageQueue<bool>& inQueue,
+        Istok::GUI::SyncWaitingQueue<bool>& inQueue,
         GUIMessageQueue<int>& outQueue) {
     int counter = 0;
     while (inQueue.take()) {
@@ -119,7 +120,7 @@ void threadProc(
     std::cout << "thread end" << std::endl;
 }
 
-MessageQueue<bool> messageQueue;
+Istok::GUI::SyncWaitingQueue<bool> messageQueue;
 GUIMessageQueue<int> guiQueue;
 
 class SysWindowSystem {
@@ -221,7 +222,6 @@ int main() {
     SysWindowSystem sysWindowSystem;
     locateWindows(manager, window);
     sysWindowSystem.run(manager);
-    guiQueue.setTarget(manager.get<SysWindowLink>(window).sysWindow->getHWND());
     std::thread bumper(
         threadProc,
         std::ref(messageQueue),

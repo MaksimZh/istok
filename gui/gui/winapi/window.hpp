@@ -12,159 +12,64 @@
 #include <queue>
 
 #include <gui/core/tools.hpp>
+#include <gui/core/messages.hpp>
 
 constexpr UINT WM_APP_QUEUE = WM_APP + 1;
 
-template <typename T>
-class SimpleQueue {
+LRESULT CALLBACK windowProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
+
+
+class Notifier {
 public:
-    bool empty() const {
-        return container.empty();
-    }
-
-    void push(T&& value) {
-        container.push(std::move(value));
-    }
+    Notifier(HWND target) : target(target) {}
     
-    T take() {
-        assert(!container.empty());
-        T value = std::move(container.front());
-        container.pop();
-        return value;
+    void operator()() {
+        PostMessage(target, WM_APP_QUEUE, NULL, NULL);
     }
-
 private:
-    std::queue<T> container;
+    HWND target;
 };
-
-
-template <typename T>
-class MessageQueue {
-public:
-    bool empty() {
-        std::lock_guard lock(mut);
-        return container.empty();
-    }
-
-    void push(T&& value) {
-        std::lock_guard lock(mut);
-        container.push(std::move(value));
-        sem.release();
-    }
-    
-    T take() {
-        {
-            std::lock_guard lock(mut);
-            if (!container.empty()) {
-                return container.take();
-            }
-        }
-        sem.acquire();
-        return take();
-    }
-
-private:
-    std::mutex mut;
-    std::binary_semaphore sem{0};
-    SimpleQueue<T> container;
-};
-
 
 template <typename T>
 class GUIMessageQueue {
 public:
-    bool empty() {
-        std::lock_guard lock(mut);
-        return container.empty();
+    GUIMessageQueue() = default;
+    GUIMessageQueue(const GUIMessageQueue&) = delete;
+    GUIMessageQueue& operator=(const GUIMessageQueue&) = delete;
+    GUIMessageQueue(GUIMessageQueue&&) = delete;
+    GUIMessageQueue& operator=(GUIMessageQueue&&) = delete;
+    
+    bool ready() const {
+        return container != nullptr;
+    }
+    
+    void init(HWND hWnd) {
+        if (ready()) {
+            return;
+        }
+        container = std::make_unique<Queue>(Notifier(hWnd));
     }
 
+    bool empty() {
+        assert(ready());
+        return container->empty();
+    }
+    
     void push(T&& value) {
-        std::lock_guard lock(mut);
-        container.push(std::move(value));
-        PostMessage(target, WM_APP_QUEUE, NULL, NULL);
+        assert(ready());
+        container->push(std::move(value));
     }
     
     T take() {
-        std::lock_guard lock(mut);
-        assert(!container.empty());
-        return container.take();
-    }
-
-    void setTarget(HWND hWnd) {
-        std::lock_guard lock(mut);
-        target = hWnd;
+        assert(ready());
+        return container->take();
     }
 
 private:
-    std::mutex mut;
-    HWND target;
-    SimpleQueue<T> container;
+    using Queue = Istok::GUI::SyncNotifyingQueue<T, Notifier>;
+    std::unique_ptr<Queue> container;
 };
 
-
-template <typename Q>
-class QueueIn;
-
-template <typename Q>
-class QueueOut;
-
-template <typename Q, typename... Args>
-std::pair<QueueIn<Q>, QueueOut<Q>> makeQueueAdapters(Args&&... args) {
-    auto container = std::make_shared<Q>(args...);
-    return std::make_pair(
-        QueueIn<Q>(container),
-        QueueOut<Q>(container));
-}
-
-
-template <typename Q>
-class QueueIn {
-public:
-    QueueIn() = delete;
-    QueueIn(const QueueIn&) = delete;
-    QueueIn& operator=(const QueueIn&) = delete;
-    QueueIn(QueueIn&&) = default;
-    QueueIn& operator=(QueueIn&&) = default;
-    
-    void push(Q::value_type&& value) {
-        container->push(value);
-    }
-
-private:
-    std::shared_ptr<Q> container;
-
-    QueueIn(std::shared_ptr<Q> container) : container(container) {}
-    
-    template <typename... Args>
-    friend std::pair<QueueIn<Q>, QueueOut<Q>>
-        makeQueueAdapters<Q, Args...>(Args&&... args);
-};
-
-
-template <typename Q>
-class QueueOut {
-public:
-    QueueOut() = delete;
-    QueueOut(const QueueOut&) = delete;
-    QueueOut& operator=(const QueueOut&) = delete;
-    QueueOut(QueueOut&&) = default;
-    QueueOut& operator=(QueueOut&&) = default;
-    
-    bool empty() { return container->empty(); }
-    Q::value_type take() { return container->take(); }
-
-private:
-    std::shared_ptr<Q> container;
-
-    QueueOut(std::shared_ptr<Q> container) : container(container) {}
-
-    template <typename... Args>
-    friend std::pair<QueueIn<Q>, QueueOut<Q>>
-        makeQueueAdapters<Q, Args...>(Args&&... args);
-};
-
-
-LRESULT CALLBACK windowProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 class WndClassHandler {
 public:
@@ -421,7 +326,7 @@ public:
     SysWindow(
         const std::string& title, Position<int> position, Size<int> size,
         bool isTool,
-        MessageQueue<bool>& messageQueue,
+        Istok::GUI::SyncWaitingQueue<bool>& outQueue,
         GUIMessageQueue<int>& inQueue)
         : wnd(
             isTool ? WS_EX_TOOLWINDOW : NULL,
@@ -431,8 +336,11 @@ public:
             position.x, position.y,
             size.width, size.height,
             NULL, NULL, getHInstance(), this),
-        dc(wnd), messageQueue(&messageQueue), inQueue(&inQueue)
+        dc(wnd), outQueue(&outQueue), inQueue(&inQueue)
     {
+        if (!inQueue.ready()) {
+            inQueue.init(wnd.get());
+        }
         setPixelFormat();
         enableTransparency();
     }
@@ -492,8 +400,8 @@ public:
             return HTCLIENT;
         }
         case WM_MOVING:
-            assert(messageQueue);
-            messageQueue->push(true);
+            assert(outQueue);
+            outQueue->push(true);
             return TRUE;
         case WM_APP_QUEUE:
             assert(inQueue);
@@ -526,7 +434,7 @@ private:
 
     WndHandler wnd;
     DCHandler dc;
-    MessageQueue<bool>* messageQueue;
+    Istok::GUI::SyncWaitingQueue<bool>* outQueue;
     GUIMessageQueue<int>* inQueue;
 
     void setPixelFormat() {
@@ -549,7 +457,6 @@ private:
             throw std::runtime_error("Failed to set pixel format");
         }
     }
-
 
     void enableTransparency() {
         DWM_BLURBEHIND bb = { 0 };

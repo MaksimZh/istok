@@ -135,7 +135,7 @@ public:
     SyncNotifyingQueue(SyncNotifyingQueue&&) = delete;
     SyncNotifyingQueue& operator=(SyncNotifyingQueue&&) = delete;
 
-    SyncNotifyingQueue(Notify& notify) : container(notify) {}
+    SyncNotifyingQueue(Notify notify) : container(notify) {}
     
     bool empty() {
         std::lock_guard lock(mut);
