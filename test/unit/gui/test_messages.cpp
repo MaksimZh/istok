@@ -96,8 +96,8 @@ TEST_CASE("GUI messages - waiting queue", "[unit][gui]") {
 }
 
 
-TEST_CASE("GUI messages - synchronized queue", "[unit][gui]") {
-    SyncQueue<int> queue;
+TEST_CASE("GUI messages - synchronized waiting queue", "[unit][gui]") {
+    SyncWaitingQueue<int> queue;
     REQUIRE(queue.empty() == true);
 
     SECTION("linear usage") {
@@ -127,4 +127,56 @@ TEST_CASE("GUI messages - synchronized queue", "[unit][gui]") {
         }
         second.join();
     }
+}
+
+
+TEST_CASE("GUI messages - notifying queue", "[unit][gui]") {
+    size_t counter = 0;
+    auto inc = [&]{++counter;};
+    NotifyingQueue<int, decltype(inc)> queue(inc);
+    REQUIRE(queue.empty() == true);
+    REQUIRE(counter == 0);
+
+    queue.push(0);
+    REQUIRE(queue.empty() == false);
+    REQUIRE(counter == 1);
+    queue.push(1);
+    REQUIRE(counter == 2);
+    REQUIRE(queue.take() == 0);
+    REQUIRE(counter == 2);
+    queue.push(2);
+    REQUIRE(counter == 3);
+    queue.push(3);
+    REQUIRE(counter == 4);
+    REQUIRE(queue.take() == 1);
+    REQUIRE(queue.take() == 2);
+    queue.push(4);
+    REQUIRE(counter == 5);
+    REQUIRE(queue.take() == 3);
+    REQUIRE(queue.take() == 4);
+    REQUIRE(queue.empty() == true);
+    REQUIRE(counter == 5);
+}
+
+
+TEST_CASE("GUI messages - synchronized notifying queue", "[unit][gui]") {
+    std::mutex mut;
+    std::condition_variable cv;
+    auto notify = [&]{ cv.notify_one(); };
+    SyncNotifyingQueue<int, decltype(notify)> queue(notify);
+    REQUIRE(queue.empty() == true);
+
+    std::thread thread([&]{
+        for (int i = 0; i < 20; ++i) {
+            std::this_thread::sleep_for(1ms);
+            std::unique_lock lock(mut);
+            queue.push(std::move(i));
+        }
+    });
+    for (int i = 0; i < 20; ++i) {
+        std::unique_lock lock(mut);
+        cv.wait(lock);
+        REQUIRE(queue.take() == i);
+    }
+    thread.join();
 }
