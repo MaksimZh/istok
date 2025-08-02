@@ -1,9 +1,35 @@
 #include <ecs.hpp>
 #include <gui/core/messages.hpp>
 
-#include <string>
-#include <thread>
 #include <iostream>
+#include <variant>
+#include <thread>
+
+
+namespace CoreMsg {
+
+struct Exit {};
+struct NewWindow {};
+
+} // namespace CoreMsg
+
+using CoreMessage = std::variant<
+    CoreMsg::Exit,
+    CoreMsg::NewWindow
+>;
+
+namespace UIMsg {
+
+struct AttachWindow {
+    Istok::ECS::Entity entity;
+};
+
+} // namespace Istok::GUI::UIMsg
+
+using UIMessage = std::variant<
+    UIMsg::AttachWindow
+>;
+
 
 class Notifier {
 public:
@@ -23,15 +49,19 @@ private:
 
 
 void threadProc(
-        Istok::GUI::SyncWaitingQueue<std::string>& inQueue,
-        Istok::GUI::SyncNotifyingQueue<std::string, Notifier>& outQueue) {
+        Istok::GUI::SyncWaitingQueue<CoreMessage>& inQueue,
+        Istok::GUI::SyncNotifyingQueue<UIMessage, Notifier>& outQueue) {
+    Istok::ECS::EntityComponentManager manager;
     while (true) {
-        std::string msg = inQueue.take();
-        std::cout << "ecs: " << msg << std::endl;
-        if (msg == "exit") {
+        CoreMessage msg = inQueue.take();
+        if (std::holds_alternative<CoreMsg::Exit>(msg)) {
+            std::cout << "ecs <- Exit" << std::endl;
             break;
         }
-        outQueue.push("pong");
+        if (std::holds_alternative<CoreMsg::NewWindow>(msg)) {
+            std::cout << "ecs <- NewWindow" << std::endl;
+            outQueue.push(UIMsg::AttachWindow(manager.createEntity()));
+        }
     }
     std::cout << "ecs end" << std::endl;
 }
@@ -40,18 +70,23 @@ void threadProc(
 int main() {
     std::condition_variable cv;
     Notifier notifier(cv);
-    Istok::GUI::SyncWaitingQueue<std::string> ecsQueue;
-    Istok::GUI::SyncNotifyingQueue<std::string, Notifier> guiQueue(notifier);
+    Istok::GUI::SyncWaitingQueue<CoreMessage> ecsQueue;
+    Istok::GUI::SyncNotifyingQueue<UIMessage, Notifier> guiQueue(notifier);
 
     std::mutex mut;
     std::thread ecsThread(threadProc, std::ref(ecsQueue), std::ref(guiQueue));
-    for (int i = 0; i < 10; ++i) {
-        ecsQueue.push("ping");
+    ecsQueue.push(CoreMsg::NewWindow{});
+    {
         std::unique_lock lock(mut);
         notifier.wait(lock);
-        std::cout << "gui: " << guiQueue.take() << std::endl;
+        UIMessage msg = guiQueue.take();
+        if (std::holds_alternative<UIMsg::AttachWindow>(msg)) {
+            std::cout << "gui <- AttachWindow("
+                << std::get<UIMsg::AttachWindow>(msg).entity.value << ")"
+                << std::endl;
+        }
     }
-    ecsQueue.push("exit");
+    ecsQueue.push(CoreMsg::Exit{});
     ecsThread.join();
     std::cout << "gui end" << std::endl;
     return 0;
