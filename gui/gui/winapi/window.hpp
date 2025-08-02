@@ -319,40 +319,42 @@ std::string toUTF8(LPCWSTR source) {
 }
 
 
-class SysWindow {
+class MessageHandler {
 public:
-    SysWindow() = default;
+    virtual LRESULT handleMessage(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) = 0;
+};
+
+
+class DCWindow {
+public:
+    DCWindow() = default;
     
-    SysWindow(
+    DCWindow(
         const std::string& title, Position<int> position, Size<int> size,
-        bool isTool,
-        Istok::GUI::SyncWaitingQueue<bool>& outQueue,
-        GUIMessageQueue<int>& inQueue)
+        bool isTool, MessageHandler* messageHandler)
         : wnd(
             isTool ? WS_EX_TOOLWINDOW : NULL,
             getWndClass(),
             toUTF16(title).c_str(),
-            WS_POPUP,
+            //WS_POPUP,
+            WS_OVERLAPPEDWINDOW,
             position.x, position.y,
             size.width, size.height,
-            NULL, NULL, getHInstance(), this),
-        dc(wnd), outQueue(&outQueue), inQueue(&inQueue)
+            NULL, NULL, getHInstance(), messageHandler),
+        dc(wnd)
     {
-        if (!inQueue.ready()) {
-            inQueue.init(wnd.get());
-        }
         setPixelFormat();
         enableTransparency();
     }
     
-    SysWindow(const SysWindow&) = delete;
-    SysWindow& operator=(const SysWindow&) = delete;
+    DCWindow(const DCWindow&) = delete;
+    DCWindow& operator=(const DCWindow&) = delete;
 
-    SysWindow(SysWindow&& other) noexcept
+    DCWindow(DCWindow&& other) noexcept
         : wnd(std::move(other.wnd)), dc(std::move(other.dc))
     {}
 
-    SysWindow& operator=(SysWindow&& other) noexcept {
+    DCWindow& operator=(DCWindow&& other) noexcept {
         wnd = std::move(other.wnd);
         dc = std::move(other.dc);
         return *this;
@@ -372,45 +374,6 @@ public:
 
     HWND getHWND() {
         return wnd.get();
-    }
-
-    
-    LRESULT handleMessage(UINT msg, WPARAM wParam, LPARAM lParam) {
-        switch (msg) {
-        case WM_DESTROY:
-            PostQuitMessage(0);
-            return 0;
-        case WM_NCHITTEST: {
-            POINT point = {GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)};
-            RECT rect;
-            GetWindowRect(wnd, &rect);
-            bool lb = point.x - rect.left < 4;
-            bool rb = rect.right - point.x < 4;
-            bool tb = point.y - rect.top < 4;
-            bool bb = rect.bottom - point.y < 4;
-            if (lb && tb) return HTTOPLEFT;
-            if (rb && tb) return HTTOPRIGHT;
-            if (lb && bb) return HTBOTTOMLEFT;
-            if (rb && bb) return HTBOTTOMRIGHT;
-            if (lb) return HTLEFT;
-            if (rb) return HTRIGHT;
-            if (tb) return HTTOP;
-            if (bb) return HTBOTTOM;
-            if (point.y - rect.top < 32) return HTCAPTION;
-            return HTCLIENT;
-        }
-        case WM_MOVING:
-            assert(outQueue);
-            outQueue->push(true);
-            return TRUE;
-        case WM_APP_QUEUE:
-            assert(inQueue);
-            assert(!inQueue->empty());
-            std::cout << inQueue->take() << " " << wnd.get() << std::endl;
-            return 0;
-        default:
-            return DefWindowProc(wnd, msg, wParam, lParam);
-        }
     }
 
 private:
@@ -470,10 +433,10 @@ private:
 
 
 LRESULT CALLBACK windowProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
-    if (SysWindow* sw = reinterpret_cast<SysWindow*>(
+    if (MessageHandler* mh = reinterpret_cast<MessageHandler*>(
         GetWindowLongPtr(hWnd, GWLP_USERDATA)))
     {
-        return sw->handleMessage(msg, wParam, lParam);
+        return mh->handleMessage(hWnd, msg, wParam, lParam);
     }
 
     if (msg != WM_CREATE) {
@@ -481,7 +444,8 @@ LRESULT CALLBACK windowProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     }
 
     CREATESTRUCT* createStruct = reinterpret_cast<CREATESTRUCT*>(lParam);
-    SysWindow* sw = static_cast<SysWindow*>(createStruct->lpCreateParams);
-    SetWindowLongPtr(hWnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(sw));
+    MessageHandler* mh = 
+        static_cast<MessageHandler*>(createStruct->lpCreateParams);
+    SetWindowLongPtr(hWnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(mh));
     return DefWindowProc(hWnd, msg, wParam, lParam);
 }

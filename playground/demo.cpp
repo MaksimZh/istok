@@ -1,5 +1,6 @@
 #include <ecs.hpp>
 #include <gui/core/messages.hpp>
+#include <gui/winapi/window.hpp>
 
 #include <iostream>
 #include <variant>
@@ -31,23 +32,6 @@ using UIMessage = std::variant<
 >;
 
 
-class Notifier {
-public:
-    Notifier(std::condition_variable& cv) : cv(cv) {}
-
-    void wait(std::unique_lock<std::mutex>& lock) {
-        cv.wait(lock);
-    }
-
-    void operator()() {
-        cv.notify_one();
-    }
-
-private:
-    std::condition_variable& cv;
-};
-
-
 void threadProc(
         Istok::GUI::SyncWaitingQueue<CoreMessage>& inQueue,
         Istok::GUI::SyncNotifyingQueue<UIMessage, Notifier>& outQueue) {
@@ -67,24 +51,46 @@ void threadProc(
 }
 
 
+class DefaultHandler : public MessageHandler {
+public:
+    LRESULT handleMessage(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) override {
+        switch (msg) {
+        case WM_DESTROY:
+            PostQuitMessage(0);
+            return 0;
+        default:
+            return DefWindowProc(hWnd, msg, wParam, lParam);
+        }
+    }
+};
+
+
 int main() {
-    std::condition_variable cv;
-    Notifier notifier(cv);
+    DefaultHandler defaultHandler;
+    DCWindow window("Istok", {200, 100}, {400, 300}, false, &defaultHandler);
+    Notifier notifier(window.getHWND());
     Istok::GUI::SyncWaitingQueue<CoreMessage> ecsQueue;
     Istok::GUI::SyncNotifyingQueue<UIMessage, Notifier> guiQueue(notifier);
 
-    std::mutex mut;
     std::thread ecsThread(threadProc, std::ref(ecsQueue), std::ref(guiQueue));
     ecsQueue.push(CoreMsg::NewWindow{});
-    {
-        std::unique_lock lock(mut);
-        notifier.wait(lock);
-        UIMessage msg = guiQueue.take();
-        if (std::holds_alternative<UIMsg::AttachWindow>(msg)) {
-            std::cout << "gui <- AttachWindow("
-                << std::get<UIMsg::AttachWindow>(msg).entity.value << ")"
-                << std::endl;
+    while (true) {
+        MSG msg;
+        GetMessage(&msg, NULL, 0, 0);
+        if (msg.message == WM_QUIT) {
+            break;
         }
+        if (msg.message == WM_APP_QUEUE) {
+            UIMessage msg = guiQueue.take();
+            if (std::holds_alternative<UIMsg::AttachWindow>(msg)) {
+                std::cout << "gui <- AttachWindow("
+                    << std::get<UIMsg::AttachWindow>(msg).entity.value << ")"
+                    << std::endl;
+                window.show();
+            }
+        }
+        TranslateMessage(&msg);
+        DispatchMessage(&msg);
     }
     ecsQueue.push(CoreMsg::Exit{});
     ecsThread.join();
