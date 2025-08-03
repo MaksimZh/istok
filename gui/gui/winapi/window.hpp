@@ -406,8 +406,6 @@ private:
 
     WndHandler wnd;
     DCHandler dc;
-    Istok::GUI::SyncWaitingQueue<bool>* outQueue;
-    GUIMessageQueue<int>* inQueue;
 
     void setPixelFormat() {
         PIXELFORMATDESCRIPTOR pfd = {};
