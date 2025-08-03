@@ -331,7 +331,7 @@ public:
     
     DCWindow(
         const std::string& title, Position<int> position, Size<int> size,
-        bool isTool, MessageHandler* messageHandler)
+        bool isTool)
         : wnd(
             isTool ? WS_EX_TOOLWINDOW : NULL,
             getWndClass(),
@@ -340,7 +340,7 @@ public:
             WS_OVERLAPPEDWINDOW,
             position.x, position.y,
             size.width, size.height,
-            NULL, NULL, getHInstance(), messageHandler),
+            NULL, NULL, getHInstance(), nullptr),
         dc(wnd)
     {
         setPixelFormat();
@@ -374,6 +374,14 @@ public:
 
     HWND getHWND() {
         return wnd.get();
+    }
+
+    void setMessageHandler(MessageHandler* value) {
+        if (!*this) {
+            return;
+        }
+        SetWindowLongPtr(
+            wnd.get(), GWLP_USERDATA, reinterpret_cast<LONG_PTR>(value));
     }
 
 private:
@@ -438,14 +446,5 @@ LRESULT CALLBACK windowProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     {
         return mh->handleMessage(hWnd, msg, wParam, lParam);
     }
-
-    if (msg != WM_CREATE) {
-        return DefWindowProc(hWnd, msg, wParam, lParam);
-    }
-
-    CREATESTRUCT* createStruct = reinterpret_cast<CREATESTRUCT*>(lParam);
-    MessageHandler* mh = 
-        static_cast<MessageHandler*>(createStruct->lpCreateParams);
-    SetWindowLongPtr(hWnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(mh));
     return DefWindowProc(hWnd, msg, wParam, lParam);
 }

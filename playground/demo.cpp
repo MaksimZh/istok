@@ -67,7 +67,8 @@ public:
 
 int main() {
     DefaultHandler defaultHandler;
-    DCWindow window("Istok", {200, 100}, {400, 300}, false, &defaultHandler);
+    DCWindow window("Istok", {0, 0}, {128, 128}, false);
+    window.setMessageHandler(&defaultHandler);
     Notifier notifier(window.getHWND());
     Istok::GUI::SyncWaitingQueue<CoreMessage> ecsQueue;
     Istok::GUI::SyncNotifyingQueue<UIMessage, Notifier> guiQueue(notifier);
