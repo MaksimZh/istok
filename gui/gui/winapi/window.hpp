@@ -319,25 +319,27 @@ std::string toUTF8(LPCWSTR source) {
 }
 
 
-class MessageHandler {
+class WinAPIMessageHandler {
 public:
     virtual LRESULT handleMessage(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) = 0;
 };
 
 
-class DCWindow {
+class SysWindow {
 public:
-    DCWindow() = default;
-    
-    DCWindow(
-        const std::string& title, Position<int> position, Size<int> size,
-        bool isTool)
+    SysWindow() = default;
+    SysWindow(const SysWindow&) = delete;
+    SysWindow& operator=(const SysWindow&) = delete;
+    SysWindow(SysWindow&& other) = delete;
+    SysWindow& operator=(SysWindow&& other) = delete;
+
+    SysWindow(DWORD dwExStyle, LPCWSTR lpWindowName,
+        Position<int> position, Size<int> size)
         : wnd(
-            isTool ? WS_EX_TOOLWINDOW : NULL,
+            dwExStyle,
             getWndClass(),
-            toUTF16(title).c_str(),
-            //WS_POPUP,
-            WS_OVERLAPPEDWINDOW,
+            lpWindowName,
+            WS_OVERLAPPEDWINDOW, //TODO: change to WS_POPUP for custom decorations
             position.x, position.y,
             size.width, size.height,
             NULL, NULL, getHInstance(), nullptr),
@@ -347,17 +349,17 @@ public:
         enableTransparency();
     }
     
-    DCWindow(const DCWindow&) = delete;
-    DCWindow& operator=(const DCWindow&) = delete;
+    static std::unique_ptr<SysWindow> newDraftWindow() {
+        return std::make_unique<SysWindow>(WS_EX_TOOLWINDOW, L"", Position<int>{0, 0}, Size<int>{64, 64});
+    }
 
-    DCWindow(DCWindow&& other) noexcept
-        : wnd(std::move(other.wnd)), dc(std::move(other.dc))
-    {}
+    static std::unique_ptr<SysWindow> newMainWindow(
+            const std::string& title, Position<int> position, Size<int> size) {
+        return std::make_unique<SysWindow>(NULL, toUTF16(title).c_str(), position, size);
+    }
 
-    DCWindow& operator=(DCWindow&& other) noexcept {
-        wnd = std::move(other.wnd);
-        dc = std::move(other.dc);
-        return *this;
+    static std::unique_ptr<SysWindow> newToolWindow(Position<int> position, Size<int> size) {
+        return std::make_unique<SysWindow>(WS_EX_TOOLWINDOW, L"", position, size);
     }
 
     operator bool() const {
@@ -376,7 +378,7 @@ public:
         return wnd.get();
     }
 
-    void setMessageHandler(MessageHandler* value) {
+    void setMessageHandler(WinAPIMessageHandler* value) {
         if (!*this) {
             return;
         }
@@ -385,7 +387,6 @@ public:
     }
 
 private:
-
     static HINSTANCE getHInstance() {
         static HINSTANCE hInstance =
             reinterpret_cast<HINSTANCE>(GetModuleHandle(NULL));
@@ -412,7 +413,11 @@ private:
         PIXELFORMATDESCRIPTOR pfd = {};
         pfd.nSize = sizeof(PIXELFORMATDESCRIPTOR);
         pfd.nVersion = 1;
-        pfd.dwFlags = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER | PFD_SUPPORT_COMPOSITION;
+        pfd.dwFlags =
+            PFD_DRAW_TO_WINDOW |
+            PFD_SUPPORT_OPENGL |
+            PFD_DOUBLEBUFFER |
+            PFD_SUPPORT_COMPOSITION;
         pfd.iPixelType = PFD_TYPE_RGBA;
         pfd.cColorBits = 32;
         pfd.cAlphaBits = 8;
@@ -437,14 +442,15 @@ private:
         bb.fEnable = TRUE;
         DwmEnableBlurBehindWindow(wnd, &bb);
     }
-};
 
-
-LRESULT CALLBACK windowProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
-    if (MessageHandler* mh = reinterpret_cast<MessageHandler*>(
-        GetWindowLongPtr(hWnd, GWLP_USERDATA)))
-    {
-        return mh->handleMessage(hWnd, msg, wParam, lParam);
+    static LRESULT CALLBACK windowProc(
+            HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
+        if (WinAPIMessageHandler* handler =
+            reinterpret_cast<WinAPIMessageHandler*>(
+                GetWindowLongPtr(hWnd, GWLP_USERDATA)))
+        {
+            return handler->handleMessage(hWnd, msg, wParam, lParam);
+        }
+        return DefWindowProc(hWnd, msg, wParam, lParam);
     }
-    return DefWindowProc(hWnd, msg, wParam, lParam);
-}
+};

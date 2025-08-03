@@ -5,6 +5,8 @@
 #include <iostream>
 #include <variant>
 #include <thread>
+#include <queue>
+#include <memory>
 
 
 namespace CoreMsg {
@@ -21,14 +23,24 @@ using CoreMessage = std::variant<
 
 namespace UIMsg {
 
-struct AttachWindow {
+struct AddMainWindow {
     Istok::ECS::Entity entity;
+    std::string title;
+    Position<int> position;
+    Size<int> size;
+};
+
+struct AddToolWindow {
+    Istok::ECS::Entity entity;
+    Position<int> position;
+    Size<int> size;
 };
 
 } // namespace Istok::GUI::UIMsg
 
 using UIMessage = std::variant<
-    UIMsg::AttachWindow
+    UIMsg::AddMainWindow,
+    UIMsg::AddToolWindow
 >;
 
 
@@ -44,56 +56,80 @@ void threadProc(
         }
         if (std::holds_alternative<CoreMsg::NewWindow>(msg)) {
             std::cout << "ecs <- NewWindow" << std::endl;
-            outQueue.push(UIMsg::AttachWindow(manager.createEntity()));
+            outQueue.push(UIMsg::AddMainWindow(
+                manager.createEntity(), "Istok", {200, 100}, {400, 300}));
         }
     }
     std::cout << "ecs end" << std::endl;
 }
 
 
-class DefaultHandler : public MessageHandler {
+class SysWindowManager : public WinAPIMessageHandler {
 public:
+    using CoreQueue = Istok::GUI::SyncWaitingQueue<CoreMessage>;
+    using UIQueue = Istok::GUI::SyncNotifyingQueue<UIMessage, Notifier>;
+    
+    SysWindowManager() {
+        std::unique_ptr<SysWindow> sample = SysWindow::newDraftWindow();
+        Notifier notifier(sample->getHWND());
+        coreQueue = std::make_unique<CoreQueue>();
+        uiQueue = std::make_unique<UIQueue>(notifier);
+        sample->setMessageHandler(this);
+        sample->show();
+        storage = std::move(sample);
+    }
+
     LRESULT handleMessage(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) override {
         switch (msg) {
         case WM_DESTROY:
             PostQuitMessage(0);
             return 0;
+        case WM_APP_QUEUE: {
+            UIMessage msg = uiQueue->take();
+            if (std::holds_alternative<UIMsg::AddMainWindow>(msg)) {
+                std::cout << "gui <- AddWindow("
+                    << std::get<UIMsg::AddMainWindow>(msg).entity.value << ")"
+                    << std::endl;
+            }
+            return 0;
+        }
         default:
             return DefWindowProc(hWnd, msg, wParam, lParam);
         }
     }
+
+    CoreQueue& getCoreQueue() {
+        return *coreQueue;
+    }
+
+    UIQueue& getUIQueue() {
+        return *uiQueue;
+    }
+
+private:
+    std::unique_ptr<SysWindow> storage;
+    std::unique_ptr<CoreQueue> coreQueue;
+    std::unique_ptr<UIQueue> uiQueue;
 };
 
 
 int main() {
-    DefaultHandler defaultHandler;
-    DCWindow window("Istok", {0, 0}, {128, 128}, false);
-    window.setMessageHandler(&defaultHandler);
-    Notifier notifier(window.getHWND());
-    Istok::GUI::SyncWaitingQueue<CoreMessage> ecsQueue;
-    Istok::GUI::SyncNotifyingQueue<UIMessage, Notifier> guiQueue(notifier);
+    SysWindowManager manager;
 
-    std::thread ecsThread(threadProc, std::ref(ecsQueue), std::ref(guiQueue));
-    ecsQueue.push(CoreMsg::NewWindow{});
+    auto& coreQueue = manager.getCoreQueue();
+    auto& uiQueue = manager.getUIQueue();
+    std::thread ecsThread(threadProc, std::ref(coreQueue), std::ref(uiQueue));
+    coreQueue.push(CoreMsg::NewWindow{});
     while (true) {
         MSG msg;
         GetMessage(&msg, NULL, 0, 0);
         if (msg.message == WM_QUIT) {
             break;
         }
-        if (msg.message == WM_APP_QUEUE) {
-            UIMessage msg = guiQueue.take();
-            if (std::holds_alternative<UIMsg::AttachWindow>(msg)) {
-                std::cout << "gui <- AttachWindow("
-                    << std::get<UIMsg::AttachWindow>(msg).entity.value << ")"
-                    << std::endl;
-                window.show();
-            }
-        }
         TranslateMessage(&msg);
         DispatchMessage(&msg);
     }
-    ecsQueue.push(CoreMsg::Exit{});
+    coreQueue.push(CoreMsg::Exit{});
     ecsThread.join();
     std::cout << "gui end" << std::endl;
     return 0;
