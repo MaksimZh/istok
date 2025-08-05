@@ -133,7 +133,7 @@ TEST_CASE("GUI messages - synchronized waiting queue", "[unit][gui]") {
 TEST_CASE("GUI messages - notifying queue", "[unit][gui]") {
     size_t counter = 0;
     auto inc = [&]{++counter;};
-    NotifyingQueue<int, decltype(inc)> queue(inc);
+    NotifyingQueue<int, decltype(inc)> queue(std::move(inc));
     REQUIRE(queue.empty() == true);
     REQUIRE(counter == 0);
 
@@ -162,8 +162,8 @@ TEST_CASE("GUI messages - notifying queue", "[unit][gui]") {
 TEST_CASE("GUI messages - synchronized notifying queue", "[unit][gui]") {
     std::mutex mut;
     std::condition_variable cv;
-    auto notify = [&]{ cv.notify_one(); };
-    SyncNotifyingQueue<int, decltype(notify)> queue(notify);
+    auto notifier = [&]{ cv.notify_one(); };
+    SyncNotifyingQueue<int, decltype(notifier)> queue(std::move(notifier));
     REQUIRE(queue.empty() == true);
 
     std::thread thread([&]{

@@ -97,7 +97,7 @@ private:
 };
 
 
-template <typename T, typename Notify>
+template <typename T, typename Notifier>
 class NotifyingQueue {
 public:
     NotifyingQueue(const NotifyingQueue&) = delete;
@@ -105,7 +105,7 @@ public:
     NotifyingQueue(NotifyingQueue&&) = delete;
     NotifyingQueue& operator=(NotifyingQueue&&) = delete;
 
-    NotifyingQueue(Notify notify) : notify(notify) {}
+    NotifyingQueue(Notifier&& notifier) : notifier(std::move(notifier)) {}
     
     bool empty() const {
         return container.empty();
@@ -113,7 +113,7 @@ public:
 
     void push(T&& value) {
         container.push(std::move(value));
-        notify();
+        notifier();
     }
 
     T take() {
@@ -122,12 +122,12 @@ public:
     }
 
 private:
-    Notify notify;
+    Notifier notifier;
     SimpleQueue<T> container;
 };
 
 
-template <typename T, typename Notify>
+template <typename T, typename Notifier>
 class SyncNotifyingQueue {
 public:
     SyncNotifyingQueue(const SyncNotifyingQueue&) = delete;
@@ -135,7 +135,7 @@ public:
     SyncNotifyingQueue(SyncNotifyingQueue&&) = delete;
     SyncNotifyingQueue& operator=(SyncNotifyingQueue&&) = delete;
 
-    SyncNotifyingQueue(Notify notify) : container(notify) {}
+    SyncNotifyingQueue(Notifier&& notifier) : container(std::move(notifier)) {}
     
     bool empty() {
         std::lock_guard lock(mut);
@@ -155,7 +155,7 @@ public:
 
 private:
     std::mutex mut;
-    NotifyingQueue<T, Notify> container;
+    NotifyingQueue<T, Notifier> container;
 };
 
 

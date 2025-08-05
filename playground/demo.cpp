@@ -53,32 +53,29 @@ using UIMessage = std::variant<
 >;
 
 
-using ECSQueue = Istok::GUI::SyncWaitingQueue<CoreMessage>;
-using GUIQueue = Istok::GUI::SyncNotifyingQueue<UIMessage, Notifier>;
-
-
-class WindowPool {
+class Notifier {
 public:
-    WindowPool() = default;
-    WindowPool(const WindowPool&) = delete;
-    WindowPool& operator=(const WindowPool&) = delete;
-    WindowPool(WindowPool&&) = default;
-    WindowPool& operator=(WindowPool&&) = default;
-
-    void release(std::unique_ptr<SysWindow> window) {
-        container.push(std::move(window));
+    Notifier(SysMessageHandler* messageHandler) {
+        target = std::make_unique<SysWindow>();
+        target->setMessageHandler(messageHandler);
     }
 
-    std::unique_ptr<SysWindow> acquire() {
-        if (!container.empty()) {
-            return container.take();
-        }
-        return std::make_unique<SysWindow>();
+    Notifier(const Notifier&) = delete;
+    Notifier& operator=(const Notifier&) = delete;
+    Notifier(Notifier&&) = default;
+    Notifier& operator=(Notifier&&) = default;
+
+    void operator()() {
+        PostMessage(target->getHWND(), WM_APP_QUEUE, NULL, NULL);
     }
 
 private:
-    Istok::GUI::SimpleQueue<std::unique_ptr<SysWindow>> container;
+    std::unique_ptr<SysWindow> target;
 };
+
+
+using ECSQueue = Istok::GUI::SyncWaitingQueue<CoreMessage>;
+using GUIQueue = Istok::GUI::SyncNotifyingQueue<UIMessage, Notifier>;
 
 
 class SysWindowMap {
@@ -90,15 +87,28 @@ public:
     SysWindowMap& operator=(SysWindowMap&&) = default;
 
     void insert(Istok::ECS::Entity entity, std::unique_ptr<SysWindow>&& window) {
-        entityMap[window->getHWND()] = entity;
+        HWND hWnd = window->getHWND();
+        assert(!entityMap.contains(hWnd));
+        assert(!windowMap.contains(entity));
+        entityMap[hWnd] = entity;
         windowMap[entity] = std::move(window);
     }
 
+    bool contains(HWND hWnd) const {
+        return entityMap.contains(hWnd);
+    }
+
+    bool contains(Istok::ECS::Entity entity) const {
+        return windowMap.contains(entity);
+    }
+
     Istok::ECS::Entity getEntity(HWND hWnd) {
+        assert(contains(hWnd));
         return entityMap.at(hWnd);
     }
 
     SysWindow& getSysWindow(Istok::ECS::Entity entity) {
+        assert(contains(entity));
         return *windowMap.at(entity);
     }
 
@@ -124,8 +134,14 @@ public:
     std::optional<UIMessage> translate(SysMessage message) {
         switch (message.msg) {
         case WM_APP_QUEUE:
-            return queue.empty() ? std::nullopt : std::optional(queue.take());
+            if (queue.empty()) {
+                return std::nullopt;
+            }
+            return queue.take();
         case WM_DESTROY:
+            if (!windowMap.contains(message.hWnd)) {
+                return std::nullopt;
+            }
             return UIMsg::DestroyWindow(windowMap.getEntity(message.hWnd));
         default:
             return std::nullopt;
@@ -138,20 +154,40 @@ private:
 };
 
 
+class SysMessageManager {
+public:
+    SysMessageManager(const SysMessageManager&) = delete;
+    SysMessageManager& operator=(const SysMessageManager&) = delete;
+    SysMessageManager(SysMessageManager&&) = delete;
+    SysMessageManager& operator=(SysMessageManager&&) = delete;
+
+    SysMessageManager(
+        SysMessageHandler* messageHandler, SysWindowMap& windowMap)
+        : queue(Notifier(messageHandler)), translator(queue, windowMap) {}
+    
+    std::optional<UIMessage> translate(SysMessage message) {
+        return translator.translate(message);
+    }
+
+    GUIQueue& getQueue() {
+        return queue;
+    }
+
+private:
+    GUIQueue queue;
+    SysMessageTranslator translator;
+};
+
+
 class Handler : SysMessageHandler {
 public:
-    Handler() {
-        auto sample = windowPool.acquire();
-        sample->setMessageHandler(this);
+    Handler() : messageManager(this, windowMap) {
         coreQueue = std::make_unique<ECSQueue>();
-        uiQueue = std::make_unique<GUIQueue>(Notifier(sample->getHWND()));
-        windowPool.release(std::move(sample));
-        messageTranslator = std::make_unique<SysMessageTranslator>(*uiQueue, windowMap);
     }
 
     SysResult handleSysMessage(SysMessage message) override {
         std::optional<UIMessage> optUIMessage =
-            messageTranslator->translate(message);
+            messageManager.translate(message);
         if (!optUIMessage.has_value()) {
             return handleSysMessageByDefault(message);
         }
@@ -167,20 +203,20 @@ public:
         }
         return handleSysMessageByDefault(message);
     }
-    
+
     void addPrimaryWindow(
         Istok::ECS::Entity entity,
         const std::string& title,
         Position<int> position,
         Size<int> size
     ) {
-        windowMap.insert(entity, windowPool.acquire());
+        windowMap.insert(entity, std::move(std::make_unique<SysWindow>()));
         SysWindow& sw = windowMap.getSysWindow(entity);
         sw.setMessageHandler(this);
         sw.makePrimary(title, position, size);
         sw.show();
     }
-    
+
     void onDestroy(Istok::ECS::Entity entity) {
         PostQuitMessage(0);
     }
@@ -190,16 +226,14 @@ public:
     }
 
     GUIQueue& getUIQueue() {
-        return *uiQueue;
+        return messageManager.getQueue();
     }
 
 
 private:
-    WindowPool windowPool;
     SysWindowMap windowMap;
     std::unique_ptr<ECSQueue> coreQueue;
-    std::unique_ptr<GUIQueue> uiQueue;
-    std::unique_ptr<SysMessageTranslator> messageTranslator;
+    SysMessageManager messageManager;
 };
 
 

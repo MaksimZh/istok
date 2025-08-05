@@ -19,58 +19,6 @@ constexpr UINT WM_APP_QUEUE = WM_APP + 1;
 LRESULT CALLBACK windowProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 
-class Notifier {
-public:
-    Notifier(HWND target) : target(target) {}
-    
-    void operator()() {
-        PostMessage(target, WM_APP_QUEUE, NULL, NULL);
-    }
-private:
-    HWND target;
-};
-
-template <typename T>
-class GUIMessageQueue {
-public:
-    GUIMessageQueue() = default;
-    GUIMessageQueue(const GUIMessageQueue&) = delete;
-    GUIMessageQueue& operator=(const GUIMessageQueue&) = delete;
-    GUIMessageQueue(GUIMessageQueue&&) = delete;
-    GUIMessageQueue& operator=(GUIMessageQueue&&) = delete;
-    
-    bool ready() const {
-        return container != nullptr;
-    }
-    
-    void init(HWND hWnd) {
-        if (ready()) {
-            return;
-        }
-        container = std::make_unique<Queue>(Notifier(hWnd));
-    }
-
-    bool empty() {
-        assert(ready());
-        return container->empty();
-    }
-    
-    void push(T&& value) {
-        assert(ready());
-        container->push(std::move(value));
-    }
-    
-    T take() {
-        assert(ready());
-        return container->take();
-    }
-
-private:
-    using Queue = Istok::GUI::SyncNotifyingQueue<T, Notifier>;
-    std::unique_ptr<Queue> container;
-};
-
-
 class WndClassHandler {
 public:
     WndClassHandler() = default;
