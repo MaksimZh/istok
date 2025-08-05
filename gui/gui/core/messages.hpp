@@ -14,8 +14,8 @@ public:
     SimpleQueue() = default;
     SimpleQueue(const SimpleQueue&) = delete;
     SimpleQueue& operator=(const SimpleQueue&) = delete;
-    SimpleQueue(SimpleQueue&&) = delete;
-    SimpleQueue& operator=(SimpleQueue&&) = delete;
+    SimpleQueue(SimpleQueue&&) = default;
+    SimpleQueue& operator=(SimpleQueue&&) = default;
 
     bool empty() const {
         return container.empty();

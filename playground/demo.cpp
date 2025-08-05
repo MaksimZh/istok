@@ -9,6 +9,7 @@
 #include <thread>
 #include <queue>
 #include <memory>
+#include <map>
 
 
 namespace CoreMsg {
@@ -44,14 +45,6 @@ using UIMessage = std::variant<
     UIMsg::AddMainWindow,
     UIMsg::AddToolWindow
 >;
-
-
-struct WinAPIMessage {
-    HWND hWnd;
-    UINT msg;
-    WPARAM wParam;
-    LPARAM lParam;
-};
 
 
 void threadProc(
@@ -94,12 +87,12 @@ template <UIQueue Queue, MixedMessageHandler Handler>
 class UIMessageCollector : public WinAPIMessageHandler {
 public:
     UIMessageCollector(Queue& queue, Handler& handler)
-        :queue(queue), handler(handler) {}
+        : queue(queue), handler(handler) {}
 
     UIMessageCollector(const UIMessageCollector&) = delete;
     UIMessageCollector& operator=(const UIMessageCollector&) = delete;
-    UIMessageCollector(UIMessageCollector&& other) = delete;
-    UIMessageCollector& operator=(UIMessageCollector&& other) = delete;
+    UIMessageCollector(UIMessageCollector&&) = delete;
+    UIMessageCollector& operator=(UIMessageCollector&&) = delete;
 
     LRESULT handleMessage(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) override {
         if (msg != WM_APP_QUEUE) {
@@ -145,8 +138,8 @@ public:
 
     UIMessageTranslator(const UIMessageTranslator&) = delete;
     UIMessageTranslator& operator=(const UIMessageTranslator&) = delete;
-    UIMessageTranslator(UIMessageTranslator&& other) = delete;
-    UIMessageTranslator& operator=(UIMessageTranslator&& other) = delete;
+    UIMessageTranslator(UIMessageTranslator&&) = delete;
+    UIMessageTranslator& operator=(UIMessageTranslator&&) = delete;
 
     void handleMessage(UIMessage message) {
         if (std::holds_alternative<UIMsg::AddMainWindow>(message)) {
@@ -179,76 +172,140 @@ using ECSQueue = Istok::GUI::SyncWaitingQueue<CoreMessage>;
 using GUIQueue = Istok::GUI::SyncNotifyingQueue<UIMessage, Notifier>;
 
 
-class Map {
+class WindowPool {
 public:
-    Istok::ECS::Entity getEntity(HWND hWnd) {
-        return entity;
+    WindowPool() = default;
+    WindowPool(const WindowPool&) = delete;
+    WindowPool& operator=(const WindowPool&) = delete;
+    WindowPool(WindowPool&&) = default;
+    WindowPool& operator=(WindowPool&&) = default;
+
+    void release(std::unique_ptr<SysWindow> window) {
+        container.push(std::move(window));
     }
 
-    void put(Istok::ECS::Entity value) {
-        entity = value;
-    }
-
-    void put(std::unique_ptr<SysWindow>&& value) {
-        sysWindow = std::move(value);
-    }
-
-    SysWindow& getSysWindow(Istok::ECS::Entity entity) {
-        return *sysWindow;
+    std::unique_ptr<SysWindow> acquire() {
+        if (!container.empty()) {
+            return container.take();
+        }
+        return std::make_unique<SysWindow>();
     }
 
 private:
-    Istok::ECS::Entity entity;
-    std::unique_ptr<SysWindow> sysWindow;
+    Istok::GUI::SimpleQueue<std::unique_ptr<SysWindow>> container;
+};
+
+
+class PreparedWindowPool {
+public:
+    PreparedWindowPool(const PreparedWindowPool&) = delete;
+    PreparedWindowPool& operator=(const PreparedWindowPool&) = delete;
+    PreparedWindowPool(PreparedWindowPool&&) = default;
+    PreparedWindowPool& operator=(PreparedWindowPool&&) = default;
+
+    PreparedWindowPool(WindowPool&& pool, WinAPIMessageHandler* handler)
+        : pool(std::move(pool)), handler(handler) {}
+
+    void release(std::unique_ptr<SysWindow> window) {
+        window->hide();
+        pool.release(std::move(window));
+    }
+
+    std::unique_ptr<SysWindow> acquirePrimary(
+        const std::string& title,
+        Position<int> position, Size<int> size
+    ) {
+        std::unique_ptr<SysWindow> window = pool.acquire();
+        window->makePrimary(title, position, size);
+        return window;
+    }
+
+    std::unique_ptr<SysWindow> acquireSecondary(
+        Position<int> position, Size<int> size
+    ) {
+        std::unique_ptr<SysWindow> window = pool.acquire();
+        window->makeSecondary(position, size);
+        return window;
+    }
+
+private:
+    WindowPool pool;
+    WinAPIMessageHandler* handler;
+
+    std::unique_ptr<SysWindow> acquire() {
+        auto window = pool.acquire();
+        window->setMessageHandler(handler);
+        return window;
+    }
+};
+
+
+class WindowMap {
+public:
+    WindowMap() = default;
+    WindowMap(const WindowMap&) = delete;
+    WindowMap& operator=(const WindowMap&) = delete;
+    WindowMap(WindowMap&&) = default;
+    WindowMap& operator=(WindowMap&&) = default;
+
+    void insert(Istok::ECS::Entity entity, std::unique_ptr<SysWindow>&& window) {
+        entityMap[window->getHWND()] = entity;
+        windowMap[entity] = std::move(window);
+    }
+
+    Istok::ECS::Entity getEntity(HWND hWnd) {
+        return entityMap.at(hWnd);
+    }
+
+    SysWindow& getSysWindow(Istok::ECS::Entity entity) {
+        return *windowMap.at(entity);
+    }
+
+private:
+    std::unordered_map<HWND, Istok::ECS::Entity> entityMap;
+    std::unordered_map<
+        Istok::ECS::Entity, std::unique_ptr<SysWindow>,
+        Istok::ECS::Entity::Hasher
+    > windowMap;
 };
 
 
 class Handler {
 public:
+    Handler(WindowMap& map) : map(map) {}
+    
     void addMainWindow(
         Istok::ECS::Entity entity,
         const std::string& title,
         Position<int> position,
         Size<int> size
     ) {
-        map.put(entity);
+        map.insert(entity, pool->acquirePrimary(title, position, size));
         SysWindow& sw = map.getSysWindow(entity);
-        HWND hWnd = sw.getHWND();
-        SetWindowText(hWnd, toUTF16(title).c_str());
-        SetWindowLongPtr(hWnd, GWL_EXSTYLE, NULL);
-        SetWindowPos(
-            hWnd, HWND_TOP,
-            position.x, position.y,
-            size.width, size.height,
-            NULL);
         sw.show();
     }
     
     void onDestroy(Istok::ECS::Entity entity) {
-        if (entity != map.getEntity(0)) {
-            return;
-        }
         PostQuitMessage(0);
     }
 
-    Map& getMap() {
-        return map;
-    }
-
 private:
-    Map map;
+    WindowMap& map;
+    PreparedWindowPool* pool;
 };
 
+
 int main() {
-    std::unique_ptr<SysWindow> sample = SysWindow::newDraftWindow();
+    WindowPool pool;
+    auto sample = pool.acquire();
     Notifier notifier(sample->getHWND());
+    pool.release(std::move(sample));
     ECSQueue coreQueue;
     GUIQueue uiQueue(notifier);
-    Handler handler;
-    UIMessageTranslator translator(handler.getMap(), handler);
+    WindowMap map;
+    Handler handler(map);
+    UIMessageTranslator translator(map, handler);
     UIMessageCollector collector(uiQueue, translator);
-    sample->setMessageHandler(&collector);
-    handler.getMap().put(std::move(sample));
 
     std::thread ecsThread(threadProc, std::ref(coreQueue), std::ref(uiQueue));
     coreQueue.push(CoreMsg::NewWindow{});

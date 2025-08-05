@@ -319,55 +319,42 @@ std::string toUTF8(LPCWSTR source) {
 }
 
 
-class WinAPIMessageHandler {
+struct SysMessage {
+    HWND hWnd;
+    UINT msg;
+    WPARAM wParam;
+    LPARAM lParam;
+};
+
+using SysResult = LRESULT;
+
+
+class SysMessageHandler {
 public:
-    virtual LRESULT handleMessage(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) = 0;
+    virtual SysResult handleSysMessage(SysMessage message) = 0;
 };
 
 
 class SysWindow {
 public:
-    SysWindow() = default;
     SysWindow(const SysWindow&) = delete;
     SysWindow& operator=(const SysWindow&) = delete;
-    SysWindow(SysWindow&& other) = delete;
-    SysWindow& operator=(SysWindow&& other) = delete;
+    SysWindow(SysWindow&&) = delete;
+    SysWindow& operator=(SysWindow&&) = delete;
 
-    SysWindow(DWORD dwExStyle, LPCWSTR lpWindowName,
-        Position<int> position, Size<int> size)
+    SysWindow()
         : wnd(
-            dwExStyle,
+            WS_EX_TOOLWINDOW,
             getWndClass(),
-            lpWindowName,
+            L"",
             WS_OVERLAPPEDWINDOW, //TODO: change to WS_POPUP for custom decorations
-            position.x, position.y,
-            size.width, size.height,
+            0, 0,
+            64, 64,
             NULL, NULL, getHInstance(), nullptr),
         dc(wnd)
     {
         setPixelFormat();
         enableTransparency();
-    }
-    
-    static std::unique_ptr<SysWindow> newDraftWindow() {
-        return std::make_unique<SysWindow>(WS_EX_TOOLWINDOW, L"", Position<int>{0, 0}, Size<int>{64, 64});
-    }
-
-    static std::unique_ptr<SysWindow> newMainWindow(
-            const std::string& title, Position<int> position, Size<int> size) {
-        return std::make_unique<SysWindow>(NULL, toUTF16(title).c_str(), position, size);
-    }
-
-    static std::unique_ptr<SysWindow> newToolWindow(Position<int> position, Size<int> size) {
-        return std::make_unique<SysWindow>(WS_EX_TOOLWINDOW, L"", position, size);
-    }
-
-    operator bool() const {
-        return wnd && dc;
-    }
-
-    void show() {
-        ShowWindow(wnd, SW_SHOW);
     }
 
     HDC getDC() {
@@ -378,12 +365,44 @@ public:
         return wnd.get();
     }
 
-    void setMessageHandler(WinAPIMessageHandler* value) {
-        if (!*this) {
-            return;
-        }
+    void setMessageHandler(SysMessageHandler* value) {
         SetWindowLongPtr(
             wnd.get(), GWLP_USERDATA, reinterpret_cast<LONG_PTR>(value));
+    }
+
+    void makePrimary(
+        const std::string& title,
+        Position<int> position, Size<int> size
+    ) {
+        SetWindowLongPtr(wnd, GWL_EXSTYLE, NULL);
+        SetWindowText(wnd, toUTF16(title).c_str());
+        SetWindowPos(
+            wnd, NULL,
+            position.x, position.y,
+            size.width, size.height,
+            SWP_NOZORDER);
+    }
+
+    void makeSecondary(Position<int> position, Size<int> size) {
+        SetWindowLongPtr(wnd, GWL_EXSTYLE, WS_EX_TOOLWINDOW);
+        SetWindowText(wnd, L"");
+        SetWindowPos(
+            wnd, NULL,
+            position.x, position.y,
+            size.width, size.height,
+            SWP_NOZORDER);
+    }
+
+    void setTitle(const std::string& title) {
+        SetWindowText(wnd, toUTF16(title).c_str());
+    }
+
+    void show() {
+        ShowWindow(wnd, SW_SHOW);
+    }
+
+    void hide() {
+        ShowWindow(wnd, SW_HIDE);
     }
 
 private:
@@ -443,11 +462,12 @@ private:
 
     static LRESULT CALLBACK windowProc(
             HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
-        if (WinAPIMessageHandler* handler =
-            reinterpret_cast<WinAPIMessageHandler*>(
+        if (SysMessageHandler* handler =
+            reinterpret_cast<SysMessageHandler*>(
                 GetWindowLongPtr(hWnd, GWLP_USERDATA)))
         {
-            return handler->handleMessage(hWnd, msg, wParam, lParam);
+            return handler->handleSysMessage(
+                SysMessage(hWnd, msg, wParam, lParam));
         }
         return DefWindowProc(hWnd, msg, wParam, lParam);
     }
