@@ -335,6 +335,15 @@ public:
 };
 
 
+SysResult handleSysMessageByDefault(SysMessage message) {
+    return DefWindowProc(
+        message.hWnd,
+        message.msg,
+        message.wParam,
+        message.lParam);
+}
+
+
 class SysWindow {
 public:
     SysWindow(const SysWindow&) = delete;
