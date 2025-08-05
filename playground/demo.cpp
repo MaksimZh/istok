@@ -226,10 +226,71 @@ private:
 };
 
 
-class Handler : SysMessageHandler {
+class GUICore {
 public:
-    Handler() : windowManager(Notifier(this)) {
-        coreQueue = std::make_unique<ECSQueue>();
+    GUICore(const GUICore&) = delete;
+    GUICore& operator=(const GUICore&) = delete;
+    GUICore(GUICore&&) = delete;
+    GUICore& operator=(GUICore&&) = delete;
+
+    GUICore(GUIQueue& uiQueue)
+        : thread(threadProc, std::ref(queue), std::ref(uiQueue)) {}
+
+    ~GUICore() {
+        exit();
+        thread.join();
+    }
+
+    void exit() {
+        queue.push(CoreMsg::Exit{});
+    }
+
+    void newWindow() {
+        queue.push(CoreMsg::NewWindow{});
+    }
+
+private:
+    ECSQueue queue;
+    std::thread thread;
+
+    static void threadProc(ECSQueue& inQueue, GUIQueue& outQueue) {
+        Istok::ECS::EntityComponentManager manager;
+        while (true) {
+            CoreMessage msg = inQueue.take();
+            if (std::holds_alternative<CoreMsg::Exit>(msg)) {
+                std::cout << "ecs <- Exit" << std::endl;
+                break;
+            }
+            if (std::holds_alternative<CoreMsg::NewWindow>(msg)) {
+                std::cout << "ecs <- NewWindow" << std::endl;
+                outQueue.push(UIMsg::AddPrimaryWindow(
+                    manager.createEntity(), "Istok", {200, 100}, {400, 300}));
+            }
+        }
+        std::cout << "ecs end" << std::endl;
+    }
+};
+
+
+class GUI : SysMessageHandler {
+public:
+    GUI() : windowManager(Notifier(this)), core(windowManager.getQueue()) {}
+
+    void newWindow() {
+        core.newWindow();
+    }
+
+    void run() {
+        while (true) {
+            MSG msg;
+            GetMessage(&msg, NULL, 0, 0);
+            if (msg.message == WM_QUIT) {
+                break;
+            }
+            TranslateMessage(&msg);
+            DispatchMessage(&msg);
+        }
+        core.exit();
     }
 
     SysResult handleSysMessage(SysMessage message) override {
@@ -267,61 +328,16 @@ public:
         PostQuitMessage(0);
     }
 
-    ECSQueue& getCoreQueue() {
-        return *coreQueue;
-    }
-
-    GUIQueue& getUIQueue() {
-        return windowManager.getQueue();
-    }
-
-
 private:
     SysWindowManager windowManager;
-    std::unique_ptr<ECSQueue> coreQueue;
+    GUICore core;
 };
 
 
-void threadProc(
-    Istok::GUI::SyncWaitingQueue<CoreMessage>& inQueue,
-    Istok::GUI::SyncNotifyingQueue<UIMessage, Notifier>& outQueue) {
-    Istok::ECS::EntityComponentManager manager;
-    while (true) {
-        CoreMessage msg = inQueue.take();
-        if (std::holds_alternative<CoreMsg::Exit>(msg)) {
-            std::cout << "ecs <- Exit" << std::endl;
-            break;
-        }
-        if (std::holds_alternative<CoreMsg::NewWindow>(msg)) {
-            std::cout << "ecs <- NewWindow" << std::endl;
-            outQueue.push(UIMsg::AddPrimaryWindow(
-                manager.createEntity(), "Istok", {200, 100}, {400, 300}));
-        }
-    }
-    std::cout << "ecs end" << std::endl;
-}
-
 int main() {
-    Handler handler;
-    ECSQueue& coreQueue = handler.getCoreQueue();
-    GUIQueue& uiQueue = handler.getUIQueue();
-
-    std::thread ecsThread(
-        threadProc,
-        std::ref(coreQueue),
-        std::ref(uiQueue));
-    coreQueue.push(CoreMsg::NewWindow{});
-    while (true) {
-        MSG msg;
-        GetMessage(&msg, NULL, 0, 0);
-        if (msg.message == WM_QUIT) {
-            break;
-        }
-        TranslateMessage(&msg);
-        DispatchMessage(&msg);
-    }
-    coreQueue.push(CoreMsg::Exit{});
-    ecsThread.join();
+    GUI handler;
+    handler.newWindow();
+    handler.run();
     std::cout << "gui end" << std::endl;
     return 0;
 }
