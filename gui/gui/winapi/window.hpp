@@ -299,14 +299,17 @@ public:
     SysWindow(SysWindow&&) = delete;
     SysWindow& operator=(SysWindow&&) = delete;
 
-    SysWindow()
+    SysWindow(
+        Position<int> position, Size<int> size,
+        const std::string& title, bool isTool
+    )
         : wnd(
-            WS_EX_TOOLWINDOW,
+            isTool ? WS_EX_TOOLWINDOW : NULL,
             getWndClass(),
-            L"",
+            toUTF16(title).c_str(),
             WS_OVERLAPPEDWINDOW, //TODO: change to WS_POPUP for custom decorations
-            0, 0,
-            64, 64,
+            position.x, position.y,
+            size.width, size.height,
             NULL, NULL, getHInstance(), nullptr),
         dc(wnd)
     {
@@ -325,33 +328,6 @@ public:
     void setMessageHandler(SysMessageHandler* value) {
         SetWindowLongPtr(
             wnd.get(), GWLP_USERDATA, reinterpret_cast<LONG_PTR>(value));
-    }
-
-    void makePrimary(
-        const std::string& title,
-        Position<int> position, Size<int> size
-    ) {
-        SetWindowLongPtr(wnd, GWL_EXSTYLE, NULL);
-        SetWindowText(wnd, toUTF16(title).c_str());
-        SetWindowPos(
-            wnd, NULL,
-            position.x, position.y,
-            size.width, size.height,
-            SWP_NOZORDER);
-    }
-
-    void makeSecondary(Position<int> position, Size<int> size) {
-        SetWindowLongPtr(wnd, GWL_EXSTYLE, WS_EX_TOOLWINDOW);
-        SetWindowText(wnd, L"");
-        SetWindowPos(
-            wnd, NULL,
-            position.x, position.y,
-            size.width, size.height,
-            SWP_NOZORDER);
-    }
-
-    void setTitle(const std::string& title) {
-        SetWindowText(wnd, toUTF16(title).c_str());
     }
 
     void show() {

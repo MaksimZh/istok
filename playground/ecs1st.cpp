@@ -78,11 +78,10 @@ private:
     static void proc(ECSQueue& outQueue) {
         std::cout << "GUICore: begin" << std::endl;
         Handler handler;
-        SysWindow window;
+        SysWindow window({200, 100}, {400, 300}, "Istok", false);
         window.setMessageHandler(&handler);
         GUIQueue inQueue(Notifier(window.getHWND()));
         outQueue.push(InitMsg(&inQueue));
-        window.makePrimary("Istok", {200, 100}, {400, 300});
         window.show();
         while (true) {
             MSG msg;
