@@ -11,7 +11,10 @@
 
 class Notifier {
 public:
-    Notifier(HWND hWnd) : hWnd(hWnd) {}
+    Notifier(SysMessageHandler* messageHandler)
+        : target(
+            Position<int>(0, 0), Size<int>(0, 0), "", true,
+            messageHandler) {}
 
     Notifier(const Notifier&) = delete;
     Notifier& operator=(const Notifier&) = delete;
@@ -19,11 +22,11 @@ public:
     Notifier& operator=(Notifier&&) = default;
 
     void operator()() {
-        PostMessage(hWnd, WM_APP_QUEUE, NULL, NULL);
+        PostMessage(target.getHWND(), WM_APP_QUEUE, NULL, NULL);
     }
 
 private:
-    HWND hWnd;
+    SysWindow target;
 };
 
 
@@ -44,8 +47,8 @@ using ECSQueue = Istok::GUI::SyncWaitingQueue<ECSMessage>;
 class Handler : public SysMessageHandler {
 public:
     SysResult handleSysMessage(SysMessage message) override {
-        if (message.msg == WM_DESTROY) {
-            std::cout << "Handler: WM_DESTROY" << std::endl;
+        if (message.msg == WM_CLOSE) {
+            std::cout << "Handler: WM_CLOSE" << std::endl;
             PostQuitMessage(0);
             return 0;
         }
@@ -78,10 +81,10 @@ private:
     static void proc(ECSQueue& outQueue) {
         std::cout << "GUICore: begin" << std::endl;
         Handler handler;
-        SysWindow window({200, 100}, {400, 300}, "Istok", false);
-        window.setMessageHandler(&handler);
-        GUIQueue inQueue(Notifier(window.getHWND()));
-        outQueue.push(InitMsg(&inQueue));
+        Notifier notifier(&handler);
+        GUIQueue inQueue(std::move(notifier));
+        outQueue.push(InitMsg{&inQueue});
+        SysWindow window({200, 100}, {400, 300}, "Istok", false, &handler);
         window.show();
         while (true) {
             MSG msg;

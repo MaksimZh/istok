@@ -1,3 +1,4 @@
+// window.hpp
 // Copyright 2025 Maksim Sergeevich Zholudev. All rights reserved
 #pragma once
 
@@ -16,14 +17,12 @@
 
 constexpr UINT WM_APP_QUEUE = WM_APP + 1;
 
-LRESULT CALLBACK windowProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
-
-class WndClassHandler {
+class WindowClass {
 public:
-    WndClassHandler() = default;
+    WindowClass() = default;
 
-    WndClassHandler(
+    WindowClass(
         UINT style,
         WNDPROC lpfnWndProc,
         HINSTANCE hInstance,
@@ -54,15 +53,15 @@ public:
         }
     }
 
-    WndClassHandler(const WndClassHandler&) = delete;
-    WndClassHandler& operator=(const WndClassHandler&) = delete;
+    WindowClass(const WindowClass&) = delete;
+    WindowClass& operator=(const WindowClass&) = delete;
 
-    WndClassHandler(WndClassHandler&& other) noexcept
+    WindowClass(WindowClass&& other) noexcept
         : hInstance(other.hInstance), name(other.name) {
         other.drop();
     }
 
-    WndClassHandler& operator=(WndClassHandler&& other) noexcept {
+    WindowClass& operator=(WindowClass&& other) noexcept {
         if (this != &other) {
             clean();
             hInstance = other.hInstance;
@@ -72,7 +71,7 @@ public:
         return *this;
     }
 
-    ~WndClassHandler() {
+    ~WindowClass() {
         clean();
     }
 
@@ -110,27 +109,7 @@ class WndHandler {
 public:
     WndHandler() = default;
 
-    WndHandler(
-        DWORD dwExStyle,
-        LPCWSTR lpClassName,
-        LPCWSTR lpWindowName,
-        DWORD dwStyle,
-        int x,
-        int y,
-        int nWidth,
-        int nHeight,
-        HWND hWndParent,
-        HMENU hMenu,
-        HINSTANCE hInstance,
-        LPVOID lpParam
-    ) : hWnd(CreateWindowEx(
-                dwExStyle, lpClassName, lpWindowName, dwStyle,
-                x, y, nWidth, nHeight,
-                hWndParent, hMenu, hInstance, lpParam)) {
-        if (!hWnd) {
-            throw std::runtime_error("Failed to create window.");
-        }
-    }
+    WndHandler(HWND hWnd) : hWnd(hWnd) {}
 
     ~WndHandler() {
         clean();
@@ -153,6 +132,13 @@ public:
         return *this;
     }
 
+    void clean() {
+        if (hWnd != nullptr) {
+            DestroyWindow(hWnd);
+        }
+        drop();
+    }
+
     operator bool() const {
         return hWnd != nullptr;
     }
@@ -161,22 +147,11 @@ public:
         return hWnd;
     }
 
-    operator HWND() const {
-        return hWnd;
-    }
-
-
 private:
     HWND hWnd = nullptr;
 
     void drop() {
         hWnd = nullptr;
-    }
-
-    void clean() {
-        if (!*this) return;
-        DestroyWindow(hWnd);
-        drop();
     }
 };
 
@@ -185,11 +160,7 @@ class DCHandler {
 public:
     DCHandler() = default;
     
-    DCHandler(HWND hWnd) : hDC(GetWindowDC(hWnd)) {
-        if (!hDC) {
-            throw std::runtime_error("Failed to get window device context");
-        }
-    }
+    DCHandler(HDC hDC) : hDC(hDC) {}
 
     ~DCHandler() {
         clean();
@@ -212,6 +183,13 @@ public:
         return *this;
     }
 
+    void clean() {
+        if (hDC != nullptr) {
+            ReleaseDC(WindowFromDC(hDC), hDC);
+        }
+        drop();
+    }
+
     operator bool() const {
         return hDC != nullptr;
     }
@@ -220,22 +198,11 @@ public:
         return hDC;
     }
 
-    operator HDC() const {
-        return hDC;
-    }
-
 private:
     HDC hDC = nullptr;
 
     void drop() {
         hDC = nullptr;
-    }
-
-    void clean() {
-        if (*this) {
-            ReleaseDC(WindowFromDC(hDC), hDC);
-        }
-        drop();
     }
 };
 
@@ -294,34 +261,52 @@ SysResult handleSysMessageByDefault(SysMessage message) {
 
 class SysWindow {
 public:
-    SysWindow(const SysWindow&) = delete;
-    SysWindow& operator=(const SysWindow&) = delete;
-    SysWindow(SysWindow&&) = default;
-    SysWindow& operator=(SysWindow&&) = default;
-
     SysWindow(
         Position<int> position, Size<int> size,
-        const std::string& title, bool isTool
-    )
-        : wnd(
+        const std::string& title, bool isTool,
+        SysMessageHandler* messageHandler
+    ) {
+        wnd = CreateWindowEx(
             isTool ? WS_EX_TOOLWINDOW : NULL,
             getWndClass(),
             toUTF16(title).c_str(),
             WS_OVERLAPPEDWINDOW, //TODO: change to WS_POPUP for custom decorations
             position.x, position.y,
             size.width, size.height,
-            NULL, NULL, getHInstance(), nullptr),
-        dc(wnd)
-    {
+            NULL, NULL, getHInstance(), nullptr);
+        if (!wnd) {
+            throw std::runtime_error("Cannot create window");
+        }
+        dc = GetWindowDC(wnd.get());
+        if (!dc) {
+            throw std::runtime_error("Cannot get window DC");
+        }
         setPixelFormat();
         enableTransparency();
+        setMessageHandler(messageHandler);
     }
 
+    ~SysWindow() {
+        clean();
+    }
+    
+    SysWindow(const SysWindow&) = delete;
+    SysWindow& operator=(const SysWindow&) = delete;
+
+    SysWindow(SysWindow&&) = default;
+
+    SysWindow& operator=(SysWindow&& other) {
+        if (this != &other) {
+            clean();
+            wnd = std::move(other.wnd);
+            dc = std::move(other.dc);
+        }
+        return *this;
+    }
 
     operator bool() const {
         return wnd && dc;
     }
-
 
     HDC getDC() {
         return dc.get();
@@ -331,28 +316,32 @@ public:
         return wnd.get();
     }
 
-    void setMessageHandler(SysMessageHandler* value) {
-        SetWindowLongPtr(
-            wnd.get(), GWLP_USERDATA, reinterpret_cast<LONG_PTR>(value));
-    }
-
     void show() {
-        ShowWindow(wnd, SW_SHOW);
+        ShowWindow(wnd.get(), SW_SHOW);
     }
 
     void hide() {
-        ShowWindow(wnd, SW_HIDE);
+        ShowWindow(wnd.get(), SW_HIDE);
     }
 
 private:
+    WndHandler wnd;
+    DCHandler dc;
+
+    void clean() {
+        setMessageHandler(nullptr);
+        dc.clean();
+        wnd.clean();
+    }
+
     static HINSTANCE getHInstance() {
         static HINSTANCE hInstance =
             reinterpret_cast<HINSTANCE>(GetModuleHandle(NULL));
         return hInstance;
     }
     
-    static WndClassHandler& getWndClass() {
-        static WndClassHandler wc(
+    static WindowClass& getWndClass() {
+        static WindowClass wc(
             CS_OWNDC,
             windowProc,
             getHInstance(),
@@ -361,9 +350,6 @@ private:
             LoadCursor(NULL, IDC_ARROW));
         return wc;
     }
-
-    WndHandler wnd;
-    DCHandler dc;
 
     void setPixelFormat() {
         PIXELFORMATDESCRIPTOR pfd = {};
@@ -381,11 +367,11 @@ private:
         pfd.cStencilBits = 8;
         pfd.iLayerType = PFD_MAIN_PLANE;
 
-        int pfi = ChoosePixelFormat(dc, &pfd);
+        int pfi = ChoosePixelFormat(dc.get(), &pfd);
         if (!pfi) {
             throw std::runtime_error("Failed to choose pixel format");
         }
-        if (!SetPixelFormat(dc, pfi, &pfd)) {
+        if (!SetPixelFormat(dc.get(), pfi, &pfd)) {
             throw std::runtime_error("Failed to set pixel format");
         }
     }
@@ -396,7 +382,12 @@ private:
         bb.dwFlags = DWM_BB_ENABLE | DWM_BB_BLURREGION;
         bb.hRgnBlur = hRgn;
         bb.fEnable = TRUE;
-        DwmEnableBlurBehindWindow(wnd, &bb);
+        DwmEnableBlurBehindWindow(wnd.get(), &bb);
+    }
+
+    void setMessageHandler(SysMessageHandler* value) {
+        SetWindowLongPtr(
+            wnd.get(), GWLP_USERDATA, reinterpret_cast<LONG_PTR>(value));
     }
 
     static LRESULT CALLBACK windowProc(
