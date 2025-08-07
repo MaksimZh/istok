@@ -296,8 +296,8 @@ class SysWindow {
 public:
     SysWindow(const SysWindow&) = delete;
     SysWindow& operator=(const SysWindow&) = delete;
-    SysWindow(SysWindow&&) = delete;
-    SysWindow& operator=(SysWindow&&) = delete;
+    SysWindow(SysWindow&&) = default;
+    SysWindow& operator=(SysWindow&&) = default;
 
     SysWindow(
         Position<int> position, Size<int> size,
@@ -316,6 +316,12 @@ public:
         setPixelFormat();
         enableTransparency();
     }
+
+
+    operator bool() const {
+        return wnd && dc;
+    }
+
 
     HDC getDC() {
         return dc.get();
