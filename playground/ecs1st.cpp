@@ -7,14 +7,13 @@
 #include <string>
 #include <thread>
 #include <variant>
+#include <optional>
 
 
 class Notifier {
 public:
-    Notifier(SysMessageHandler* messageHandler)
-        : target(
-            Position<int>(0, 0), Size<int>(0, 0), "", true,
-            messageHandler) {}
+    Notifier(SysMessageHandler& messageHandler)
+        : target(SysWindowParams{{0, 0, 0, 0}, std::nullopt}, messageHandler) {}
 
     Notifier(const Notifier&) = delete;
     Notifier& operator=(const Notifier&) = delete;
@@ -22,7 +21,7 @@ public:
     Notifier& operator=(Notifier&&) = default;
 
     void operator()() {
-        PostMessage(target.getHWND(), WM_APP_QUEUE, NULL, NULL);
+        target.postMessage(WM_APP_QUEUE);
     }
 
 private:
@@ -81,10 +80,10 @@ private:
     static void proc(ECSQueue& outQueue) {
         std::cout << "GUICore: begin" << std::endl;
         Handler handler;
-        Notifier notifier(&handler);
+        Notifier notifier(handler);
         GUIQueue inQueue(std::move(notifier));
         outQueue.push(InitMsg{&inQueue});
-        SysWindow window({200, 100}, {400, 300}, "Istok", false, &handler);
+        SysWindow window(SysWindowParams{{200, 100, 600, 400}, "Istok"}, handler);
         window.show();
         while (true) {
             MSG msg;

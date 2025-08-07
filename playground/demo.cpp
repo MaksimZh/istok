@@ -56,7 +56,7 @@ using UIMessage = std::variant<
 class Notifier {
 public:
     Notifier(SysMessageHandler* messageHandler) {
-        target = std::make_unique<SysWindow>();
+        target = std::make_unique<DCWindow>();
         target->setMessageHandler(messageHandler);
     }
 
@@ -70,7 +70,7 @@ public:
     }
 
 private:
-    std::unique_ptr<SysWindow> target;
+    std::unique_ptr<DCWindow> target;
 };
 
 
@@ -86,7 +86,7 @@ public:
     SysWindowMap(SysWindowMap&&) = default;
     SysWindowMap& operator=(SysWindowMap&&) = default;
 
-    void insert(Istok::ECS::Entity entity, std::unique_ptr<SysWindow>&& window) {
+    void insert(Istok::ECS::Entity entity, std::unique_ptr<DCWindow>&& window) {
         HWND hWnd = window->getHWND();
         assert(!entityMap.contains(hWnd));
         assert(!windowMap.contains(entity));
@@ -107,7 +107,7 @@ public:
         return entityMap.at(hWnd);
     }
 
-    SysWindow& getSysWindow(Istok::ECS::Entity entity) {
+    DCWindow& getSysWindow(Istok::ECS::Entity entity) {
         assert(contains(entity));
         return *windowMap.at(entity);
     }
@@ -115,7 +115,7 @@ public:
 private:
     std::unordered_map<HWND, Istok::ECS::Entity> entityMap;
     std::unordered_map<
-        Istok::ECS::Entity, std::unique_ptr<SysWindow>,
+        Istok::ECS::Entity, std::unique_ptr<DCWindow>,
         Istok::ECS::Entity::Hasher
     > windowMap;
 };
@@ -197,8 +197,8 @@ public:
         return messageManager.getQueue();
     }
 
-    SysWindow& newWindow(Istok::ECS::Entity entity) {
-        windowMap.insert(entity, std::move(std::make_unique<SysWindow>()));
+    DCWindow& newWindow(Istok::ECS::Entity entity) {
+        windowMap.insert(entity, std::move(std::make_unique<DCWindow>()));
         return windowMap.getSysWindow(entity);
     }
 
@@ -215,7 +215,7 @@ public:
         return windowMap.getEntity(hWnd);
     }
 
-    SysWindow& getSysWindow(Istok::ECS::Entity entity) {
+    DCWindow& getSysWindow(Istok::ECS::Entity entity) {
         assert(contains(entity));
         return windowMap.getSysWindow(entity);
     }
@@ -318,7 +318,7 @@ public:
         Position<int> position,
         Size<int> size
     ) {
-        SysWindow& sw = windowManager.newWindow(entity);
+        DCWindow& sw = windowManager.newWindow(entity);
         sw.setMessageHandler(this);
         sw.makePrimary(title, position, size);
         sw.show();

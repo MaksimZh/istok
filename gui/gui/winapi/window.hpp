@@ -8,9 +8,7 @@
 #include <dwmapi.h>
 #include <stdexcept>
 #include <iostream>
-#include <semaphore>
-#include <mutex>
-#include <queue>
+#include <optional>
 
 #include <gui/core/tools.hpp>
 #include <gui/core/messages.hpp>
@@ -259,20 +257,23 @@ SysResult handleSysMessageByDefault(SysMessage message) {
 }
 
 
-class SysWindow {
+struct SysWindowParams {
+    Rect<int> location;
+    std::optional<std::string> title;
+};
+
+
+class DCWindow {
 public:
-    SysWindow(
-        Position<int> position, Size<int> size,
-        const std::string& title, bool isTool,
-        SysMessageHandler* messageHandler
-    ) {
+    DCWindow(SysWindowParams params, SysMessageHandler* messageHandler) {
         wnd = CreateWindowEx(
-            isTool ? WS_EX_TOOLWINDOW : NULL,
+            params.title.has_value() ? NULL : WS_EX_TOOLWINDOW,
             getWndClass(),
-            toUTF16(title).c_str(),
+            toUTF16(params.title.value_or("")).c_str(),
             WS_OVERLAPPEDWINDOW, //TODO: change to WS_POPUP for custom decorations
-            position.x, position.y,
-            size.width, size.height,
+            params.location.left, params.location.top,
+            params.location.right - params.location.left,
+            params.location.bottom - params.location.top,
             NULL, NULL, getHInstance(), nullptr);
         if (!wnd) {
             throw std::runtime_error("Cannot create window");
@@ -286,23 +287,34 @@ public:
         setMessageHandler(messageHandler);
     }
 
-    ~SysWindow() {
+    ~DCWindow() {
         clean();
     }
     
-    SysWindow(const SysWindow&) = delete;
-    SysWindow& operator=(const SysWindow&) = delete;
+    DCWindow(const DCWindow&) = delete;
+    DCWindow& operator=(const DCWindow&) = delete;
 
-    SysWindow(SysWindow&&) = default;
-
-    SysWindow& operator=(SysWindow&& other) {
-        if (this != &other) {
-            clean();
-            wnd = std::move(other.wnd);
-            dc = std::move(other.dc);
-        }
-        return *this;
+    // Disabled to prevent message handler invalidation
+    DCWindow(DCWindow&&) = delete;
+    DCWindow& operator=(DCWindow&& other) = delete;
+    
+    // Move and change message handler
+    DCWindow(DCWindow&& other, SysMessageHandler* messageHandler)
+        : wnd(std::move(other.wnd)), dc(std::move(dc))
+    {
+        setMessageHandler(messageHandler);
     }
+
+    void replace(DCWindow&& other, SysMessageHandler* messageHandler) {
+        if (this == &other) {
+            return;
+        }
+        clean();
+        wnd = std::move(other.wnd);
+        dc = std::move(other.dc);
+        setMessageHandler(messageHandler);
+    }
+
 
     operator bool() const {
         return wnd && dc;
@@ -314,14 +326,6 @@ public:
 
     HWND getHWND() {
         return wnd.get();
-    }
-
-    void show() {
-        ShowWindow(wnd.get(), SW_SHOW);
-    }
-
-    void hide() {
-        ShowWindow(wnd.get(), SW_HIDE);
     }
 
 private:
@@ -401,4 +405,51 @@ private:
         }
         return DefWindowProc(hWnd, msg, wParam, lParam);
     }
+};
+
+
+class SysWindow : public SysMessageHandler {
+public:
+    SysWindow(SysWindowParams params, SysMessageHandler& messageHandler)
+        : dcWindow(params, this), messageHandler(&messageHandler) {}
+    
+    SysWindow(const SysWindow&) = delete;
+    SysWindow& operator=(const SysWindow&) = delete;
+    
+    SysWindow(SysWindow&& other)
+        : dcWindow(std::move(other.dcWindow), this),
+        messageHandler(other.messageHandler) {}
+
+    SysWindow& operator=(SysWindow&& other) {
+        if (this != &other) {
+            dcWindow.replace(std::move(other.dcWindow), this);
+            messageHandler = other.messageHandler;
+        }
+        return *this;
+    }
+
+    SysResult handleSysMessage(SysMessage message) override {
+        switch (message.msg) {
+        case WM_DESTROY:
+            return 0;
+        default:
+            return messageHandler->handleSysMessage(message);
+        }
+    }
+
+    void postMessage(UINT msg) {
+        PostMessage(dcWindow.getHWND(), msg, NULL, NULL);
+    }
+
+    void show() {
+        ShowWindow(dcWindow.getHWND(), SW_SHOW);
+    }
+
+    void hide() {
+        ShowWindow(dcWindow.getHWND(), SW_HIDE);
+    }
+
+private:
+    DCWindow dcWindow;
+    SysMessageHandler* messageHandler;
 };
