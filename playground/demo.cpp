@@ -55,7 +55,7 @@ using UIMessage = std::variant<
 
 class Notifier {
 public:
-    Notifier(SysMessageHandler* messageHandler) {
+    Notifier(WinAPIMessageHandler* messageHandler) {
         target = std::make_unique<DCWindow>();
         target->setMessageHandler(messageHandler);
     }
@@ -131,7 +131,7 @@ public:
     SysMessageTranslator(SysMessageTranslator&&) = delete;
     SysMessageTranslator& operator=(SysMessageTranslator&&) = delete;
 
-    std::optional<UIMessage> translate(SysMessage message) {
+    std::optional<UIMessage> translate(RawSysMessage message) {
         switch (message.msg) {
         case WM_APP_QUEUE:
             if (queue.empty()) {
@@ -165,7 +165,7 @@ public:
         Notifier&& notifier, SysWindowMap& windowMap)
         : queue(std::move(notifier)), translator(queue, windowMap) {}
     
-    std::optional<UIMessage> translate(SysMessage message) {
+    std::optional<UIMessage> translate(RawSysMessage message) {
         return translator.translate(message);
     }
 
@@ -189,7 +189,7 @@ public:
     SysWindowManager(Notifier&& notifier)
         : messageManager(std::move(notifier), windowMap) {}
 
-    std::optional<UIMessage> translate(SysMessage message) {
+    std::optional<UIMessage> translate(RawSysMessage message) {
         return messageManager.translate(message);
     }
 
@@ -272,7 +272,7 @@ private:
 };
 
 
-class GUI : SysMessageHandler {
+class GUI : WinAPIMessageHandler {
 public:
     GUI() : windowManager(Notifier(this)), core(windowManager.getQueue()) {}
 
@@ -293,7 +293,7 @@ public:
         core.exit();
     }
 
-    SysResult handleSysMessage(SysMessage message) override {
+    SysResult handleSysMessage(RawSysMessage message) override {
         std::optional<UIMessage> optUIMessage =
             windowManager.translate(message);
         if (!optUIMessage.has_value()) {

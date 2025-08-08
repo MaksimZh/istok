@@ -232,29 +232,40 @@ std::string toUTF8(LPCWSTR source) {
 }
 
 
-struct SysMessage {
+struct WinAPIMessage {
     HWND hWnd;
     UINT msg;
     WPARAM wParam;
     LPARAM lParam;
 };
 
+
 using SysResult = LRESULT;
 
 
-class SysMessageHandler {
+class WinAPIMessageHandler {
 public:
-    virtual SysResult handleSysMessage(SysMessage message) = 0;
+    virtual SysResult handleMessage(WinAPIMessage message) = 0;
 };
 
 
-SysResult handleSysMessageByDefault(SysMessage message) {
+SysResult defaultWinAPIHandler(WinAPIMessage message) {
     return DefWindowProc(
         message.hWnd,
         message.msg,
         message.wParam,
-        message.lParam);
+        message.lParam
+    );
 }
+
+
+class SysWindow;
+
+class SysMessageHandler {
+public:
+    virtual void onQueue() = 0;
+    virtual void onClose(SysWindow& window) = 0;
+};
 
 
 struct SysWindowParams {
@@ -265,7 +276,7 @@ struct SysWindowParams {
 
 class DCWindow {
 public:
-    DCWindow(SysWindowParams params, SysMessageHandler* messageHandler) {
+    DCWindow(SysWindowParams params, WinAPIMessageHandler* messageHandler) {
         std::cout << "+window" << std::endl << std::flush;
         wnd = CreateWindowEx(
             params.title.has_value() ? NULL : WS_EX_TOOLWINDOW,
@@ -372,26 +383,26 @@ private:
         DwmEnableBlurBehindWindow(wnd.get(), &bb);
     }
 
-    void setMessageHandler(SysMessageHandler* value) {
+    void setMessageHandler(WinAPIMessageHandler* value) {
         SetWindowLongPtr(
             wnd.get(), GWLP_USERDATA, reinterpret_cast<LONG_PTR>(value));
     }
 
     static LRESULT CALLBACK windowProc(
             HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
-        if (SysMessageHandler* handler =
-            reinterpret_cast<SysMessageHandler*>(
+        if (WinAPIMessageHandler* handler =
+            reinterpret_cast<WinAPIMessageHandler*>(
                 GetWindowLongPtr(hWnd, GWLP_USERDATA)))
         {
-            return handler->handleSysMessage(
-                SysMessage(hWnd, msg, wParam, lParam));
+            return handler->handleMessage(
+                WinAPIMessage(hWnd, msg, wParam, lParam));
         }
         return DefWindowProc(hWnd, msg, wParam, lParam);
     }
 };
 
 
-class SysWindow : public SysMessageHandler {
+class SysWindow : public WinAPIMessageHandler {
 public:
     SysWindow(SysWindowParams params, SysMessageHandler& messageHandler)
         : dcWindow(params, this), messageHandler(&messageHandler) {}
@@ -401,12 +412,18 @@ public:
     SysWindow(SysWindow&& other) = delete;
     SysWindow& operator=(SysWindow&& other) = delete;
 
-    SysResult handleSysMessage(SysMessage message) override {
+    SysResult handleMessage(WinAPIMessage message) override {
         switch (message.msg) {
+        case WM_APP_QUEUE:
+            messageHandler->onQueue();
+            return 0;
+        case WM_CLOSE:
+            messageHandler->onClose(*this);
+            return 0;
         case WM_DESTROY:
             return 0;
         default:
-            return messageHandler->handleSysMessage(message);
+            return defaultWinAPIHandler(message);
         }
     }
 

@@ -66,21 +66,15 @@ using ECSQueue = Istok::GUI::SyncWaitingQueue<ECSMessage>;
 class GUIHandler : public SysMessageHandler {
 public:
     GUIHandler(ECSQueue& outQueue) : outQueue(outQueue) {}
-    
-    SysResult handleSysMessage(SysMessage message) override {
-        if (message.msg == WM_CLOSE) {
-            std::cout << "GUIHandler: WM_CLOSE" << std::endl << std::flush;
-            outQueue.push(ECSWindowClosed{});
-            return 0;
-        }
-        if (message.msg == WM_APP_QUEUE) {
-            std::cout << "GUIHandler: WM_APP_QUEUE" << std::endl << std::flush;
-            PostQuitMessage(0);
-            return 0;
-        }
-        return handleSysMessageByDefault(message);
-    }
 
+    void onQueue() {
+        PostQuitMessage(0);
+    }
+    
+    void onClose(SysWindow& window) {
+        outQueue.push(ECSWindowClosed{});
+    }
+    
 private:
     ECSQueue& outQueue;
 };
