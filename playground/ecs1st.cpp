@@ -143,7 +143,7 @@ public:
         : messageDispatcher(messageDispatcher) {}
 
     void onClose(SysWindow& window) {
-        messageDispatcher.push(ECSWindowClosed{});
+        messageDispatcher.push(ECSWindowClosed(windowMap.getEntity(&window)));
     }
     
     void onQueue() {
@@ -264,7 +264,9 @@ int main() {
     Istok::ECS::EntityComponentManager ecs;
     GUI gui;
     Istok::ECS::Entity window = ecs.createEntity();
+    Istok::ECS::Entity menu = ecs.createEntity();
     gui.newWindow(window, WindowParams{{200, 100, 600, 400}, "Istok"});
+    gui.newWindow(menu, WindowParams{{300, 200, 400, 500}, std::nullopt});
     while (true) {
         ECSMessage msg = gui.getMessage();
         if (std::holds_alternative<ECSExit>(msg)) {
@@ -273,8 +275,11 @@ int main() {
         }
         if (std::holds_alternative<ECSWindowClosed>(msg)) {
             std::cout << "main: closed" << std::endl << std::flush;
-            gui.destroyWindow(window);
-            break;
+            auto ent = std::get<ECSWindowClosed>(msg).entity;
+            gui.destroyWindow(ent);
+            if (ent == window) {
+                break;
+            }
         }
     }
     std::cout << "main: end" << std::endl << std::flush;
