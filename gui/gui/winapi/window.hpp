@@ -266,6 +266,7 @@ struct SysWindowParams {
 class DCWindow {
 public:
     DCWindow(SysWindowParams params, SysMessageHandler* messageHandler) {
+        std::cout << "+window" << std::endl << std::flush;
         wnd = CreateWindowEx(
             params.title.has_value() ? NULL : WS_EX_TOOLWINDOW,
             getWndClass(),
@@ -288,33 +289,15 @@ public:
     }
 
     ~DCWindow() {
+        std::cout << "-window" << std::endl << std::flush;
         clean();
     }
     
     DCWindow(const DCWindow&) = delete;
     DCWindow& operator=(const DCWindow&) = delete;
-
-    // Disabled to prevent message handler invalidation
     DCWindow(DCWindow&&) = delete;
     DCWindow& operator=(DCWindow&& other) = delete;
     
-    // Move and change message handler
-    DCWindow(DCWindow&& other, SysMessageHandler* messageHandler)
-        : wnd(std::move(other.wnd)), dc(std::move(dc))
-    {
-        setMessageHandler(messageHandler);
-    }
-
-    void replace(DCWindow&& other, SysMessageHandler* messageHandler) {
-        if (this == &other) {
-            return;
-        }
-        clean();
-        wnd = std::move(other.wnd);
-        dc = std::move(other.dc);
-        setMessageHandler(messageHandler);
-    }
-
 
     operator bool() const {
         return wnd && dc;
@@ -415,18 +398,8 @@ public:
     
     SysWindow(const SysWindow&) = delete;
     SysWindow& operator=(const SysWindow&) = delete;
-    
-    SysWindow(SysWindow&& other)
-        : dcWindow(std::move(other.dcWindow), this),
-        messageHandler(other.messageHandler) {}
-
-    SysWindow& operator=(SysWindow&& other) {
-        if (this != &other) {
-            dcWindow.replace(std::move(other.dcWindow), this);
-            messageHandler = other.messageHandler;
-        }
-        return *this;
-    }
+    SysWindow(SysWindow&& other) = delete;
+    SysWindow& operator=(SysWindow&& other) = delete;
 
     SysResult handleSysMessage(SysMessage message) override {
         switch (message.msg) {

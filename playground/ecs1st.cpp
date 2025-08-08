@@ -12,20 +12,19 @@
 
 class Notifier {
 public:
-    Notifier(SysMessageHandler& messageHandler)
-        : target(SysWindowParams{{0, 0, 0, 0}, std::nullopt}, messageHandler) {}
+    Notifier(SysWindow& window) : target(&window) {}
 
-    Notifier(const Notifier&) = delete;
-    Notifier& operator=(const Notifier&) = delete;
+    Notifier(const Notifier&) = default;
+    Notifier& operator=(const Notifier&) = default;
     Notifier(Notifier&&) = default;
     Notifier& operator=(Notifier&&) = default;
 
     void operator()() {
-        target.postMessage(WM_APP_QUEUE);
+        target->postMessage(WM_APP_QUEUE);
     }
 
 private:
-    SysWindow target;
+    SysWindow* target;
 };
 
 
@@ -37,7 +36,7 @@ class Handler : public SysMessageHandler {
 public:
     SysResult handleSysMessage(SysMessage message) override {
         if (message.msg == WM_CLOSE) {
-            std::cout << "Handler: WM_CLOSE" << std::endl;
+            std::cout << "Handler: WM_CLOSE" << std::endl << std::flush;
             PostQuitMessage(0);
             return 0;
         }
@@ -65,9 +64,10 @@ private:
     std::thread thread;
 
     static void proc(GUIQueue& inQueue, ECSQueue& outQueue) {
-        std::cout << "GUICore: begin" << std::endl;
+        std::cout << "GUICore: begin" << std::endl << std::flush;
         Handler handler;
-        Notifier notifier(handler);
+        SysWindow dummyWindow(SysWindowParams{}, handler);
+        Notifier notifier(dummyWindow);
         inQueue.setNotifier(std::move(notifier));
         SysWindow window(SysWindowParams{{200, 100, 600, 400}, "Istok"}, handler);
         window.show();
@@ -75,14 +75,14 @@ private:
             MSG msg;
             GetMessage(&msg, NULL, 0, 0);
             if (msg.message == WM_QUIT) {
-                std::cout << "GUICore: WM_QUIT" << std::endl;
+                std::cout << "GUICore: WM_QUIT" << std::endl << std::flush;
                 break;
             }
             TranslateMessage(&msg);
             DispatchMessage(&msg);
         }
         outQueue.push("exit");
-        std::cout << "GUICore: end" << std::endl;
+        std::cout << "GUICore: end" << std::endl << std::flush;
     }
 };
 
@@ -107,15 +107,15 @@ private:
 
 
 int main() {
-    std::cout << "main: begin" << std::endl;
+    std::cout << "main: begin" << std::endl << std::flush;
     GUI gui;
     while (true) {
         std::string msg = gui.getMessage();
         if (msg == "exit") {
-            std::cout << "main: exit" << std::endl;
+            std::cout << "main: exit" << std::endl << std::flush;
             break;
         }
     }
-    std::cout << "main: end" << std::endl;
+    std::cout << "main: end" << std::endl << std::flush;
     return 0;
 }
