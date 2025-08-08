@@ -97,6 +97,13 @@ public:
         return *windowMap.at(entity);
     }
 
+    void erase(Istok::ECS::Entity entity) {
+        assert(contains(entity));
+        SysWindow* windowKey = windowMap[entity].get();
+        entityMap.erase(windowKey);
+        windowMap.erase(entity);
+    }
+
 private:
     std::unordered_map<SysWindow*, Istok::ECS::Entity> entityMap;
     std::unordered_map<
@@ -155,11 +162,19 @@ public:
             newWindow(message.entity, message.params);
             return;
         }
+        if (std::holds_alternative<GUIDestroyWindow>(msg)) {
+            destroyWindow(std::get<GUIDestroyWindow>(msg).entity);
+            return;
+        }
     }
 
     void newWindow(Istok::ECS::Entity entity, WindowParams params) {
         windowMap.insert(entity, std::make_unique<SysWindow>(params, *this));
         windowMap.getSysWindow(entity).show();
+    }
+
+    void destroyWindow(Istok::ECS::Entity entity) {
+        windowMap.erase(entity);
     }
     
 private:
