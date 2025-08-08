@@ -10,6 +10,37 @@
 #include <optional>
 
 
+struct GUIExit {};
+
+struct GUINewWindow {
+    Istok::ECS::Entity entity;
+    SysWindowParams params;
+};
+
+struct GUIDestroyWindow {
+    Istok::ECS::Entity entity;
+};
+
+
+using GUIMessage = std::variant<
+    GUIExit,
+    GUINewWindow,
+    GUIDestroyWindow
+>;
+
+
+struct ECSExit {};
+
+struct ECSWindowClosed {
+    Istok::ECS::Entity entity;
+};
+
+using ECSMessage = std::variant<
+    ECSExit,
+    ECSWindowClosed
+>;
+
+
 class Notifier {
 public:
     Notifier(SysWindow& window) : target(&window) {}
@@ -28,20 +59,30 @@ private:
 };
 
 
-using GUIQueue = Istok::GUI::SyncLazyNotifyingQueue<std::string, Notifier>;
-using ECSQueue = Istok::GUI::SyncWaitingQueue<std::string>;
+using GUIQueue = Istok::GUI::SyncLazyNotifyingQueue<GUIMessage, Notifier>;
+using ECSQueue = Istok::GUI::SyncWaitingQueue<ECSMessage>;
 
 
-class Handler : public SysMessageHandler {
+class GUIHandler : public SysMessageHandler {
 public:
+    GUIHandler(ECSQueue& outQueue) : outQueue(outQueue) {}
+    
     SysResult handleSysMessage(SysMessage message) override {
         if (message.msg == WM_CLOSE) {
-            std::cout << "Handler: WM_CLOSE" << std::endl << std::flush;
+            std::cout << "GUIHandler: WM_CLOSE" << std::endl << std::flush;
+            outQueue.push(ECSWindowClosed{});
+            return 0;
+        }
+        if (message.msg == WM_APP_QUEUE) {
+            std::cout << "GUIHandler: WM_APP_QUEUE" << std::endl << std::flush;
             PostQuitMessage(0);
             return 0;
         }
         return handleSysMessageByDefault(message);
     }
+
+private:
+    ECSQueue& outQueue;
 };
 
 
@@ -59,13 +100,17 @@ public:
         thread.join();
     }
 
+    void destroyWindow(Istok::ECS::Entity entity) {
+        coreQueue.push(GUIDestroyWindow(entity));
+    }
+
 private:
     GUIQueue coreQueue;
     std::thread thread;
 
     static void proc(GUIQueue& inQueue, ECSQueue& outQueue) {
         std::cout << "GUICore: begin" << std::endl << std::flush;
-        Handler handler;
+        GUIHandler handler(outQueue);
         SysWindow dummyWindow(SysWindowParams{}, handler);
         Notifier notifier(dummyWindow);
         inQueue.setNotifier(std::move(notifier));
@@ -81,7 +126,7 @@ private:
             TranslateMessage(&msg);
             DispatchMessage(&msg);
         }
-        outQueue.push("exit");
+        outQueue.push(ECSExit{});
         std::cout << "GUICore: end" << std::endl << std::flush;
     }
 };
@@ -96,8 +141,12 @@ public:
     
     GUI() : core(queue) {}
 
-    std::string getMessage() {
+    ECSMessage getMessage() {
         return queue.take();
+    }
+
+    void destroyWindow(Istok::ECS::Entity entity) {
+        core.destroyWindow(entity);
     }
 
 private:
@@ -108,11 +157,19 @@ private:
 
 int main() {
     std::cout << "main: begin" << std::endl << std::flush;
+    Istok::ECS::EntityComponentManager ecs;
     GUI gui;
+    Istok::ECS::Entity window = ecs.createEntity();
+    //gui.newWindow(window);
     while (true) {
-        std::string msg = gui.getMessage();
-        if (msg == "exit") {
+        ECSMessage msg = gui.getMessage();
+        if (std::holds_alternative<ECSExit>(msg)) {
             std::cout << "main: exit" << std::endl << std::flush;
+            break;
+        }
+        if (std::holds_alternative<ECSWindowClosed>(msg)) {
+            std::cout << "main: closed" << std::endl << std::flush;
+            gui.destroyWindow(window);
             break;
         }
     }
