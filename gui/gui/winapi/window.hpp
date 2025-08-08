@@ -268,7 +268,7 @@ public:
 };
 
 
-struct SysWindowParams {
+struct WindowParams {
     Rect<int> location;
     std::optional<std::string> title;
 };
@@ -276,7 +276,7 @@ struct SysWindowParams {
 
 class DCWindow {
 public:
-    DCWindow(SysWindowParams params, WinAPIMessageHandler* messageHandler) {
+    DCWindow(WindowParams params, WinAPIMessageHandler* messageHandler) {
         std::cout << "+window" << std::endl << std::flush;
         wnd = CreateWindowEx(
             params.title.has_value() ? NULL : WS_EX_TOOLWINDOW,
@@ -404,7 +404,7 @@ private:
 
 class SysWindow : public WinAPIMessageHandler {
 public:
-    SysWindow(SysWindowParams params, SysMessageHandler& messageHandler)
+    SysWindow(WindowParams params, SysMessageHandler& messageHandler)
         : dcWindow(params, this), messageHandler(&messageHandler) {}
     
     SysWindow(const SysWindow&) = delete;
@@ -414,13 +414,13 @@ public:
 
     SysResult handleMessage(WinAPIMessage message) override {
         switch (message.msg) {
-        case WM_APP_QUEUE:
-            messageHandler->onQueue();
-            return 0;
         case WM_CLOSE:
             messageHandler->onClose(*this);
             return 0;
         case WM_DESTROY:
+            return 0;
+        case WM_APP_QUEUE:
+            messageHandler->onQueue();
             return 0;
         default:
             return defaultWinAPIHandler(message);
