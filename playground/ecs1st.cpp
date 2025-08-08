@@ -147,6 +147,33 @@ private:
 };
 
 
+class SysGraphicsManager {
+public:
+    SysGraphicsManager(const SysGraphicsManager&) = delete;
+    SysGraphicsManager& operator=(const SysGraphicsManager&) = delete;
+    SysGraphicsManager(SysGraphicsManager&&) = delete;
+    SysGraphicsManager& operator=(SysGraphicsManager&&) = delete;
+
+    SysGraphicsManager(SysMessageHandler& messageHandler)
+        : windowManager(messageHandler) {}
+
+    void newWindow(Istok::ECS::Entity entity, WindowParams params) {
+        windowManager.newWindow(entity, params);
+    }
+
+    void destroyWindow(Istok::ECS::Entity entity) {
+        windowManager.destroyWindow(entity);
+    }
+
+    SysWindow& getWindow(Istok::ECS::Entity entity) {
+        return windowManager.getWindow(entity);
+    }
+
+private:
+    SysWindowManager windowManager;
+};
+
+
 class MessageDispatcher {
 public:
     MessageDispatcher(GUIQueue& inQueue, ECSQueue& outQueue)
