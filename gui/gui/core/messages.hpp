@@ -128,15 +128,64 @@ private:
 
 
 template <typename T, typename Notifier>
-class SyncNotifyingQueue {
+class LazyNotifyingQueue {
+private:
+    using Target = NotifyingQueue<T, Notifier>;
 public:
-    SyncNotifyingQueue(const SyncNotifyingQueue&) = delete;
-    SyncNotifyingQueue& operator=(const SyncNotifyingQueue&) = delete;
-    SyncNotifyingQueue(SyncNotifyingQueue&&) = delete;
-    SyncNotifyingQueue& operator=(SyncNotifyingQueue&&) = delete;
+    LazyNotifyingQueue() = default;
+    LazyNotifyingQueue(const LazyNotifyingQueue&) = delete;
+    LazyNotifyingQueue& operator=(const LazyNotifyingQueue&) = delete;
+    LazyNotifyingQueue(LazyNotifyingQueue&&) = delete;
+    LazyNotifyingQueue& operator=(LazyNotifyingQueue&&) = delete;
 
-    SyncNotifyingQueue(Notifier&& notifier) : container(std::move(notifier)) {}
-    
+    void setNotifier(Notifier&& notifier) {
+        assert(!target);
+        target = std::make_unique<Target>(std::move(notifier));
+        while (!buffer.empty()) {
+            target->push(buffer.take());
+        }
+    }
+
+    bool empty() const {
+        if (!target) {
+            return buffer.empty();
+        }
+        return target->empty();
+    }
+
+    void push(T&& value) {
+        if (target) {
+            target->push(std::move(value));
+            return;
+        }
+        buffer.push(std::move(value));
+    }
+
+    T take() {
+        assert(target);
+        return target->take();
+    }
+
+private:
+    std::unique_ptr<Target> target;
+    SimpleQueue<T> buffer;
+};
+
+
+template <typename T, typename Notifier>
+class SyncLazyNotifyingQueue {
+public:
+    SyncLazyNotifyingQueue() = default;
+    SyncLazyNotifyingQueue(const SyncLazyNotifyingQueue&) = delete;
+    SyncLazyNotifyingQueue& operator=(const SyncLazyNotifyingQueue&) = delete;
+    SyncLazyNotifyingQueue(SyncLazyNotifyingQueue&&) = delete;
+    SyncLazyNotifyingQueue& operator=(SyncLazyNotifyingQueue&&) = delete;
+
+    void setNotifier(Notifier&& notifier) {
+        std::lock_guard lock(mut);
+        container.setNotifier(std::move(notifier));
+    }
+
     bool empty() {
         std::lock_guard lock(mut);
         return container.empty();
@@ -155,7 +204,7 @@ public:
 
 private:
     std::mutex mut;
-    NotifyingQueue<T, Notifier> container;
+    LazyNotifyingQueue<T, Notifier> container;
 };
 
 

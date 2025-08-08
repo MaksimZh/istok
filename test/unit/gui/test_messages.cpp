@@ -9,6 +9,7 @@ using namespace Istok::GUI;
 #include <memory>
 #include <thread>
 #include <chrono>
+#include <semaphore>
 
 using namespace std::chrono_literals;
 
@@ -159,23 +160,52 @@ TEST_CASE("GUI messages - notifying queue", "[unit][gui]") {
 }
 
 
+TEST_CASE("GUI messages - lazy notifying queue", "[unit][gui]") {
+    size_t counter = 0;
+    auto inc = [&]{++counter;};
+    LazyNotifyingQueue<int, decltype(inc)> queue;
+    REQUIRE(queue.empty() == true);
+    REQUIRE(counter == 0);
+
+    queue.push(0);
+    REQUIRE(queue.empty() == false);
+    REQUIRE(counter == 0);
+    queue.push(1);
+    REQUIRE(counter == 0);
+    queue.push(2);
+    REQUIRE(counter == 0);
+    queue.setNotifier(std::move(inc));
+    REQUIRE(counter == 3);
+    REQUIRE(queue.take() == 0);
+    REQUIRE(queue.take() == 1);
+    REQUIRE(queue.take() == 2);
+    REQUIRE(counter == 3);
+    queue.push(3);
+    REQUIRE(counter == 4);
+    queue.push(4);
+    REQUIRE(counter == 5);
+    REQUIRE(queue.take() == 3);
+    REQUIRE(queue.take() == 4);
+    REQUIRE(queue.empty() == true);
+}
+
+
 TEST_CASE("GUI messages - synchronized notifying queue", "[unit][gui]") {
-    std::mutex mut;
-    std::condition_variable cv;
-    auto notifier = [&]{ cv.notify_one(); };
-    SyncNotifyingQueue<int, decltype(notifier)> queue(std::move(notifier));
+    std::counting_semaphore sem{0};
+    auto notifier = [&]{ sem.release(); };
+    SyncLazyNotifyingQueue<int, decltype(notifier)> queue;
     REQUIRE(queue.empty() == true);
 
     std::thread thread([&]{
         for (int i = 0; i < 20; ++i) {
             std::this_thread::sleep_for(1ms);
-            std::unique_lock lock(mut);
             queue.push(std::move(i));
         }
     });
+    std::this_thread::sleep_for(10ms);
+    queue.setNotifier(std::move(notifier));
     for (int i = 0; i < 20; ++i) {
-        std::unique_lock lock(mut);
-        cv.wait(lock);
+        sem.acquire();
         REQUIRE(queue.take() == i);
     }
     thread.join();

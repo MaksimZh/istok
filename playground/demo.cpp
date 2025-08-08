@@ -75,7 +75,7 @@ private:
 
 
 using ECSQueue = Istok::GUI::SyncWaitingQueue<CoreMessage>;
-using GUIQueue = Istok::GUI::SyncNotifyingQueue<UIMessage, Notifier>;
+using GUIQueue = Istok::GUI::SyncLazyNotifyingQueue<UIMessage, Notifier>;
 
 
 class SysWindowMap {

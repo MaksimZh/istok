@@ -29,7 +29,7 @@ private:
 };
 
 
-using GUIQueue = Istok::GUI::SyncNotifyingQueue<std::string, Notifier>;
+using GUIQueue = Istok::GUI::SyncLazyNotifyingQueue<std::string, Notifier>;
 
 struct InitMsg {
     GUIQueue* queue;
