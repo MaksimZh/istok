@@ -92,7 +92,7 @@ public:
         return entityMap.at(window);
     }
 
-    SysWindow& getSysWindow(Istok::ECS::Entity entity) {
+    SysWindow& getWindow(Istok::ECS::Entity entity) {
         assert(contains(entity));
         return *windowMap.at(entity);
     }
@@ -110,6 +110,40 @@ private:
         Istok::ECS::Entity, std::unique_ptr<SysWindow>,
         Istok::ECS::Entity::Hasher
     > windowMap;
+};
+
+
+class SysWindowManager {
+public:
+    SysWindowManager(const SysWindowManager&) = delete;
+    SysWindowManager& operator=(const SysWindowManager&) = delete;
+    SysWindowManager(SysWindowManager&&) = delete;
+    SysWindowManager& operator=(SysWindowManager&&) = delete;
+
+    SysWindowManager(SysMessageHandler& messageHandler)
+        : messageHandler(messageHandler) {}
+
+    void newWindow(Istok::ECS::Entity entity, WindowParams params) {
+        windowMap.insert(
+            entity,
+            std::make_unique<SysWindow>(params, messageHandler));
+    }
+
+    void destroyWindow(Istok::ECS::Entity entity) {
+        windowMap.erase(entity);
+    }
+
+    Istok::ECS::Entity getEntity(SysWindow* window) {
+        return windowMap.getEntity(window);
+    }
+
+    SysWindow& getWindow(Istok::ECS::Entity entity) {
+        return windowMap.getWindow(entity);
+    }
+
+private:
+    SysMessageHandler& messageHandler;
+    SysWindowMap windowMap;
 };
 
 
@@ -144,10 +178,10 @@ private:
 class GUIHandler : public SysMessageHandler {
 public:
     GUIHandler(MessageDispatcher messageDispatcher)
-        : messageDispatcher(messageDispatcher) {}
+        : messageDispatcher(messageDispatcher), windowManager(*this) {}
 
     void onClose(SysWindow& window) {
-        messageDispatcher.push(ECSWindowClosed(windowMap.getEntity(&window)));
+        messageDispatcher.push(ECSWindowClosed(windowManager.getEntity(&window)));
     }
     
     void onQueue() {
@@ -173,17 +207,17 @@ public:
     }
 
     void newWindow(Istok::ECS::Entity entity, WindowParams params) {
-        windowMap.insert(entity, std::make_unique<SysWindow>(params, *this));
-        windowMap.getSysWindow(entity).show();
+        windowManager.newWindow(entity, params);
+        windowManager.getWindow(entity).show();
     }
 
     void destroyWindow(Istok::ECS::Entity entity) {
-        windowMap.erase(entity);
+        windowManager.destroyWindow(entity);
     }
     
 private:
     MessageDispatcher messageDispatcher;
-    SysWindowMap windowMap;
+    SysWindowManager windowManager;
 };
 
 
