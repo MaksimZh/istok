@@ -131,6 +131,10 @@ public:
         outQueue->push(std::move(message));
     }
 
+    void setNotifier(Notifier&& notifier) {
+        inQueue->setNotifier(std::move(notifier));
+    }
+
 private:
     GUIQueue* inQueue;
     ECSQueue* outQueue;
@@ -191,7 +195,7 @@ public:
     GUICore& operator=(GUICore&&) = delete;
 
     GUICore(ECSQueue& ownerQueue)
-        : thread(proc, std::ref(coreQueue), std::ref(ownerQueue)) {}
+        : thread(proc, MessageDispatcher(coreQueue, ownerQueue)) {}
 
     ~GUICore() {
         coreQueue.push(GUIExit{});
@@ -210,12 +214,11 @@ private:
     GUIQueue coreQueue;
     std::thread thread;
 
-    static void proc(GUIQueue& inQueue, ECSQueue& outQueue) {
+    static void proc(MessageDispatcher messageDispatcher) {
         std::cout << "gui: begin" << std::endl << std::flush;
-        GUIHandler handler(MessageDispatcher(inQueue, outQueue));
+        GUIHandler handler(messageDispatcher);
         SysWindow dummyWindow(WindowParams{}, handler);
-        Notifier notifier(dummyWindow);
-        inQueue.setNotifier(std::move(notifier));
+        messageDispatcher.setNotifier(Notifier(dummyWindow));
         while (true) {
             MSG msg;
             GetMessage(&msg, NULL, 0, 0);
@@ -226,7 +229,6 @@ private:
             TranslateMessage(&msg);
             DispatchMessage(&msg);
         }
-        outQueue.push(ECSExit{});
         std::cout << "gui: end" << std::endl << std::flush;
     }
 };
