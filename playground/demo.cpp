@@ -121,15 +121,15 @@ private:
 };
 
 
-class SysMessageTranslator {
+class GUIMessageTranslator {
 public:
-    SysMessageTranslator(GUIQueue& queue, SysWindowMap& windowMap)
+    GUIMessageTranslator(GUIQueue& queue, SysWindowMap& windowMap)
         : queue(queue), windowMap(windowMap) {}
 
-    SysMessageTranslator(const SysMessageTranslator&) = delete;
-    SysMessageTranslator& operator=(const SysMessageTranslator&) = delete;
-    SysMessageTranslator(SysMessageTranslator&&) = delete;
-    SysMessageTranslator& operator=(SysMessageTranslator&&) = delete;
+    GUIMessageTranslator(const GUIMessageTranslator&) = delete;
+    GUIMessageTranslator& operator=(const GUIMessageTranslator&) = delete;
+    GUIMessageTranslator(GUIMessageTranslator&&) = delete;
+    GUIMessageTranslator& operator=(GUIMessageTranslator&&) = delete;
 
     std::optional<UIMessage> translate(RawSysMessage message) {
         switch (message.msg) {
@@ -175,7 +175,7 @@ public:
 
 private:
     GUIQueue queue;
-    SysMessageTranslator translator;
+    GUIMessageTranslator translator;
 };
 
 

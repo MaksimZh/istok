@@ -63,20 +63,89 @@ using GUIQueue = Istok::GUI::SyncLazyNotifyingQueue<GUIMessage, Notifier>;
 using ECSQueue = Istok::GUI::SyncWaitingQueue<ECSMessage>;
 
 
+class SysWindowMap {
+public:
+    SysWindowMap() = default;
+    SysWindowMap(const SysWindowMap&) = delete;
+    SysWindowMap& operator=(const SysWindowMap&) = delete;
+    SysWindowMap(SysWindowMap&&) = default;
+    SysWindowMap& operator=(SysWindowMap&&) = default;
+
+    void insert(Istok::ECS::Entity entity, std::unique_ptr<SysWindow>&& window) {
+        SysWindow* windowKey = window.get();
+        assert(!entityMap.contains(windowKey));
+        assert(!windowMap.contains(entity));
+        entityMap[windowKey] = entity;
+        windowMap[entity] = std::move(window);
+    }
+
+    bool contains(SysWindow* window) const {
+        return entityMap.contains(window);
+    }
+
+    bool contains(Istok::ECS::Entity entity) const {
+        return windowMap.contains(entity);
+    }
+
+    Istok::ECS::Entity getEntity(SysWindow* window) {
+        assert(contains(window));
+        return entityMap.at(window);
+    }
+
+    SysWindow& getSysWindow(Istok::ECS::Entity entity) {
+        assert(contains(entity));
+        return *windowMap.at(entity);
+    }
+
+private:
+    std::unordered_map<SysWindow*, Istok::ECS::Entity> entityMap;
+    std::unordered_map<
+        Istok::ECS::Entity, std::unique_ptr<SysWindow>,
+        Istok::ECS::Entity::Hasher
+    > windowMap;
+};
+
+
+class MessageDispatcher {
+public:
+    MessageDispatcher(GUIQueue& inQueue, ECSQueue& outQueue)
+        : inQueue(&inQueue), outQueue(&outQueue) {}
+    
+    bool empty() const {
+        return inQueue->empty();
+    }
+
+    GUIMessage take() {
+        assert(!empty());
+        return inQueue->take();
+    }
+
+    void push(ECSMessage message) {
+        outQueue->push(std::move(message));
+    }
+
+private:
+    GUIQueue* inQueue;
+    ECSQueue* outQueue;
+};
+
+
 class GUIHandler : public SysMessageHandler {
 public:
-    GUIHandler(ECSQueue& outQueue) : outQueue(outQueue) {}
+    GUIHandler(MessageDispatcher messageDispatcher)
+        : messageDispatcher(messageDispatcher) {}
 
     void onQueue() {
         PostQuitMessage(0);
     }
     
     void onClose(SysWindow& window) {
-        outQueue.push(ECSWindowClosed{});
+        messageDispatcher.push(ECSWindowClosed{});
     }
     
 private:
-    ECSQueue& outQueue;
+    MessageDispatcher messageDispatcher;
+    SysWindowMap windowMap;
 };
 
 
@@ -104,7 +173,7 @@ private:
 
     static void proc(GUIQueue& inQueue, ECSQueue& outQueue) {
         std::cout << "GUICore: begin" << std::endl << std::flush;
-        GUIHandler handler(outQueue);
+        GUIHandler handler(MessageDispatcher(inQueue, outQueue));
         SysWindow dummyWindow(SysWindowParams{}, handler);
         Notifier notifier(dummyWindow);
         inQueue.setNotifier(std::move(notifier));
