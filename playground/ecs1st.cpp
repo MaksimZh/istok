@@ -30,17 +30,7 @@ private:
 
 
 using GUIQueue = Istok::GUI::SyncLazyNotifyingQueue<std::string, Notifier>;
-
-struct InitMsg {
-    GUIQueue* queue;
-};
-
-using ECSMessage = std::variant<
-    std::string,
-    InitMsg
->;
-
-using ECSQueue = Istok::GUI::SyncWaitingQueue<ECSMessage>;
+using ECSQueue = Istok::GUI::SyncWaitingQueue<std::string>;
 
 
 class Handler : public SysMessageHandler {
@@ -63,26 +53,22 @@ public:
     GUICore(GUICore&&) = delete;
     GUICore& operator=(GUICore&&) = delete;
 
-    GUICore() : thread(proc, std::ref(ownerQueue)) {}
+    GUICore(ECSQueue& ownerQueue)
+        : thread(proc, std::ref(coreQueue), std::ref(ownerQueue)) {}
 
     ~GUICore() {
         thread.join();
     }
 
-    ECSMessage getMessage() {
-        return ownerQueue.take();
-    }
-
 private:
-    ECSQueue ownerQueue;
+    GUIQueue coreQueue;
     std::thread thread;
 
-    static void proc(ECSQueue& outQueue) {
+    static void proc(GUIQueue& inQueue, ECSQueue& outQueue) {
         std::cout << "GUICore: begin" << std::endl;
         Handler handler;
         Notifier notifier(handler);
-        GUIQueue inQueue(std::move(notifier));
-        outQueue.push(InitMsg{&inQueue});
+        inQueue.setNotifier(std::move(notifier));
         SysWindow window(SysWindowParams{{200, 100, 600, 400}, "Istok"}, handler);
         window.show();
         while (true) {
@@ -108,19 +94,14 @@ public:
     GUI(GUI&&) = delete;
     GUI& operator=(GUI&&) = delete;
     
-    GUI() {}
+    GUI() : core(queue) {}
 
     std::string getMessage() {
-        ECSMessage msg = core.getMessage();
-        if (!std::holds_alternative<InitMsg>(msg)) {
-            return std::get<std::string>(msg);
-        }
-        coreQueue = std::get<InitMsg>(msg).queue;
-        return getMessage();
+        return queue.take();
     }
 
 private:
-    GUIQueue* coreQueue = nullptr;
+    ECSQueue queue;
     GUICore core;
 };
 
