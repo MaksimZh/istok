@@ -1,81 +1,67 @@
+// ecs1st.cpp
 #include <ecs.hpp>
 #include <gui/core/messages.hpp>
 #include <gui/winapi/window.hpp>
+#include <gui/winapi/gl.hpp>
 
 #include <iostream>
-#include <concepts>
-#include <type_traits>
+#include <string>
+#include <thread>
 #include <variant>
 #include <optional>
-#include <thread>
-#include <queue>
-#include <memory>
-#include <map>
 
 
-namespace CoreMsg {
+struct GUIExit {};
 
-struct Exit {};
-struct NewWindow {};
+struct GUINewWindow {
+    Istok::ECS::Entity entity;
+    WindowParams params;
+};
 
-} // namespace CoreMsg
+struct GUIDestroyWindow {
+    Istok::ECS::Entity entity;
+};
 
-using CoreMessage = std::variant<
-    CoreMsg::Exit,
-    CoreMsg::NewWindow
+
+using GUIMessage = std::variant<
+    GUIExit,
+    GUINewWindow,
+    GUIDestroyWindow
 >;
 
-namespace UIMsg {
 
-struct DestroyWindow {
+struct ECSExit {};
+
+struct ECSWindowClosed {
     Istok::ECS::Entity entity;
 };
 
-struct AddPrimaryWindow {
-    Istok::ECS::Entity entity;
-    std::string title;
-    Position<int> position;
-    Size<int> size;
-};
-
-struct AddSecondaryWindow {
-    Istok::ECS::Entity entity;
-    Position<int> position;
-    Size<int> size;
-};
-
-} // namespace Istok::GUI::UIMsg
-
-using UIMessage = std::variant<
-    UIMsg::DestroyWindow,
-    UIMsg::AddPrimaryWindow,
-    UIMsg::AddSecondaryWindow
+using ECSMessage = std::variant<
+    ECSExit,
+    ECSWindowClosed
 >;
 
 
 class Notifier {
 public:
-    Notifier(WinAPIMessageHandler* messageHandler) {
-        target = std::make_unique<DCWindow>();
-        target->setMessageHandler(messageHandler);
-    }
+    Notifier(SysWindow& window) : target(&window) {}
 
-    Notifier(const Notifier&) = delete;
-    Notifier& operator=(const Notifier&) = delete;
+    Notifier(const Notifier&) = default;
+    Notifier& operator=(const Notifier&) = default;
     Notifier(Notifier&&) = default;
     Notifier& operator=(Notifier&&) = default;
 
     void operator()() {
-        PostMessage(target->getHWND(), WM_APP_QUEUE, NULL, NULL);
+        target->postMessage(WM_APP_QUEUE);
     }
 
 private:
-    std::unique_ptr<DCWindow> target;
+    SysWindow* target;
 };
 
 
-using ECSQueue = Istok::GUI::SyncWaitingQueue<CoreMessage>;
-using GUIQueue = Istok::GUI::SyncLazyNotifyingQueue<UIMessage, Notifier>;
+using GUIQueue = Istok::GUI::SyncLazyNotifyingQueue<GUIMessage, Notifier>;
+using ECSQueue = Istok::GUI::SyncWaitingQueue<ECSMessage>;
 
 
 class SysWindowMap {
@@ -86,96 +72,45 @@ public:
     SysWindowMap(SysWindowMap&&) = default;
     SysWindowMap& operator=(SysWindowMap&&) = default;
 
-    void insert(Istok::ECS::Entity entity, std::unique_ptr<DCWindow>&& window) {
-        HWND hWnd = window->getHWND();
-        assert(!entityMap.contains(hWnd));
+    void insert(Istok::ECS::Entity entity, std::unique_ptr<SysWindow>&& window) {
+        SysWindow* windowKey = window.get();
+        assert(!entityMap.contains(windowKey));
         assert(!windowMap.contains(entity));
-        entityMap[hWnd] = entity;
+        entityMap[windowKey] = entity;
         windowMap[entity] = std::move(window);
     }
 
-    bool contains(HWND hWnd) const {
-        return entityMap.contains(hWnd);
+    bool contains(SysWindow* window) const {
+        return entityMap.contains(window);
     }
 
     bool contains(Istok::ECS::Entity entity) const {
         return windowMap.contains(entity);
     }
 
-    Istok::ECS::Entity getEntity(HWND hWnd) {
-        assert(contains(hWnd));
-        return entityMap.at(hWnd);
+    Istok::ECS::Entity getEntity(SysWindow* window) {
+        assert(contains(window));
+        return entityMap.at(window);
     }
 
-    DCWindow& getSysWindow(Istok::ECS::Entity entity) {
+    SysWindow& getWindow(Istok::ECS::Entity entity) {
         assert(contains(entity));
         return *windowMap.at(entity);
     }
 
+    void erase(Istok::ECS::Entity entity) {
+        assert(contains(entity));
+        SysWindow* windowKey = windowMap[entity].get();
+        entityMap.erase(windowKey);
+        windowMap.erase(entity);
+    }
+
 private:
-    std::unordered_map<HWND, Istok::ECS::Entity> entityMap;
+    std::unordered_map<SysWindow*, Istok::ECS::Entity> entityMap;
     std::unordered_map<
-        Istok::ECS::Entity, std::unique_ptr<DCWindow>,
+        Istok::ECS::Entity, std::unique_ptr<SysWindow>,
         Istok::ECS::Entity::Hasher
     > windowMap;
-};
-
-
-class GUIMessageTranslator {
-public:
-    GUIMessageTranslator(GUIQueue& queue, SysWindowMap& windowMap)
-        : queue(queue), windowMap(windowMap) {}
-
-    GUIMessageTranslator(const GUIMessageTranslator&) = delete;
-    GUIMessageTranslator& operator=(const GUIMessageTranslator&) = delete;
-    GUIMessageTranslator(GUIMessageTranslator&&) = delete;
-    GUIMessageTranslator& operator=(GUIMessageTranslator&&) = delete;
-
-    std::optional<UIMessage> translate(RawSysMessage message) {
-        switch (message.msg) {
-        case WM_APP_QUEUE:
-            if (queue.empty()) {
-                return std::nullopt;
-            }
-            return queue.take();
-        case WM_DESTROY:
-            if (!windowMap.contains(message.hWnd)) {
-                return std::nullopt;
-            }
-            return UIMsg::DestroyWindow(windowMap.getEntity(message.hWnd));
-        default:
-            return std::nullopt;
-        }
-    }
-
-private:
-    GUIQueue& queue;
-    SysWindowMap& windowMap;
-};
-
-
-class SysMessageManager {
-public:
-    SysMessageManager(const SysMessageManager&) = delete;
-    SysMessageManager& operator=(const SysMessageManager&) = delete;
-    SysMessageManager(SysMessageManager&&) = delete;
-    SysMessageManager& operator=(SysMessageManager&&) = delete;
-
-    SysMessageManager(
-        Notifier&& notifier, SysWindowMap& windowMap)
-        : queue(std::move(notifier)), translator(queue, windowMap) {}
-    
-    std::optional<UIMessage> translate(RawSysMessage message) {
-        return translator.translate(message);
-    }
-
-    GUIQueue& getQueue() {
-        return queue;
-    }
-
-private:
-    GUIQueue queue;
-    GUIMessageTranslator translator;
 };
 
 
@@ -186,98 +121,144 @@ public:
     SysWindowManager(SysWindowManager&&) = delete;
     SysWindowManager& operator=(SysWindowManager&&) = delete;
 
-    SysWindowManager(Notifier&& notifier)
-        : messageManager(std::move(notifier), windowMap) {}
-
-    std::optional<UIMessage> translate(RawSysMessage message) {
-        return messageManager.translate(message);
+    SysWindowManager(std::unique_ptr<SysWindow> sample)
+        : sample(std::move(sample)) {
+        assert(this->sample);
     }
 
-    GUIQueue& getQueue() {
-        return messageManager.getQueue();
+    void newWindow(Istok::ECS::Entity entity, WindowParams params) {
+        windows.insert(
+            entity,
+            std::make_unique<SysWindow>(
+                params,
+                sample->getMessageHandler()));
     }
 
-    DCWindow& newWindow(Istok::ECS::Entity entity) {
-        windowMap.insert(entity, std::move(std::make_unique<DCWindow>()));
-        return windowMap.getSysWindow(entity);
+    void destroyWindow(Istok::ECS::Entity entity) {
+        windows.erase(entity);
     }
 
-    bool contains(HWND hWnd) const {
-        return windowMap.contains(hWnd);
+    Istok::ECS::Entity getEntity(SysWindow* window) {
+        return windows.getEntity(window);
     }
 
-    bool contains(Istok::ECS::Entity entity) const {
-        return windowMap.contains(entity);
+    SysWindow& getWindow(Istok::ECS::Entity entity) {
+        return windows.getWindow(entity);
     }
 
-    Istok::ECS::Entity getEntity(HWND hWnd) {
-        assert(contains(hWnd));
-        return windowMap.getEntity(hWnd);
-    }
-
-    DCWindow& getSysWindow(Istok::ECS::Entity entity) {
-        assert(contains(entity));
-        return windowMap.getSysWindow(entity);
+    SysWindow& getSampleWindow() {
+        return *sample;
     }
 
 private:
-    SysWindowMap windowMap;
-    SysMessageManager messageManager;
+    std::unique_ptr<SysWindow> sample;
+    SysWindowMap windows;
 };
 
 
-class GUI {
+class SysGraphicsManager {
 public:
-    GUI(const GUI&) = delete;
-    GUI& operator=(const GUI&) = delete;
-    GUI(GUI&&) = delete;
-    GUI& operator=(GUI&&) = delete;
+    SysGraphicsManager(const SysGraphicsManager&) = delete;
+    SysGraphicsManager& operator=(const SysGraphicsManager&) = delete;
+    SysGraphicsManager(SysGraphicsManager&&) = delete;
+    SysGraphicsManager& operator=(SysGraphicsManager&&) = delete;
 
-    GUI(GUIQueue& uiQueue)
-        : thread(threadProc, std::ref(queue), std::ref(uiQueue)) {}
+    SysGraphicsManager(SysMessageHandler& messageHandler)
+        : windowManager(std::make_unique<SysWindow>(
+            WindowParams{}, messageHandler)),
+        gl(windowManager.getSampleWindow().getDC()) //TODO
+        {}
 
-    ~GUI() {
-        exit();
-        thread.join();
+    void newWindow(Istok::ECS::Entity entity, WindowParams params) {
+        windowManager.newWindow(entity, params);
     }
 
-    void exit() {
-        queue.push(CoreMsg::Exit{});
+    void destroyWindow(Istok::ECS::Entity entity) {
+        windowManager.destroyWindow(entity);
     }
 
-    void newWindow() {
-        queue.push(CoreMsg::NewWindow{});
+    Istok::ECS::Entity getEntity(SysWindow* window) {
+        return windowManager.getEntity(window);
+    }
+
+    SysWindow& getWindow(Istok::ECS::Entity entity) {
+        return windowManager.getWindow(entity);
+    }
+
+    SysWindow& getSampleWindow() {
+        return windowManager.getSampleWindow();
     }
 
 private:
-    ECSQueue queue;
-    std::thread thread;
-
-    static void threadProc(ECSQueue& inQueue, GUIQueue& outQueue) {
-        Istok::ECS::EntityComponentManager manager;
-        while (true) {
-            CoreMessage msg = inQueue.take();
-            if (std::holds_alternative<CoreMsg::Exit>(msg)) {
-                std::cout << "ecs <- Exit" << std::endl;
-                break;
-            }
-            if (std::holds_alternative<CoreMsg::NewWindow>(msg)) {
-                std::cout << "ecs <- NewWindow" << std::endl;
-                outQueue.push(UIMsg::AddPrimaryWindow(
-                    manager.createEntity(), "Istok", {200, 100}, {400, 300}));
-            }
-        }
-        std::cout << "ecs end" << std::endl;
-    }
+    SysWindowManager windowManager;
+    ModernGLContext gl;
 };
 
 
-class GUI : WinAPIMessageHandler {
+class GUIOwnerDispatcher {
 public:
-    GUI() : windowManager(Notifier(this)), core(windowManager.getQueue()) {}
+    GUIOwnerDispatcher() = delete;
+    GUIOwnerDispatcher(const GUIOwnerDispatcher&) = default;
+    GUIOwnerDispatcher& operator=(const GUIOwnerDispatcher&) = default;
+    GUIOwnerDispatcher(GUIOwnerDispatcher&&) = default;
+    GUIOwnerDispatcher& operator=(GUIOwnerDispatcher&&) = default;
+    
+    bool empty() {
+        return inQueue->empty();
+    }
 
-    void newWindow() {
-        core.newWindow();
+    GUIMessage take() {
+        assert(!empty());
+        return inQueue->take();
+    }
+
+    void push(ECSMessage message) {
+        outQueue->push(std::move(message));
+    }
+
+    void setNotifier(Notifier&& notifier) {
+        inQueue->setNotifier(std::move(notifier));
+    }
+
+private:
+    GUIQueue* inQueue;
+    ECSQueue* outQueue;
+
+    GUIOwnerDispatcher(GUIQueue& inQueue, ECSQueue& outQueue)
+        : inQueue(&inQueue), outQueue(&outQueue) {}
+    friend class GUIDispatcher;
+};
+
+
+class GUIDispatcher {
+public:
+    bool empty() {
+        return inQueue.empty();
+    }
+
+    ECSMessage take() {
+        return inQueue.take();
+    }
+
+    void push(GUIMessage message) {
+        outQueue.push(std::move(message));
+    }
+
+    GUIOwnerDispatcher reflect() {
+        return GUIOwnerDispatcher(outQueue, inQueue);
+    }
+
+private:
+    ECSQueue inQueue;
+    GUIQueue outQueue;
+};
+
+
+class GUICore : public SysMessageHandler {
+public:
+    GUICore(GUIOwnerDispatcher dispatcher)
+        : graphics(*this), dispatcher(dispatcher) {
+        dispatcher.setNotifier(Notifier(graphics.getSampleWindow()));
     }
 
     void run() {
@@ -290,54 +271,111 @@ public:
             TranslateMessage(&msg);
             DispatchMessage(&msg);
         }
-        core.exit();
     }
 
-    SysResult handleSysMessage(RawSysMessage message) override {
-        std::optional<UIMessage> optUIMessage =
-            windowManager.translate(message);
-        if (!optUIMessage.has_value()) {
-            return handleSysMessageByDefault(message);
+    void onClose(SysWindow& window) {
+        dispatcher.push(ECSWindowClosed(graphics.getEntity(&window)));
+    }
+    
+    void onQueue() {
+        while (!dispatcher.empty()) {
+            processMessage(dispatcher.take());
         }
-        UIMessage uiMessage = optUIMessage.value();
-        if (std::holds_alternative<UIMsg::DestroyWindow>(uiMessage)) {
-            onDestroy(std::get<UIMsg::DestroyWindow>(uiMessage).entity);
-            return 0;
-        }
-        if (std::holds_alternative<UIMsg::AddPrimaryWindow>(uiMessage)) {
-            auto msg = std::get<UIMsg::AddPrimaryWindow>(uiMessage);
-            addPrimaryWindow(msg.entity, msg.title, msg.position, msg.size);
-            return 0;
-        }
-        return handleSysMessageByDefault(message);
     }
 
-    void addPrimaryWindow(
-        Istok::ECS::Entity entity,
-        const std::string& title,
-        Position<int> position,
-        Size<int> size
-    ) {
-        DCWindow& sw = windowManager.newWindow(entity);
-        sw.setMessageHandler(this);
-        sw.makePrimary(title, position, size);
-        sw.show();
+    void processMessage(GUIMessage msg) {
+        if (std::holds_alternative<GUIExit>(msg)) {
+            PostQuitMessage(0);
+            return;
+        }
+        if (std::holds_alternative<GUINewWindow>(msg)) {
+            GUINewWindow message = std::get<GUINewWindow>(msg);
+            newWindow(message.entity, message.params);
+            return;
+        }
+        if (std::holds_alternative<GUIDestroyWindow>(msg)) {
+            destroyWindow(std::get<GUIDestroyWindow>(msg).entity);
+            return;
+        }
     }
 
-    void onDestroy(Istok::ECS::Entity entity) {
-        PostQuitMessage(0);
+    void newWindow(Istok::ECS::Entity entity, WindowParams params) {
+        graphics.newWindow(entity, params);
+        graphics.getWindow(entity).show();
+    }
+
+    void destroyWindow(Istok::ECS::Entity entity) {
+        graphics.destroyWindow(entity);
+    }
+    
+private:
+    SysGraphicsManager graphics;
+    GUIOwnerDispatcher dispatcher;
+};
+
+
+class GUI {
+public:
+    GUI(const GUI&) = delete;
+    GUI& operator=(const GUI&) = delete;
+    GUI(GUI&&) = delete;
+    GUI& operator=(GUI&&) = delete;
+
+    GUI()
+        : thread(proc, dispatcher.reflect()) {}
+
+    ~GUI() {
+        dispatcher.push(GUIExit{});
+        thread.join();
+    }
+
+    ECSMessage getMessage() {
+        return dispatcher.take();
+    }
+
+    void newWindow(Istok::ECS::Entity entity, WindowParams params) {
+        dispatcher.push(GUINewWindow(entity, params));
+    }
+
+    void destroyWindow(Istok::ECS::Entity entity) {
+        dispatcher.push(GUIDestroyWindow(entity));
     }
 
 private:
-    SysWindowManager windowManager;
-    GUI core;
+    GUIDispatcher dispatcher;
+    std::thread thread;
+
+    static void proc(GUIOwnerDispatcher dispatcher) {
+        std::cout << "gui: begin" << std::endl << std::flush;
+        GUICore(dispatcher).run();
+        std::cout << "gui: end" << std::endl << std::flush;
+    }
 };
 
 
 int main() {
-    GUI handler;
-    handler.newWindow();
-    handler.run();
-    std::cout << "gui end" << std::endl;
+    std::cout << "main: begin" << std::endl << std::flush;
+    Istok::ECS::EntityComponentManager ecs;
+    GUI gui;
+    Istok::ECS::Entity window = ecs.createEntity();
+    Istok::ECS::Entity menu = ecs.createEntity();
+    gui.newWindow(window, WindowParams{{200, 100, 600, 400}, "Istok"});
+    gui.newWindow(menu, WindowParams{{300, 200, 400, 500}, std::nullopt});
+    while (true) {
+        ECSMessage msg = gui.getMessage();
+        if (std::holds_alternative<ECSExit>(msg)) {
+            std::cout << "main: exit" << std::endl << std::flush;
+            break;
+        }
+        if (std::holds_alternative<ECSWindowClosed>(msg)) {
+            std::cout << "main: closed" << std::endl << std::flush;
+            auto ent = std::get<ECSWindowClosed>(msg).entity;
+            gui.destroyWindow(ent);
+            if (ent == window) {
+                break;
+            }
+        }
+    }
+    std::cout << "main: end" << std::endl << std::flush;
     return 0;
 }

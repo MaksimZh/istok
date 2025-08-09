@@ -1,8 +1,5 @@
 find_package(GLEW REQUIRED)
 find_package(OpenGL REQUIRED)
 
-#add_executable(demo demo.cpp)
-#target_link_libraries(demo PRIVATE ecs gui dwmapi opengl32 GLEW::GLEW)
-
-add_executable(ecs1st ecs1st.cpp)
-target_link_libraries(ecs1st PRIVATE ecs gui dwmapi opengl32 GLEW::GLEW)
+add_executable(demo demo.cpp)
+target_link_libraries(demo PRIVATE ecs gui dwmapi opengl32 GLEW::GLEW)
