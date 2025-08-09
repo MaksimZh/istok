@@ -293,6 +293,10 @@ public:
         wglMakeCurrent(dc.get(), gl->getGL());
     }
 
+    void swapBuffers() {
+        SwapBuffers(dc.get());
+    }
+
 private:
     DCHandler dc;
     std::shared_ptr<ModernGLContext> gl;
@@ -359,6 +363,10 @@ public:
 
     void activateGL() {
         gl.activate();
+    }
+
+    void swapBuffers() {
+        gl.swapBuffers();
     }
 
 private:
@@ -451,6 +459,10 @@ public:
         core.activateGL();
     }
 
+    void swapBuffers() {
+        core.swapBuffers();
+    }
+
     void postQueueNotification() {
         PostMessage(core.getHWND(), WM_APP_QUEUE, NULL, NULL);
     }
@@ -493,6 +505,12 @@ public:
             return 0;
         case WM_APP_QUEUE:
             messageHandler->onQueue();
+            return 0;
+        case WM_PAINT:
+            core.activateGL();
+            glClearColor(0.0f, 0.0f, 0.2f, 1.0f);
+            glClear(GL_COLOR_BUFFER_BIT);
+            core.swapBuffers();
             return 0;
         default:
             return defaultWinAPIHandler(message);
