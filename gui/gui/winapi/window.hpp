@@ -475,6 +475,12 @@ public:
         ShowWindow(core.getHWND(), SW_HIDE);
     }
 
+    void finishPaint() {
+        PAINTSTRUCT ps;
+        BeginPaint(core.getHWND(), &ps);
+        EndPaint(core.getHWND(), &ps);
+    }
+
 
 private:
     GLWindow core;
@@ -507,10 +513,12 @@ public:
             messageHandler->onQueue();
             return 0;
         case WM_PAINT:
+            std::cout << "gui: WM_PAINT" << std::endl << std::flush;
             core.activateGL();
             glClearColor(0.0f, 0.0f, 0.2f, 1.0f);
             glClear(GL_COLOR_BUFFER_BIT);
             core.swapBuffers();
+            core.finishPaint();
             return 0;
         default:
             return defaultWinAPIHandler(message);
