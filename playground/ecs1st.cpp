@@ -195,12 +195,15 @@ private:
 };
 
 
-class MessageDispatcher {
+class GUIOwnerDispatcher {
 public:
-    MessageDispatcher(GUIQueue& inQueue, ECSQueue& outQueue)
-        : inQueue(&inQueue), outQueue(&outQueue) {}
+    GUIOwnerDispatcher() = delete;
+    GUIOwnerDispatcher(const GUIOwnerDispatcher&) = default;
+    GUIOwnerDispatcher& operator=(const GUIOwnerDispatcher&) = default;
+    GUIOwnerDispatcher(GUIOwnerDispatcher&&) = default;
+    GUIOwnerDispatcher& operator=(GUIOwnerDispatcher&&) = default;
     
-    bool empty() const {
+    bool empty() {
         return inQueue->empty();
     }
 
@@ -220,13 +223,41 @@ public:
 private:
     GUIQueue* inQueue;
     ECSQueue* outQueue;
+
+    GUIOwnerDispatcher(GUIQueue& inQueue, ECSQueue& outQueue)
+        : inQueue(&inQueue), outQueue(&outQueue) {}
+    friend class GUIDispatcher;
 };
 
 
-class GUIHandler : public SysMessageHandler {
+class GUIDispatcher {
 public:
-    GUIHandler(MessageDispatcher messageDispatcher)
-        : graphics(*this), dispatcher(messageDispatcher) {
+    bool empty() {
+        return inQueue.empty();
+    }
+
+    ECSMessage take() {
+        return inQueue.take();
+    }
+
+    void push(GUIMessage message) {
+        outQueue.push(std::move(message));
+    }
+
+    GUIOwnerDispatcher reflect() {
+        return GUIOwnerDispatcher(outQueue, inQueue);
+    }
+
+private:
+    ECSQueue inQueue;
+    GUIQueue outQueue;
+};
+
+
+class GUICore : public SysMessageHandler {
+public:
+    GUICore(GUIOwnerDispatcher dispatcher)
+        : graphics(*this), dispatcher(dispatcher) {
         dispatcher.setNotifier(Notifier(graphics.getSampleWindow()));
     }
 
@@ -279,43 +310,7 @@ public:
     
 private:
     SysGraphicsManager graphics;
-    MessageDispatcher dispatcher;
-};
-
-
-class GUICore {
-public:
-    GUICore(const GUICore&) = delete;
-    GUICore& operator=(const GUICore&) = delete;
-    GUICore(GUICore&&) = delete;
-    GUICore& operator=(GUICore&&) = delete;
-
-    GUICore(ECSQueue& ownerQueue)
-        : thread(proc, MessageDispatcher(coreQueue, ownerQueue)) {}
-
-    ~GUICore() {
-        coreQueue.push(GUIExit{});
-        thread.join();
-    }
-
-    void newWindow(Istok::ECS::Entity entity, WindowParams params) {
-        coreQueue.push(GUINewWindow(entity, params));
-    }
-
-    void destroyWindow(Istok::ECS::Entity entity) {
-        coreQueue.push(GUIDestroyWindow(entity));
-    }
-
-private:
-    GUIQueue coreQueue;
-    std::thread thread;
-
-    static void proc(MessageDispatcher messageDispatcher) {
-        std::cout << "gui: begin" << std::endl << std::flush;
-        GUIHandler handler(messageDispatcher);
-        handler.run();
-        std::cout << "gui: end" << std::endl << std::flush;
-    }
+    GUIOwnerDispatcher dispatcher;
 };
 
 
@@ -325,24 +320,36 @@ public:
     GUI& operator=(const GUI&) = delete;
     GUI(GUI&&) = delete;
     GUI& operator=(GUI&&) = delete;
-    
-    GUI() : core(queue) {}
+
+    GUI()
+        : thread(proc, dispatcher.reflect()) {}
+
+    ~GUI() {
+        dispatcher.push(GUIExit{});
+        thread.join();
+    }
 
     ECSMessage getMessage() {
-        return queue.take();
+        return dispatcher.take();
     }
 
     void newWindow(Istok::ECS::Entity entity, WindowParams params) {
-        core.newWindow(entity, params);
+        dispatcher.push(GUINewWindow(entity, params));
     }
 
     void destroyWindow(Istok::ECS::Entity entity) {
-        core.destroyWindow(entity);
+        dispatcher.push(GUIDestroyWindow(entity));
     }
 
 private:
-    ECSQueue queue;
-    GUICore core;
+    GUIDispatcher dispatcher;
+    std::thread thread;
+
+    static void proc(GUIOwnerDispatcher dispatcher) {
+        std::cout << "gui: begin" << std::endl << std::flush;
+        GUICore(dispatcher).run();
+        std::cout << "gui: end" << std::endl << std::flush;
+    }
 };
 
 

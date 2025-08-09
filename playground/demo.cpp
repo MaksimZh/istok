@@ -226,17 +226,17 @@ private:
 };
 
 
-class GUICore {
+class GUI {
 public:
-    GUICore(const GUICore&) = delete;
-    GUICore& operator=(const GUICore&) = delete;
-    GUICore(GUICore&&) = delete;
-    GUICore& operator=(GUICore&&) = delete;
+    GUI(const GUI&) = delete;
+    GUI& operator=(const GUI&) = delete;
+    GUI(GUI&&) = delete;
+    GUI& operator=(GUI&&) = delete;
 
-    GUICore(GUIQueue& uiQueue)
+    GUI(GUIQueue& uiQueue)
         : thread(threadProc, std::ref(queue), std::ref(uiQueue)) {}
 
-    ~GUICore() {
+    ~GUI() {
         exit();
         thread.join();
     }
@@ -330,7 +330,7 @@ public:
 
 private:
     SysWindowManager windowManager;
-    GUICore core;
+    GUI core;
 };
 
 
