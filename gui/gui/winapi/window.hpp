@@ -276,82 +276,37 @@ struct WindowParams {
 };
 
 
-class DCWindow {
+class GLManager {
 public:
-    DCWindow(WindowParams params, WinAPIMessageHandler* messageHandler) {
-        std::cout << "+window" << std::endl << std::flush;
-        wnd = CreateWindowEx(
-            params.title.has_value() ? NULL : WS_EX_TOOLWINDOW,
-            getWndClass(),
-            toUTF16(params.title.value_or("")).c_str(),
-            WS_OVERLAPPEDWINDOW, //TODO: change to WS_POPUP for custom decorations
-            params.location.left, params.location.top,
-            params.location.right - params.location.left,
-            params.location.bottom - params.location.top,
-            NULL, NULL, getHInstance(), nullptr);
-        if (!wnd) {
-            throw std::runtime_error("Cannot create window");
-        }
-        dc = GetWindowDC(wnd.get());
-        if (!dc) {
-            throw std::runtime_error("Cannot get window DC");
-        }
-        setPixelFormat();
-        enableTransparency();
-        setMessageHandler(messageHandler);
-    }
+    GLManager(WndHandler& wnd)
+        : dc(makeDC(wnd)), gl(std::make_shared<ModernGLContext>(dc.get())) {}
 
-    ~DCWindow() {
-        std::cout << "-window" << std::endl << std::flush;
-        clean();
-    }
-    
-    DCWindow(const DCWindow&) = delete;
-    DCWindow& operator=(const DCWindow&) = delete;
-    DCWindow(DCWindow&&) = delete;
-    DCWindow& operator=(DCWindow&& other) = delete;
-    
+    GLManager(WndHandler& wnd, const GLManager& other)
+        : dc(makeDC(wnd)), gl(other.gl) {}
 
-    operator bool() const {
-        return wnd && dc;
-    }
+    GLManager(const GLManager&) = delete;
+    GLManager& operator=(const GLManager&) = delete;
+    GLManager(const GLManager&&) = delete;
+    GLManager& operator=(const GLManager&&) = delete;
 
-    HDC getDC() {
-        return dc.get();
-    }
-
-    HWND getHWND() {
-        return wnd.get();
+    void activate() {
+        wglMakeCurrent(dc.get(), gl->getGL());
     }
 
 private:
-    WndHandler wnd;
     DCHandler dc;
+    std::shared_ptr<ModernGLContext> gl;
 
-    void clean() {
-        setMessageHandler(nullptr);
-        dc.clean();
-        wnd.clean();
+    static DCHandler makeDC(WndHandler& wnd) {
+        DCHandler dc(GetWindowDC(wnd.get()));
+        if (!dc) {
+            throw std::runtime_error("Cannot get window DC");
+        }
+        setPixelFormat(dc);
+        return dc;
     }
 
-    static HINSTANCE getHInstance() {
-        static HINSTANCE hInstance =
-            reinterpret_cast<HINSTANCE>(GetModuleHandle(NULL));
-        return hInstance;
-    }
-    
-    static WindowClass& getWndClass() {
-        static WindowClass wc(
-            CS_OWNDC,
-            windowProc,
-            getHInstance(),
-            L"Istok",
-            0, 0, nullptr,
-            LoadCursor(NULL, IDC_ARROW));
-        return wc;
-    }
-
-    void setPixelFormat() {
+    static void setPixelFormat(DCHandler& dc) {
         PIXELFORMATDESCRIPTOR pfd = {};
         pfd.nSize = sizeof(PIXELFORMATDESCRIPTOR);
         pfd.nVersion = 1;
@@ -375,8 +330,86 @@ private:
             throw std::runtime_error("Failed to set pixel format");
         }
     }
+};
 
-    void enableTransparency() {
+
+class GLWindow {
+public:
+    GLWindow(WindowParams params, WinAPIMessageHandler* messageHandler)
+        : wnd(makeWindow(params, messageHandler)), gl(wnd) {}
+    
+    GLWindow(
+        WindowParams params, WinAPIMessageHandler* messageHandler,
+        GLManager& gl
+    ) : wnd(makeWindow(params, messageHandler)), gl(wnd, gl) {}
+
+    GLWindow(
+        const GLWindow& other,
+        WindowParams params, WinAPIMessageHandler* messageHandler
+    ) : wnd(makeWindow(params, messageHandler)), gl(wnd, other.gl) {}
+
+    ~GLWindow() {
+        std::cout << "-window" << std::endl << std::flush;
+        setMessageHandler(wnd, nullptr);
+    }
+    
+    GLWindow(const GLWindow&) = delete;
+    GLWindow& operator=(const GLWindow&) = delete;
+    GLWindow(GLWindow&&) = delete;
+    GLWindow& operator=(GLWindow&& other) = delete;
+
+    HWND getHWND() {
+        return wnd.get();
+    }
+
+    void activateGL() {
+        gl.activate();
+    }
+
+private:
+    WndHandler wnd;
+    GLManager gl;
+
+    static WndHandler makeWindow(
+        WindowParams params,
+        WinAPIMessageHandler* messageHandler
+    ) {
+        std::cout << "+window" << std::endl << std::flush;
+        WndHandler wnd(CreateWindowEx(
+            params.title.has_value() ? NULL : WS_EX_TOOLWINDOW,
+            getWndClass(),
+            toUTF16(params.title.value_or("")).c_str(),
+            WS_OVERLAPPEDWINDOW, //TODO: change to WS_POPUP for custom decorations
+            params.location.left, params.location.top,
+            params.location.right - params.location.left,
+            params.location.bottom - params.location.top,
+            NULL, NULL, getHInstance(), nullptr));
+        if (!wnd) {
+            throw std::runtime_error("Cannot create window");
+        }
+        enableTransparency(wnd);
+        setMessageHandler(wnd, messageHandler);
+        return wnd;
+    }
+
+    static HINSTANCE getHInstance() {
+        static HINSTANCE hInstance =
+            reinterpret_cast<HINSTANCE>(GetModuleHandle(NULL));
+        return hInstance;
+    }
+    
+    static WindowClass& getWndClass() {
+        static WindowClass wc(
+            CS_OWNDC,
+            windowProc,
+            getHInstance(),
+            L"Istok",
+            0, 0, nullptr,
+            LoadCursor(NULL, IDC_ARROW));
+        return wc;
+    }
+
+    static void enableTransparency(WndHandler& wnd) {
         DWM_BLURBEHIND bb = { 0 };
         HRGN hRgn = CreateRectRgn(0, 0, -1, -1);
         bb.dwFlags = DWM_BB_ENABLE | DWM_BB_BLURREGION;
@@ -385,7 +418,7 @@ private:
         DwmEnableBlurBehindWindow(wnd.get(), &bb);
     }
 
-    void setMessageHandler(WinAPIMessageHandler* value) {
+    static void setMessageHandler(WndHandler& wnd, WinAPIMessageHandler* value) {
         SetWindowLongPtr(
             wnd.get(), GWLP_USERDATA, reinterpret_cast<LONG_PTR>(value));
     }
@@ -406,16 +439,13 @@ private:
 
 class SysWindow : public WinAPIMessageHandler {
 public:
-    SysWindow(WindowParams params, SysMessageHandler& messageHandler)
-        : dcWindow(params, this), messageHandler(&messageHandler) {}
-
-    // Create window default parameters
+    // Create window with default parameters
     SysWindow(SysMessageHandler& messageHandler)
-        : SysWindow(WindowParams{}, messageHandler) {}
+        : core(WindowParams{}, this), messageHandler(&messageHandler) {}
 
     // Create duplicate with different parameters
     SysWindow(const SysWindow& sample, WindowParams params)
-        : SysWindow(params, *sample.messageHandler) {}
+        : core(sample.core, params, this), messageHandler(sample.messageHandler) {}
     
     SysWindow(const SysWindow&) = delete;
     SysWindow& operator=(const SysWindow&) = delete;
@@ -438,18 +468,18 @@ public:
     }
 
     void postMessage(UINT msg) {
-        PostMessage(dcWindow.getHWND(), msg, NULL, NULL);
+        PostMessage(core.getHWND(), msg, NULL, NULL);
     }
 
     void show() {
-        ShowWindow(dcWindow.getHWND(), SW_SHOW);
+        ShowWindow(core.getHWND(), SW_SHOW);
     }
 
     void hide() {
-        ShowWindow(dcWindow.getHWND(), SW_HIDE);
+        ShowWindow(core.getHWND(), SW_HIDE);
     }
 
 private:
-    DCWindow dcWindow;
+    GLWindow core;
     SysMessageHandler* messageHandler;
 };
