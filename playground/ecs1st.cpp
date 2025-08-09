@@ -230,6 +230,18 @@ public:
         dispatcher.setNotifier(Notifier(graphics.getSampleWindow()));
     }
 
+    void run() {
+        while (true) {
+            MSG msg;
+            GetMessage(&msg, NULL, 0, 0);
+            if (msg.message == WM_QUIT) {
+                break;
+            }
+            TranslateMessage(&msg);
+            DispatchMessage(&msg);
+        }
+    }
+
     void onClose(SysWindow& window) {
         dispatcher.push(ECSWindowClosed(graphics.getEntity(&window)));
     }
@@ -301,16 +313,7 @@ private:
     static void proc(MessageDispatcher messageDispatcher) {
         std::cout << "gui: begin" << std::endl << std::flush;
         GUIHandler handler(messageDispatcher);
-        while (true) {
-            MSG msg;
-            GetMessage(&msg, NULL, 0, 0);
-            if (msg.message == WM_QUIT) {
-                std::cout << "gui: WM_QUIT" << std::endl << std::flush;
-                break;
-            }
-            TranslateMessage(&msg);
-            DispatchMessage(&msg);
-        }
+        handler.run();
         std::cout << "gui: end" << std::endl << std::flush;
     }
 };
