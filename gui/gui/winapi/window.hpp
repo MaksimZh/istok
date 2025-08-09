@@ -335,13 +335,8 @@ private:
 
 class GLWindow {
 public:
-    GLWindow(WindowParams params, WinAPIMessageHandler* messageHandler)
-        : wnd(makeWindow(params, messageHandler)), gl(wnd) {}
-    
-    GLWindow(
-        WindowParams params, WinAPIMessageHandler* messageHandler,
-        GLManager& gl
-    ) : wnd(makeWindow(params, messageHandler)), gl(wnd, gl) {}
+    GLWindow(WinAPIMessageHandler* messageHandler)
+        : wnd(makeWindow(WindowParams{}, messageHandler)), gl(wnd) {}
 
     GLWindow(
         const GLWindow& other,
@@ -437,11 +432,48 @@ private:
 };
 
 
+class SmartWindow {
+public:
+    SmartWindow(WinAPIMessageHandler* messageHandler)
+        : core(messageHandler) {}
+
+    SmartWindow(
+        const SmartWindow& other,
+        WindowParams params, WinAPIMessageHandler* messageHandler
+    ) : core(other.core, params, messageHandler) {}
+
+    SmartWindow(const SmartWindow&) = delete;
+    SmartWindow& operator=(const SmartWindow&) = delete;
+    SmartWindow(SmartWindow&&) = delete;
+    SmartWindow& operator=(SmartWindow&& other) = delete;
+
+    void activateGL() {
+        core.activateGL();
+    }
+
+    void postQueueNotification() {
+        PostMessage(core.getHWND(), WM_APP_QUEUE, NULL, NULL);
+    }
+
+    void show() {
+        ShowWindow(core.getHWND(), SW_SHOW);
+    }
+
+    void hide() {
+        ShowWindow(core.getHWND(), SW_HIDE);
+    }
+
+
+private:
+    GLWindow core;
+};
+
+
 class SysWindow : public WinAPIMessageHandler {
 public:
     // Create window with default parameters
     SysWindow(SysMessageHandler& messageHandler)
-        : core(WindowParams{}, this), messageHandler(&messageHandler) {}
+        : core(this), messageHandler(&messageHandler) {}
 
     // Create duplicate with different parameters
     SysWindow(const SysWindow& sample, WindowParams params)
@@ -467,19 +499,24 @@ public:
         }
     }
 
-    void postMessage(UINT msg) {
-        PostMessage(core.getHWND(), msg, NULL, NULL);
+    void activateGL() {
+        core.activateGL();
+    }
+
+    void postQueueNotification() {
+        core.postQueueNotification();
     }
 
     void show() {
-        ShowWindow(core.getHWND(), SW_SHOW);
+        core.show();
     }
 
     void hide() {
-        ShowWindow(core.getHWND(), SW_HIDE);
+        core.hide();
     }
+    
 
 private:
-    GLWindow core;
+    SmartWindow core;
     SysMessageHandler* messageHandler;
 };

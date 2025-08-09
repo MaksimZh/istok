@@ -51,7 +51,7 @@ public:
     Notifier& operator=(Notifier&&) = default;
 
     void operator()() {
-        target->postMessage(WM_APP_QUEUE);
+        target->postQueueNotification();
     }
 
 private:
