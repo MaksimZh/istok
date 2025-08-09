@@ -2,7 +2,6 @@
 #include <ecs.hpp>
 #include <gui/core/messages.hpp>
 #include <gui/winapi/window.hpp>
-#include <gui/winapi/gl.hpp>
 
 #include <iostream>
 #include <string>
@@ -165,8 +164,7 @@ public:
 
     SysGraphicsManager(SysMessageHandler& messageHandler)
         : windowManager(std::make_unique<SysWindow>(
-            WindowParams{}, messageHandler)),
-        gl(windowManager.getSampleWindow().getDC()) //TODO
+            WindowParams{}, messageHandler))
         {}
 
     void newWindow(Istok::ECS::Entity entity, WindowParams params) {
@@ -191,7 +189,6 @@ public:
 
 private:
     SysWindowManager windowManager;
-    ModernGLContext gl;
 };
 
 

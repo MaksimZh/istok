@@ -13,6 +13,8 @@
 #include <gui/core/tools.hpp>
 #include <gui/core/messages.hpp>
 
+#include "gl.hpp"
+
 constexpr UINT WM_APP_QUEUE = WM_APP + 1;
 
 
@@ -441,11 +443,6 @@ public:
 
     void hide() {
         ShowWindow(dcWindow.getHWND(), SW_HIDE);
-    }
-
-    //TODO: remove when OpenGL context interaction is implemented
-    HDC getDC() {
-        return dcWindow.getDC();
     }
 
 private:
