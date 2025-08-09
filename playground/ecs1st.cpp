@@ -165,6 +165,10 @@ public:
         windowManager.destroyWindow(entity);
     }
 
+    Istok::ECS::Entity getEntity(SysWindow* window) {
+        return windowManager.getEntity(window);
+    }
+
     SysWindow& getWindow(Istok::ECS::Entity entity) {
         return windowManager.getWindow(entity);
     }
@@ -205,15 +209,15 @@ private:
 class GUIHandler : public SysMessageHandler {
 public:
     GUIHandler(MessageDispatcher messageDispatcher)
-        : messageDispatcher(messageDispatcher), windowManager(*this) {}
+        : dispatcher(messageDispatcher), manager(*this) {}
 
     void onClose(SysWindow& window) {
-        messageDispatcher.push(ECSWindowClosed(windowManager.getEntity(&window)));
+        dispatcher.push(ECSWindowClosed(manager.getEntity(&window)));
     }
     
     void onQueue() {
-        while (!messageDispatcher.empty()) {
-            processMessage(messageDispatcher.take());
+        while (!dispatcher.empty()) {
+            processMessage(dispatcher.take());
         }
     }
 
@@ -234,17 +238,17 @@ public:
     }
 
     void newWindow(Istok::ECS::Entity entity, WindowParams params) {
-        windowManager.newWindow(entity, params);
-        windowManager.getWindow(entity).show();
+        manager.newWindow(entity, params);
+        manager.getWindow(entity).show();
     }
 
     void destroyWindow(Istok::ECS::Entity entity) {
-        windowManager.destroyWindow(entity);
+        manager.destroyWindow(entity);
     }
     
 private:
-    MessageDispatcher messageDispatcher;
-    SysWindowManager windowManager;
+    MessageDispatcher dispatcher;
+    SysGraphicsManager manager;
 };
 
 
