@@ -128,9 +128,7 @@ public:
     void newWindow(Istok::ECS::Entity entity, WindowParams params) {
         windows.insert(
             entity,
-            std::make_unique<SysWindow>(
-                params,
-                sample->getMessageHandler()));
+            std::make_unique<SysWindow>(*sample, params));
     }
 
     void destroyWindow(Istok::ECS::Entity entity) {
@@ -163,8 +161,7 @@ public:
     SysGraphicsManager& operator=(SysGraphicsManager&&) = delete;
 
     SysGraphicsManager(SysMessageHandler& messageHandler)
-        : windowManager(std::make_unique<SysWindow>(
-            WindowParams{}, messageHandler))
+        : windowManager(std::make_unique<SysWindow>(messageHandler))
         {}
 
     void newWindow(Istok::ECS::Entity entity, WindowParams params) {

@@ -408,15 +408,19 @@ class SysWindow : public WinAPIMessageHandler {
 public:
     SysWindow(WindowParams params, SysMessageHandler& messageHandler)
         : dcWindow(params, this), messageHandler(&messageHandler) {}
+
+    // Create window default parameters
+    SysWindow(SysMessageHandler& messageHandler)
+        : SysWindow(WindowParams{}, messageHandler) {}
+
+    // Create duplicate with different parameters
+    SysWindow(const SysWindow& sample, WindowParams params)
+        : SysWindow(params, *sample.messageHandler) {}
     
     SysWindow(const SysWindow&) = delete;
     SysWindow& operator=(const SysWindow&) = delete;
     SysWindow(SysWindow&& other) = delete;
     SysWindow& operator=(SysWindow&& other) = delete;
-
-    SysMessageHandler& getMessageHandler() {
-        return *messageHandler;
-    }
 
     SysResult handleMessage(WinAPIMessage message) override {
         switch (message.msg) {
