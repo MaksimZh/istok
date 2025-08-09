@@ -2,6 +2,7 @@
 #include <ecs.hpp>
 #include <gui/core/messages.hpp>
 #include <gui/winapi/window.hpp>
+#include <gui/winapi/gl.hpp>
 
 #include <iostream>
 #include <string>
@@ -120,30 +121,38 @@ public:
     SysWindowManager(SysWindowManager&&) = delete;
     SysWindowManager& operator=(SysWindowManager&&) = delete;
 
-    SysWindowManager(SysMessageHandler& messageHandler)
-        : messageHandler(messageHandler) {}
+    SysWindowManager(std::unique_ptr<SysWindow> sample)
+        : sample(std::move(sample)) {
+        assert(this->sample);
+    }
 
     void newWindow(Istok::ECS::Entity entity, WindowParams params) {
-        windowMap.insert(
+        windows.insert(
             entity,
-            std::make_unique<SysWindow>(params, messageHandler));
+            std::make_unique<SysWindow>(
+                params,
+                sample->getMessageHandler()));
     }
 
     void destroyWindow(Istok::ECS::Entity entity) {
-        windowMap.erase(entity);
+        windows.erase(entity);
     }
 
     Istok::ECS::Entity getEntity(SysWindow* window) {
-        return windowMap.getEntity(window);
+        return windows.getEntity(window);
     }
 
     SysWindow& getWindow(Istok::ECS::Entity entity) {
-        return windowMap.getWindow(entity);
+        return windows.getWindow(entity);
+    }
+
+    SysWindow& getSampleWindow() {
+        return *sample;
     }
 
 private:
-    SysMessageHandler& messageHandler;
-    SysWindowMap windowMap;
+    std::unique_ptr<SysWindow> sample;
+    SysWindowMap windows;
 };
 
 
@@ -155,7 +164,10 @@ public:
     SysGraphicsManager& operator=(SysGraphicsManager&&) = delete;
 
     SysGraphicsManager(SysMessageHandler& messageHandler)
-        : windowManager(messageHandler) {}
+        : windowManager(std::make_unique<SysWindow>(
+            WindowParams{}, messageHandler)),
+        gl(windowManager.getSampleWindow().getDC()) //TODO
+        {}
 
     void newWindow(Istok::ECS::Entity entity, WindowParams params) {
         windowManager.newWindow(entity, params);
@@ -173,8 +185,13 @@ public:
         return windowManager.getWindow(entity);
     }
 
+    SysWindow& getSampleWindow() {
+        return windowManager.getSampleWindow();
+    }
+
 private:
     SysWindowManager windowManager;
+    ModernGLContext gl;
 };
 
 
@@ -209,10 +226,12 @@ private:
 class GUIHandler : public SysMessageHandler {
 public:
     GUIHandler(MessageDispatcher messageDispatcher)
-        : dispatcher(messageDispatcher), manager(*this) {}
+        : graphics(*this), dispatcher(messageDispatcher) {
+        dispatcher.setNotifier(Notifier(graphics.getSampleWindow()));
+    }
 
     void onClose(SysWindow& window) {
-        dispatcher.push(ECSWindowClosed(manager.getEntity(&window)));
+        dispatcher.push(ECSWindowClosed(graphics.getEntity(&window)));
     }
     
     void onQueue() {
@@ -238,17 +257,17 @@ public:
     }
 
     void newWindow(Istok::ECS::Entity entity, WindowParams params) {
-        manager.newWindow(entity, params);
-        manager.getWindow(entity).show();
+        graphics.newWindow(entity, params);
+        graphics.getWindow(entity).show();
     }
 
     void destroyWindow(Istok::ECS::Entity entity) {
-        manager.destroyWindow(entity);
+        graphics.destroyWindow(entity);
     }
     
 private:
+    SysGraphicsManager graphics;
     MessageDispatcher dispatcher;
-    SysGraphicsManager manager;
 };
 
 
@@ -282,8 +301,6 @@ private:
     static void proc(MessageDispatcher messageDispatcher) {
         std::cout << "gui: begin" << std::endl << std::flush;
         GUIHandler handler(messageDispatcher);
-        SysWindow dummyWindow(WindowParams{}, handler);
-        messageDispatcher.setNotifier(Notifier(dummyWindow));
         while (true) {
             MSG msg;
             GetMessage(&msg, NULL, 0, 0);

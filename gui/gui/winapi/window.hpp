@@ -412,6 +412,10 @@ public:
     SysWindow(SysWindow&& other) = delete;
     SysWindow& operator=(SysWindow&& other) = delete;
 
+    SysMessageHandler& getMessageHandler() {
+        return *messageHandler;
+    }
+
     SysResult handleMessage(WinAPIMessage message) override {
         switch (message.msg) {
         case WM_CLOSE:
@@ -437,6 +441,11 @@ public:
 
     void hide() {
         ShowWindow(dcWindow.getHWND(), SW_HIDE);
+    }
+
+    //TODO: remove when OpenGL context interaction is implemented
+    HDC getDC() {
+        return dcWindow.getDC();
     }
 
 private:
