@@ -375,7 +375,7 @@ int main() {
     gui.newWindow(window, WindowParams{{200, 100, 600, 400}, "Istok"});
     gui.newWindow(menu, WindowParams{{300, 200, 400, 500}, std::nullopt});
     gui.setWindowColor(window, {240, 240, 240, 255});
-    gui.setWindowColor(menu, {0, 255, 0, 150});
+    gui.setWindowColor(menu, {100, 100, 100, 200});
     while (true) {
         ECSMessage msg = gui.getMessage();
         if (std::holds_alternative<ECSExit>(msg)) {
