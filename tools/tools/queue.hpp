@@ -25,6 +25,10 @@ public:
         container.push(std::move(value));
     }
 
+    void push(const T& value) {
+        container.push(value);
+    }
+
     T take() {
         assert(!container.empty());
         T value = std::move(container.front());
@@ -52,6 +56,11 @@ public:
 
     void push(T&& value) {
         container.push(std::move(value));
+        cv.notify_one();
+    }
+
+    void push(const T& value) {
+        container.push(value);
         cv.notify_one();
     }
 
@@ -86,6 +95,11 @@ public:
         container.push(std::move(value));
     }
 
+    void push(const T& value) {
+        std::lock_guard lock(mut);
+        container.push(value);
+    }
+
     T take() {
         std::unique_lock lock(mut);
         return container.take(lock);
@@ -113,6 +127,11 @@ public:
 
     void push(T&& value) {
         container.push(std::move(value));
+        notifier();
+    }
+
+    void push(const T& value) {
+        container.push(value);
         notifier();
     }
 
@@ -161,6 +180,14 @@ public:
         buffer.push(std::move(value));
     }
 
+    void push(const T& value) {
+        if (target) {
+            target->push(value);
+            return;
+        }
+        buffer.push(value);
+    }
+
     T take() {
         assert(target);
         return target->take();
@@ -194,6 +221,11 @@ public:
     void push(T&& value) {
         std::lock_guard lock(mut);
         container.push(std::move(value));
+    }
+
+    void push(const T& value) {
+        std::lock_guard lock(mut);
+        container.push(value);
     }
 
     T take() {

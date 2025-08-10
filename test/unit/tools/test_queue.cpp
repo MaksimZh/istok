@@ -14,48 +14,58 @@ using namespace Istok::Tools;
 using namespace std::chrono_literals;
 
 TEST_CASE("GUI messages - simple queue", "[unit][gui]") {
-    SimpleQueue<std::unique_ptr<int>> queue;
+    SimpleQueue<int> queue;
     REQUIRE(queue.empty() == true);
 
     SECTION("push and take") {
-        auto a = std::make_unique<int>(42);
-        queue.push(std::move(a));
+        queue.push(42);
         REQUIRE(queue.empty() == false);
-        auto b = queue.take();
-        REQUIRE(b != nullptr);
-        REQUIRE(*b == 42);
+        REQUIRE(queue.take() == 42);
         REQUIRE(queue.empty() == true);
     }
 
     SECTION("multiple items") {
-        auto a = std::make_unique<int>(0);
-        auto b = std::make_unique<int>(1);
-        auto c = std::make_unique<int>(2);
-        queue.push(std::move(a));
-        queue.push(std::move(b));
-        queue.push(std::move(c));
-        auto a1 = queue.take();
-        auto b1 = queue.take();
-        auto c1 = queue.take();
+        queue.push(0);
+        int a = 1;
+        queue.push(a);
+        queue.push(2);
+        REQUIRE(queue.empty() == false);
+        REQUIRE(queue.take() == 0);
+        REQUIRE(queue.take() == 1);
+        REQUIRE(queue.empty() == false);
+        REQUIRE(queue.take() == 2);
         REQUIRE(queue.empty() == true);
-        REQUIRE(*a1 == 0);
-        REQUIRE(*b1 == 1);
-        REQUIRE(*c1 == 2);
     }
 
     SECTION("mixed scenario") {
-        queue.push(std::make_unique<int>(0));
-        queue.push(std::make_unique<int>(1));
-        REQUIRE(*queue.take() == 0);
-        queue.push(std::make_unique<int>(2));
-        queue.push(std::make_unique<int>(3));
-        REQUIRE(*queue.take() == 1);
-        REQUIRE(*queue.take() == 2);
-        queue.push(std::make_unique<int>(4));
-        REQUIRE(*queue.take() == 3);
-        REQUIRE(*queue.take() == 4);
+        queue.push(0);
+        queue.push(1);
+        REQUIRE(queue.take() == 0);
+        queue.push(2);
+        queue.push(3);
+        REQUIRE(queue.take() == 1);
+        REQUIRE(queue.take() == 2);
+        REQUIRE(queue.empty() == false);
+        queue.push(4);
+        REQUIRE(queue.take() == 3);
+        REQUIRE(queue.empty() == false);
+        REQUIRE(queue.take() == 4);
         REQUIRE(queue.empty() == true);
     }
+}
+
+
+TEST_CASE("GUI messages - simple queue - moving", "[unit][gui]") {
+    SimpleQueue<std::unique_ptr<int>> queue;
+    REQUIRE(queue.empty() == true);
+
+    auto a = std::make_unique<int>(42);
+    queue.push(std::move(a));
+    REQUIRE(queue.empty() == false);
+    auto b = queue.take();
+    REQUIRE(b != nullptr);
+    REQUIRE(*b == 42);
+    REQUIRE(queue.empty() == true);
 }
 
 
@@ -67,7 +77,8 @@ TEST_CASE("GUI messages - waiting queue", "[unit][gui]") {
         std::mutex mut;
         std::unique_lock lock(mut);
         queue.push(0);
-        queue.push(1);
+        int a = 1;
+        queue.push(a);
         REQUIRE(queue.take(lock) == 0);
         queue.push(2);
         queue.push(3);
@@ -103,7 +114,8 @@ TEST_CASE("GUI messages - synchronized waiting queue", "[unit][gui]") {
 
     SECTION("linear usage") {
         queue.push(0);
-        queue.push(1);
+        int a = 1;
+        queue.push(a);
         REQUIRE(queue.take() == 0);
         queue.push(2);
         queue.push(3);
@@ -141,7 +153,8 @@ TEST_CASE("GUI messages - notifying queue", "[unit][gui]") {
     queue.push(0);
     REQUIRE(queue.empty() == false);
     REQUIRE(counter == 1);
-    queue.push(1);
+    int a = 1;
+    queue.push(a);
     REQUIRE(counter == 2);
     REQUIRE(queue.take() == 0);
     REQUIRE(counter == 2);
@@ -170,7 +183,8 @@ TEST_CASE("GUI messages - lazy notifying queue", "[unit][gui]") {
     queue.push(0);
     REQUIRE(queue.empty() == false);
     REQUIRE(counter == 0);
-    queue.push(1);
+    int a = 1;
+    queue.push(a);
     REQUIRE(counter == 0);
     queue.push(2);
     REQUIRE(counter == 0);
@@ -197,9 +211,13 @@ TEST_CASE("GUI messages - synchronized notifying queue", "[unit][gui]") {
     REQUIRE(queue.empty() == true);
 
     std::thread thread([&]{
-        for (int i = 0; i < 20; ++i) {
+        for (int i = 0; i < 10; ++i) {
             std::this_thread::sleep_for(1ms);
             queue.push(std::move(i));
+        }
+        for (int i = 10; i < 20; ++i) {
+            std::this_thread::sleep_for(1ms);
+            queue.push(i);
         }
     });
     std::this_thread::sleep_for(10ms);
