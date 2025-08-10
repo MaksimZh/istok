@@ -406,49 +406,40 @@ TEST_CASE("ECS Data Structures - DenseMap", "[unit][ecs]") {
 
 TEST_CASE("ECS Data Structures - LimitedCounter", "[unit][ecs]") {
     ecs::LimitedCounter counter(3);
-
-    REQUIRE(counter.get() == 0);
     REQUIRE(counter.full() == false);
 
-    SECTION("increment") {
-        counter.inc();
-        REQUIRE(counter.get() == 1);
+    SECTION("one value") {
+        REQUIRE(counter.take() == 0);
         REQUIRE(counter.full() == false);
     }
 
     SECTION("make full") {
-        counter.inc();
-        counter.inc();
-        counter.inc();
-        REQUIRE(counter.get() == 3);
+        REQUIRE(counter.take() == 0);
+        REQUIRE(counter.take() == 1);
+        REQUIRE(counter.take() == 2);
         REQUIRE(counter.full() == true);
     }
 
     SECTION("extend") {
         counter.extend(2);
-        counter.inc();
-        counter.inc();
-        counter.inc();
-        REQUIRE(counter.get() == 3);
+        REQUIRE(counter.take() == 0);
+        REQUIRE(counter.take() == 1);
+        REQUIRE(counter.take() == 2);
         REQUIRE(counter.full() == false);
-        counter.inc();
-        counter.inc();
-        REQUIRE(counter.get() == 5);
+        REQUIRE(counter.take() == 3);
+        REQUIRE(counter.take() == 4);
         REQUIRE(counter.full() == true);
     }
 
     SECTION("extend full") {
-        counter.inc();
-        counter.inc();
-        counter.inc();
-        REQUIRE(counter.get() == 3);
+        REQUIRE(counter.take() == 0);
+        REQUIRE(counter.take() == 1);
+        REQUIRE(counter.take() == 2);
         REQUIRE(counter.full() == true);
         counter.extend(2);
-        REQUIRE(counter.get() == 3);
         REQUIRE(counter.full() == false);
-        counter.inc();
-        counter.inc();
-        REQUIRE(counter.get() == 5);
+        REQUIRE(counter.take() == 3);
+        REQUIRE(counter.take() == 4);
         REQUIRE(counter.full() == true);
     }
 }

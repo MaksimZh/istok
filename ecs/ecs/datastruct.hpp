@@ -346,13 +346,9 @@ public:
         return value >= sentinel;
     }
 
-    size_t get() const {
-        return value;
-    }
-
-    void inc() {
+    size_t take() {
         assert(!full());
-        ++value;
+        return value++;
     }
 
     void extend(size_t delta) {
@@ -371,12 +367,7 @@ public:
 
     size_t getFreeIndex() {
         assert(!full());
-        if (freeIndices.empty()) {
-            size_t index = nextIndex.get();
-            nextIndex.inc();
-            return index;
-        }
-        return freeIndices.take();
+        return freeIndices.empty() ? nextIndex.take() : freeIndices.take();
     }
     
     void freeIndex(size_t index) {
