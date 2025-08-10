@@ -21,11 +21,17 @@ struct GUIDestroyWindow {
     Istok::ECS::Entity entity;
 };
 
+struct GUISetWindowColor {
+    Istok::ECS::Entity entity;
+    Color color;
+};
+
 
 using GUIMessage = std::variant<
     GUIExit,
     GUINewWindow,
-    GUIDestroyWindow
+    GUIDestroyWindow,
+    GUISetWindowColor
 >;
 
 
@@ -291,6 +297,11 @@ public:
             destroyWindow(std::get<GUIDestroyWindow>(msg).entity);
             return;
         }
+        if (std::holds_alternative<GUISetWindowColor>(msg)) {
+            GUISetWindowColor message = std::get<GUISetWindowColor>(msg);
+            setWindowColor(message.entity, message.color);
+            return;
+        }
     }
 
     void newWindow(Istok::ECS::Entity entity, WindowParams params) {
@@ -300,6 +311,10 @@ public:
 
     void destroyWindow(Istok::ECS::Entity entity) {
         graphics.destroyWindow(entity);
+    }
+
+    void setWindowColor(Istok::ECS::Entity entity, Color color) {
+        graphics.getWindow(entity).setColor(color);
     }
     
 private:
@@ -335,6 +350,10 @@ public:
         dispatcher.push(GUIDestroyWindow(entity));
     }
 
+    void setWindowColor(Istok::ECS::Entity entity, Color color) {
+        dispatcher.push(GUISetWindowColor(entity, color));
+    }
+
 private:
     GUIDispatcher dispatcher;
     std::thread thread;
@@ -355,6 +374,8 @@ int main() {
     Istok::ECS::Entity menu = ecs.createEntity();
     gui.newWindow(window, WindowParams{{200, 100, 600, 400}, "Istok"});
     gui.newWindow(menu, WindowParams{{300, 200, 400, 500}, std::nullopt});
+    gui.setWindowColor(window, {240, 240, 240, 255});
+    gui.setWindowColor(menu, {0, 255, 0, 150});
     while (true) {
         ECSMessage msg = gui.getMessage();
         if (std::holds_alternative<ECSExit>(msg)) {

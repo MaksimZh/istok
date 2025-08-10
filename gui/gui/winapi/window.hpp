@@ -440,6 +440,14 @@ private:
 };
 
 
+struct Color {
+    u_char r;
+    u_char g;
+    u_char b;
+    u_char a;
+};
+
+
 class SmartWindow {
 public:
     SmartWindow(WinAPIMessageHandler* messageHandler)
@@ -455,14 +463,6 @@ public:
     SmartWindow(SmartWindow&&) = delete;
     SmartWindow& operator=(SmartWindow&& other) = delete;
 
-    void activateGL() {
-        core.activateGL();
-    }
-
-    void swapBuffers() {
-        core.swapBuffers();
-    }
-
     void postQueueNotification() {
         PostMessage(core.getHWND(), WM_APP_QUEUE, NULL, NULL);
     }
@@ -475,10 +475,18 @@ public:
         ShowWindow(core.getHWND(), SW_HIDE);
     }
 
-    void finishPaint() {
-        PAINTSTRUCT ps;
-        BeginPaint(core.getHWND(), &ps);
-        EndPaint(core.getHWND(), &ps);
+    void paint() {
+        std::cout << "gui: WM_PAINT" << std::endl << std::flush;
+        core.activateGL();
+        constexpr float factor = 1.0 / 255.0;
+        glClearColor(
+            color.r * factor,
+            color.g * factor,
+            color.b * factor,
+            color.a * factor);
+        glClear(GL_COLOR_BUFFER_BIT);
+        core.swapBuffers();
+        finishPaint();
     }
 
 
@@ -505,8 +513,20 @@ public:
     }
 
 
+    void setColor(Color color) {
+        this->color = color;
+    }
+
+
 private:
     GLWindow core;
+    Color color;
+
+    void finishPaint() {
+        PAINTSTRUCT ps;
+        BeginPaint(core.getHWND(), &ps);
+        EndPaint(core.getHWND(), &ps);
+    }
 };
 
 
@@ -536,17 +556,13 @@ public:
             messageHandler->onQueue();
             return 0;
         case WM_PAINT:
-            onPaint();
+            core.paint();
             return 0;
         case WM_NCHITTEST:
             return core.hitTest(message);
         default:
             return defaultWinAPIHandler(message);
         }
-    }
-
-    void activateGL() {
-        core.activateGL();
     }
 
     void postQueueNotification() {
@@ -561,17 +577,11 @@ public:
         core.hide();
     }
     
+    void setColor(Color color) {
+        core.setColor(color);
+    }
 
 private:
     SmartWindow core;
     SysMessageHandler* messageHandler;
-
-    void onPaint() {
-        std::cout << "gui: WM_PAINT" << std::endl << std::flush;
-        core.activateGL();
-        glClearColor(0.9f, 0.9f, 0.9f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT);
-        core.swapBuffers();
-        core.finishPaint();
-    }
 };
