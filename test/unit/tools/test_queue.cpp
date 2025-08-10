@@ -1,4 +1,3 @@
-// test_messages.cpp
 // Copyright 2025 Maksim Sergeevich Zholudev. All rights reserved
 #include <catch.hpp>
 
