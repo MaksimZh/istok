@@ -2,9 +2,9 @@
 // Copyright 2025 Maksim Sergeevich Zholudev. All rights reserved
 #include <catch.hpp>
 
-#include <gui/core/messages.hpp>
+#include <tools/queue.hpp>
 
-using namespace Istok::GUI;
+using namespace Istok::Tools;
 
 #include <memory>
 #include <thread>

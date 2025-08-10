@@ -1,6 +1,6 @@
 // ecs1st.cpp
 #include <ecs.hpp>
-#include <gui/core/messages.hpp>
+#include <tools/queue.hpp>
 #include <gui/winapi/window.hpp>
 
 #include <iostream>
@@ -65,8 +65,8 @@ private:
 };
 
 
-using GUIQueue = Istok::GUI::SyncLazyNotifyingQueue<GUIMessage, Notifier>;
-using ECSQueue = Istok::GUI::SyncWaitingQueue<ECSMessage>;
+using GUIQueue = Istok::Tools::SyncLazyNotifyingQueue<GUIMessage, Notifier>;
+using ECSQueue = Istok::Tools::SyncWaitingQueue<ECSMessage>;
 
 
 class SysWindowMap {
