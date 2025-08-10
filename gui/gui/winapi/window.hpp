@@ -105,38 +105,31 @@ private:
 };
 
 
-class WndHandler {
+class WndHandle {
 public:
-    WndHandler() = default;
+    WndHandle() = default;
 
-    WndHandler(HWND hWnd) : hWnd(hWnd) {}
+    WndHandle(HWND hWnd) : hWnd(hWnd) {}
 
-    ~WndHandler() {
+    ~WndHandle() {
         clean();
     }
 
-    WndHandler(const WndHandler&) = delete;
-    WndHandler& operator=(const WndHandler&) = delete;
+    WndHandle(const WndHandle&) = delete;
+    WndHandle& operator=(const WndHandle&) = delete;
 
-    WndHandler(WndHandler&& other) noexcept
+    WndHandle(WndHandle&& other) noexcept
         : hWnd(other.hWnd) {
         other.drop();
     }
 
-    WndHandler& operator=(WndHandler&& other) noexcept {
+    WndHandle& operator=(WndHandle&& other) noexcept {
         if (this != &other) {
             clean();
             hWnd = other.hWnd;
             other.drop();
         }
         return *this;
-    }
-
-    void clean() {
-        if (hWnd != nullptr) {
-            DestroyWindow(hWnd);
-        }
-        drop();
     }
 
     operator bool() const {
@@ -150,44 +143,44 @@ public:
 private:
     HWND hWnd = nullptr;
 
+    void clean() {
+        if (hWnd != nullptr) {
+            DestroyWindow(hWnd);
+        }
+        drop();
+    }
+
     void drop() {
         hWnd = nullptr;
     }
 };
 
 
-class DCHandler {
+class DCHandle {
 public:
-    DCHandler() = default;
+    DCHandle() = default;
     
-    DCHandler(HDC hDC) : hDC(hDC) {}
+    DCHandle(HDC hDC) : hDC(hDC) {}
 
-    ~DCHandler() {
+    ~DCHandle() {
         clean();
     }
 
-    DCHandler(const DCHandler&) = delete;
-    DCHandler& operator=(const DCHandler&) = delete;
+    DCHandle(const DCHandle&) = delete;
+    DCHandle& operator=(const DCHandle&) = delete;
 
-    DCHandler(DCHandler&& other) noexcept
+    DCHandle(DCHandle&& other) noexcept
         : hDC(other.hDC) {
         other.drop();
     }
 
-    DCHandler& operator=(DCHandler&& other) noexcept {
+    DCHandle& operator=(DCHandle&& other) noexcept {
         if (this != &other) {
             clean();
             hDC = other.hDC;
             other.drop();
         }
         return *this;
-    }
-
-    void clean() {
-        if (hDC != nullptr) {
-            ReleaseDC(WindowFromDC(hDC), hDC);
-        }
-        drop();
     }
 
     operator bool() const {
@@ -201,6 +194,13 @@ public:
 private:
     HDC hDC = nullptr;
 
+    void clean() {
+        if (hDC != nullptr) {
+            ReleaseDC(WindowFromDC(hDC), hDC);
+        }
+        drop();
+    }
+    
     void drop() {
         hDC = nullptr;
     }
@@ -278,10 +278,11 @@ struct WindowParams {
 
 class GLManager {
 public:
-    GLManager(WndHandler& wnd)
-        : dc(makeDC(wnd)), gl(std::make_shared<ModernGLContext>(dc.get())) {}
+    GLManager(WndHandle& wnd)
+        : dc(makeDC(wnd)),
+        gl(std::make_shared<GLHandle>(createModernGLContext(dc.get()))) {}
 
-    GLManager(WndHandler& wnd, const GLManager& other)
+    GLManager(WndHandle& wnd, const GLManager& other)
         : dc(makeDC(wnd)), gl(other.gl) {}
 
     GLManager(const GLManager&) = delete;
@@ -290,7 +291,7 @@ public:
     GLManager& operator=(const GLManager&&) = delete;
 
     void activate() {
-        wglMakeCurrent(dc.get(), gl->getGL());
+        wglMakeCurrent(dc.get(), gl->get());
     }
 
     void swapBuffers() {
@@ -298,11 +299,11 @@ public:
     }
 
 private:
-    DCHandler dc;
-    std::shared_ptr<ModernGLContext> gl;
+    DCHandle dc;
+    std::shared_ptr<GLHandle> gl;
 
-    static DCHandler makeDC(WndHandler& wnd) {
-        DCHandler dc(GetWindowDC(wnd.get()));
+    static DCHandle makeDC(WndHandle& wnd) {
+        DCHandle dc(GetWindowDC(wnd.get()));
         if (!dc) {
             throw std::runtime_error("Cannot get window DC");
         }
@@ -310,7 +311,7 @@ private:
         return dc;
     }
 
-    static void setPixelFormat(DCHandler& dc) {
+    static void setPixelFormat(DCHandle& dc) {
         PIXELFORMATDESCRIPTOR pfd = {};
         pfd.nSize = sizeof(PIXELFORMATDESCRIPTOR);
         pfd.nVersion = 1;
@@ -370,15 +371,15 @@ public:
     }
 
 private:
-    WndHandler wnd;
+    WndHandle wnd;
     GLManager gl;
 
-    static WndHandler makeWindow(
+    static WndHandle makeWindow(
         WindowParams params,
         WinAPIMessageHandler* messageHandler
     ) {
         std::cout << "+window" << std::endl << std::flush;
-        WndHandler wnd(CreateWindowEx(
+        WndHandle wnd(CreateWindowEx(
             params.title.has_value() ? NULL : WS_EX_TOOLWINDOW,
             getWndClass(),
             toUTF16(params.title.value_or("")).c_str(),
@@ -412,7 +413,7 @@ private:
         return wc;
     }
 
-    static void enableTransparency(WndHandler& wnd) {
+    static void enableTransparency(WndHandle& wnd) {
         DWM_BLURBEHIND bb = { 0 };
         HRGN hRgn = CreateRectRgn(0, 0, -1, -1);
         bb.dwFlags = DWM_BB_ENABLE | DWM_BB_BLURREGION;
@@ -421,7 +422,7 @@ private:
         DwmEnableBlurBehindWindow(wnd.get(), &bb);
     }
 
-    static void setMessageHandler(WndHandler& wnd, WinAPIMessageHandler* value) {
+    static void setMessageHandler(WndHandle& wnd, WinAPIMessageHandler* value) {
         SetWindowLongPtr(
             wnd.get(), GWLP_USERDATA, reinterpret_cast<LONG_PTR>(value));
     }
