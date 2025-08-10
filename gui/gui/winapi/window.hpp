@@ -382,7 +382,7 @@ private:
             params.title.has_value() ? NULL : WS_EX_TOOLWINDOW,
             getWndClass(),
             toUTF16(params.title.value_or("")).c_str(),
-            WS_OVERLAPPEDWINDOW, //TODO: change to WS_POPUP for custom decorations
+            WS_POPUP,
             params.location.left, params.location.top,
             params.location.right - params.location.left,
             params.location.bottom - params.location.top,
@@ -482,6 +482,29 @@ public:
     }
 
 
+    SysResult hitTest(WinAPIMessage message) {
+        POINT point = {
+            GET_X_LPARAM(message.lParam),
+            GET_Y_LPARAM(message.lParam)};
+        RECT rect;
+        GetWindowRect(core.getHWND(), &rect);
+        bool lb = point.x - rect.left < 4;
+        bool rb = rect.right - point.x < 4;
+        bool tb = point.y - rect.top < 4;
+        bool bb = rect.bottom - point.y < 4;
+        if (lb && tb) return HTTOPLEFT;
+        if (rb && tb) return HTTOPRIGHT;
+        if (lb && bb) return HTBOTTOMLEFT;
+        if (rb && bb) return HTBOTTOMRIGHT;
+        if (lb) return HTLEFT;
+        if (rb) return HTRIGHT;
+        if (tb) return HTTOP;
+        if (bb) return HTBOTTOM;
+        if (point.y - rect.top < 32) return HTCAPTION;
+        return HTCLIENT;
+    }
+
+
 private:
     GLWindow core;
 };
@@ -513,13 +536,10 @@ public:
             messageHandler->onQueue();
             return 0;
         case WM_PAINT:
-            std::cout << "gui: WM_PAINT" << std::endl << std::flush;
-            core.activateGL();
-            glClearColor(0.0f, 0.0f, 0.2f, 1.0f);
-            glClear(GL_COLOR_BUFFER_BIT);
-            core.swapBuffers();
-            core.finishPaint();
+            onPaint();
             return 0;
+        case WM_NCHITTEST:
+            return core.hitTest(message);
         default:
             return defaultWinAPIHandler(message);
         }
@@ -545,4 +565,13 @@ public:
 private:
     SmartWindow core;
     SysMessageHandler* messageHandler;
+
+    void onPaint() {
+        std::cout << "gui: WM_PAINT" << std::endl << std::flush;
+        core.activateGL();
+        glClearColor(0.9f, 0.9f, 0.9f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT);
+        core.swapBuffers();
+        core.finishPaint();
+    }
 };
