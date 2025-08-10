@@ -1,11 +1,11 @@
 // Copyright 2025 Maksim Sergeevich Zholudev. All rights reserved
 #pragma once
 
+#include <stdexcept>
+#include <memory>
 #include <windows.h>
 #include <GL/glew.h>
 #include <GL/wglew.h>
-
-#include <stdexcept>
 
 
 class WndHandle {
@@ -206,8 +206,6 @@ GLHandle createModernGLContext(HDC hDC) {
     }
     return gl;
 }
-
-
 
 
 class GLManager {
