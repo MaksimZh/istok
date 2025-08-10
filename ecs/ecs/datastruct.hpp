@@ -2,6 +2,8 @@
 // Copyright 2025 Maksim Sergeevich Zholudev. All rights reserved
 #pragma once
 
+#include <tools/queue.hpp>
+
 #include <cassert>
 #include <queue>
 #include <vector>
@@ -9,40 +11,6 @@
 #include <ranges>
 
 namespace Istok::ECS {
-
-template <typename T>
-class Queue {
-public:
-    Queue() = default;
-    Queue(const Queue& other) = delete;
-    Queue& operator=(const Queue& other) = delete;
-    Queue(Queue&& other) noexcept = default;
-    Queue& operator=(Queue&& other) noexcept = default;
-    
-    bool empty() const {
-        return container.empty();
-    }
-
-    void push(const T& value) {
-        container.push(value);
-    }
-
-    void push(T&& value) {
-        container.push(std::move(value));
-    }
-
-    T& front() {
-        return container.front();
-    }
-
-    void pop() {
-        container.pop();
-    }
-
-private:
-    std::queue<T> container;
-};
-
 
 template <typename T>
 class DenseIterator {
@@ -408,9 +376,7 @@ public:
             nextIndex.inc();
             return index;
         }
-        size_t index = freeIndices.front();
-        freeIndices.pop();
-        return index;
+        return freeIndices.take();
     }
     
     void freeIndex(size_t index) {
@@ -427,7 +393,7 @@ public:
 
 private:
     LimitedCounter nextIndex;
-    Queue<size_t> freeIndices;
+    Istok::Tools::SimpleQueue<size_t> freeIndices;
 };
 
 
