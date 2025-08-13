@@ -12,6 +12,7 @@ using namespace Istok::GUI;
 
 using namespace std::chrono_literals;
 
+
 TEST_CASE("GUI - channel", "[unit][gui]") {
     using Queue = SyncWaitingQueue<int>;
     auto inQueue = std::make_shared<Queue>();
