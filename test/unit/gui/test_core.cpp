@@ -7,6 +7,10 @@ using namespace Istok::Tools;
 using namespace Istok::GUI;
 
 #include <memory>
+#include <thread>
+#include <chrono>
+
+using namespace std::chrono_literals;
 
 TEST_CASE("GUI - channel", "[unit][gui]") {
     using Queue = SyncWaitingQueue<int>;
@@ -34,5 +38,33 @@ TEST_CASE("GUI - channel", "[unit][gui]") {
         inQueue->push(3);
         REQUIRE(channel.take() == 2);
         REQUIRE(channel.take() == 3);
+    }
+
+    SECTION("Asynchronous push") {
+        std::thread thread([&]{
+            for (int i = 0; i < 20; ++i) {
+                std::this_thread::sleep_for(1ms);
+                channel.push(i);
+            }
+        });
+        for (int i = 0; i < 20; ++i) {
+            std::this_thread::sleep_for(1ms);
+            REQUIRE(outQueue->take() == i);
+        }
+        thread.join();
+    }
+
+    SECTION("Asynchronous take") {
+        std::thread thread([&]{
+            for (int i = 0; i < 20; ++i) {
+                std::this_thread::sleep_for(1ms);
+                inQueue->push(i);
+            }
+        });
+        for (int i = 0; i < 20; ++i) {
+            std::this_thread::sleep_for(1ms);
+            REQUIRE(channel.take() == i);
+        }
+        thread.join();
     }
 }
