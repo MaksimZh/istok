@@ -16,7 +16,7 @@ class WindowMessageHandler {};
 
 
 template <typename Platform, typename AppQueue>
-class Core : WindowMessageHandler {
+class Core : public WindowMessageHandler {
 public:
     Core(Platform& platform, std::shared_ptr<AppQueue> appQueue)
         : platform(platform), appQueue(appQueue) {}
@@ -40,7 +40,7 @@ public:
     using SharedGUIQueue = std::shared_ptr<GUIQueueType>;
     
     GUIFor() {
-        std::shared_ptr<AppQueue> appQueue;
+        std::shared_ptr<AppQueue> appQueue = std::make_shared<AppQueue>();
         std::promise<SharedGUIQueue> guiQueuePromise;
         std::future<SharedGUIQueue> guiQueueFuture = guiQueuePromise.get_future();
         thread = std::thread(proc, std::move(guiQueuePromise), appQueue);
@@ -65,7 +65,8 @@ private:
         std::shared_ptr<AppQueue> appQueue)
     {
         Platform platform;
-        guiQueuePromise.set_value(platform.getNotifier());
+        SharedGUIQueue guiQueue = std::make_shared<GUIQueueType>(platform.getNotifier());
+        guiQueuePromise.set_value(guiQueue);
         Core core(platform, appQueue);
         platform.setMessageHandler(core);
     }

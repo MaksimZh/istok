@@ -151,6 +151,8 @@ private:
 template <typename T, typename Notifier>
 class SyncNotifyingQueue {
 public:
+    using element_type = T;
+
     SyncNotifyingQueue(const SyncNotifyingQueue&) = delete;
     SyncNotifyingQueue& operator=(const SyncNotifyingQueue&) = delete;
     SyncNotifyingQueue(SyncNotifyingQueue&&) = delete;
@@ -189,6 +191,8 @@ private:
 template <typename InQueue, typename OutQueue>
 class Channel {
 public:
+    Channel() = default;
+    
     Channel(
         std::shared_ptr<InQueue> inQueue,
         std::shared_ptr<OutQueue> outQueue

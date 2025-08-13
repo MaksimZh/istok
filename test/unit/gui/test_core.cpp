@@ -8,17 +8,30 @@ using namespace Istok::GUI;
 
 #include <string>
 
+
 namespace {
 
 class FakePlatform {
+public:
     class Notifier {};
+
+    Notifier getNotifier() {
+        return Notifier{};
+    }
+
+    void setMessageHandler(WindowMessageHandler& handler) {}
 };
 
 }
 
+
 TEST_CASE("GUI - Core", "[unit][gui]") {
-    using AppQueue = SyncWaitingQueue<std::string>;
     FakePlatform platform;
     std::shared_ptr<AppQueue> appQueue = std::make_shared<AppQueue>();
     Core<FakePlatform, AppQueue> core(platform, appQueue);
+}
+
+
+TEST_CASE("GUI - GUI", "[unit][gui]") {
+    GUIFor<FakePlatform> gui;
 }
