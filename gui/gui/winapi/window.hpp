@@ -3,7 +3,6 @@
 #pragma once
 
 #include <tools/queue.hpp>
-#include <gui/core/tools.hpp>
 #include <gui/winapi/basic.hpp>
 
 #include <cassert>
@@ -14,6 +13,29 @@
 #include <optional>
 
 constexpr UINT WM_APP_QUEUE = WM_APP + 1;
+
+
+template <typename T>
+struct Position {
+    T x;
+    T y;
+};
+
+
+template <typename T>
+struct Size {
+    T width;
+    T height;
+};
+
+
+template <typename T>
+struct Rect {
+    T left;
+    T top;
+    T right;
+    T bottom;
+};
 
 
 class WindowClass {
