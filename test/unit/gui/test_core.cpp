@@ -6,9 +6,19 @@
 using namespace Istok::Tools;
 using namespace Istok::GUI;
 
-#include <memory>
-#include <thread>
-#include <chrono>
+#include <string>
 
-using namespace std::chrono_literals;
+namespace {
 
+class FakePlatform {
+    class Notifier {};
+};
+
+}
+
+TEST_CASE("GUI - Core", "[unit][gui]") {
+    using AppQueue = SyncWaitingQueue<std::string>;
+    FakePlatform platform;
+    std::shared_ptr<AppQueue> appQueue = std::make_shared<AppQueue>();
+    Core<FakePlatform, AppQueue> core(platform, appQueue);
+}

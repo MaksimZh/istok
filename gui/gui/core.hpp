@@ -23,7 +23,7 @@ public:
 
 private:
     Platform& platform;
-    AppQueue appQueue;
+    std::shared_ptr<AppQueue> appQueue;
 };
 
 
@@ -36,7 +36,7 @@ using AppQueue = Tools::SyncWaitingQueue<AppMessage>;
 template <typename Platform>
 class GUIFor {
 public:
-    using GUIQueueType = GUIQueue<Platform::Notifier>;
+    using GUIQueueType = GUIQueue<typename Platform::Notifier>;
     using SharedGUIQueue = std::shared_ptr<GUIQueueType>;
     
     GUIFor() {
@@ -44,7 +44,7 @@ public:
         std::promise<SharedGUIQueue> guiQueuePromise;
         std::future<SharedGUIQueue> guiQueueFuture = guiQueuePromise.get_future();
         thread = std::thread(proc, std::move(guiQueuePromise), appQueue);
-        channel = Channel(guiQueueFuture.get(), appQueue);
+        channel = Tools::Channel(guiQueueFuture.get(), appQueue);
     }
 
     ~GUIFor() {
@@ -58,7 +58,7 @@ public:
 
 private:
     std::thread thread;
-    Channel<GUIQueueType, AppQueue> channel;
+    Tools::Channel<GUIQueueType, AppQueue> channel;
 
     static void proc(
         std::promise<SharedGUIQueue> guiQueuePromise,
