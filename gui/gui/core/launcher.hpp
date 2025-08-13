@@ -2,6 +2,7 @@
 #pragma once
 
 #include <tools/queue.hpp>
+#include "message.hpp"
 
 #include <type_traits>
 #include <thread>
@@ -9,12 +10,6 @@
 #include <memory>
 
 namespace Istok::GUI {
-
-class GUIMessage {};
-class AppMessage {};
-
-class WindowMessageHandler {};
-
 
 template <typename Platform, typename AppQueue>
 class Core : public WindowMessageHandler {
@@ -68,6 +63,5 @@ private:
         platform.setMessageHandler(core);
     }
 };
-
 
 } // namespace Istok::GUI
