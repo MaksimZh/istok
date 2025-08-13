@@ -79,6 +79,8 @@ private:
 template <typename T>
 class SyncWaitingQueue {
 public:
+    using element_type = T;
+
     SyncWaitingQueue() = default;
     SyncWaitingQueue(const SyncWaitingQueue&) = delete;
     SyncWaitingQueue& operator=(const SyncWaitingQueue&) = delete;
