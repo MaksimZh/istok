@@ -2,7 +2,6 @@
 #pragma once
 
 #include <tools/queue.hpp>
-#include "message.hpp"
 
 #include <type_traits>
 #include <thread>
@@ -10,6 +9,12 @@
 #include <memory>
 
 namespace Istok::GUI {
+
+class GUIMessage {};
+class AppMessage {};
+
+class WindowMessageHandler {};
+
 
 template <typename Platform, typename AppQueue>
 class Core : public WindowMessageHandler {
@@ -32,16 +37,15 @@ public:
     using GUIQueue = Platform::InQueue;
     using SharedGUIQueue = std::shared_ptr<GUIQueue>;
     
-    PlatformGUI(std::unique_ptr<Platform>&& platform) {
-        assert(platform);
+    PlatformGUI() {
         std::shared_ptr<AppQueue> appQueue = std::make_shared<AppQueue>();
-        std::shared_ptr<GUIQueue> guiQueue = platform->getInQueue();
-        channel = Tools::Channel(appQueue, guiQueue);
-        thread = std::thread(proc, std::move(platform), appQueue);
+        std::promise<SharedGUIQueue> guiQueuePromise;
+        std::future<SharedGUIQueue> guiQueueFuture = guiQueuePromise.get_future();
+        thread = std::thread(proc, std::move(guiQueuePromise), appQueue);
+        channel = Tools::Channel(guiQueueFuture.get(), appQueue);
     }
 
     ~PlatformGUI() {
-        channel.push(Message::GUIExit{});
         thread.join();
     }
 
@@ -51,18 +55,19 @@ public:
     PlatformGUI& operator=(PlatformGUI&&) = delete;
 
 private:
-    Tools::Channel<AppQueue, GUIQueue> channel;
     std::thread thread;
+    Tools::Channel<GUIQueue, AppQueue> channel;
 
     static void proc(
-        std::unique_ptr<Platform> platform,
+        std::promise<SharedGUIQueue> guiQueuePromise,
         std::shared_ptr<AppQueue> appQueue)
     {
-        assert(platform);
-        assert(appQueue);
-        Core core(*platform, appQueue);
-        platform->setMessageHandler(core);
+        Platform platform;
+        guiQueuePromise.set_value(platform.getInQueue());
+        Core core(platform, appQueue);
+        platform.setMessageHandler(core);
     }
 };
+
 
 } // namespace Istok::GUI

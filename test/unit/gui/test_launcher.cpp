@@ -11,19 +11,21 @@ using namespace Istok::GUI;
 
 namespace {
 
-class FakePlatform {
+class MockPlatform {
 public:
     class Notifier {
     public:
-        Notifier(FakePlatform& platform) : platform(&platform) {}
-
+        Notifier(MockPlatform& platform) : platform(&platform) {}
+        
+        void operator()() {}
+    
     private:
-        FakePlatform* platform;
+        MockPlatform* platform;
     };
 
-    using InQueue = SyncNotifyingQueue<std::string, Notifier>;
+    using InQueue = SyncNotifyingQueue<GUIMessage, Notifier>;
 
-    FakePlatform() : queue(std::make_shared<InQueue>(Notifier(*this))) {}
+    MockPlatform() : queue(std::make_shared<InQueue>(Notifier(*this))) {}
     
     void setMessageHandler(WindowMessageHandler& handler) {}
 
@@ -39,12 +41,13 @@ private:
 
 
 TEST_CASE("GUI - Core", "[unit][gui]") {
-    FakePlatform platform;
+    MockPlatform platform;
     std::shared_ptr<AppQueue> appQueue = std::make_shared<AppQueue>();
-    Core<FakePlatform, AppQueue> core(platform, appQueue);
+    Core<MockPlatform, AppQueue> core(platform, appQueue);
 }
 
 
 TEST_CASE("GUI - GUI", "[unit][gui]") {
-    GUIFor<FakePlatform> gui;
+    std::unique_ptr<MockPlatform> platform = std::make_unique<MockPlatform>();
+    PlatformGUI gui(std::move(platform));
 }
