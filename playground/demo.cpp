@@ -65,7 +65,7 @@ private:
 };
 
 
-using GUIQueue = Istok::Tools::SyncLazyNotifyingQueue<GUIMessage, Notifier>;
+using GUIQueue = Istok::Tools::SyncNotifyingQueue<GUIMessage, Notifier>;
 using ECSQueue = Istok::Tools::SyncWaitingQueue<ECSMessage>;
 
 

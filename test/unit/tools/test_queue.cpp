@@ -12,7 +12,7 @@ using namespace Istok::Tools;
 
 using namespace std::chrono_literals;
 
-TEST_CASE("GUI messages - simple queue", "[unit][gui]") {
+TEST_CASE("Tools - simple queue", "[unit][gui]") {
     SimpleQueue<int> queue;
     REQUIRE(queue.empty() == true);
 
@@ -54,7 +54,7 @@ TEST_CASE("GUI messages - simple queue", "[unit][gui]") {
 }
 
 
-TEST_CASE("GUI messages - simple queue - moving", "[unit][gui]") {
+TEST_CASE("Tools - simple queue - moving", "[unit][gui]") {
     SimpleQueue<std::unique_ptr<int>> queue;
     REQUIRE(queue.empty() == true);
 
@@ -68,7 +68,7 @@ TEST_CASE("GUI messages - simple queue - moving", "[unit][gui]") {
 }
 
 
-TEST_CASE("GUI messages - waiting queue", "[unit][gui]") {
+TEST_CASE("Tools - waiting queue", "[unit][gui]") {
     WaitingQueue<int> queue;
     REQUIRE(queue.empty() == true);
 
@@ -107,7 +107,7 @@ TEST_CASE("GUI messages - waiting queue", "[unit][gui]") {
 }
 
 
-TEST_CASE("GUI messages - synchronized waiting queue", "[unit][gui]") {
+TEST_CASE("Tools - synchronized waiting queue", "[unit][gui]") {
     SyncWaitingQueue<int> queue;
     REQUIRE(queue.empty() == true);
 
@@ -142,7 +142,7 @@ TEST_CASE("GUI messages - synchronized waiting queue", "[unit][gui]") {
 }
 
 
-TEST_CASE("GUI messages - notifying queue", "[unit][gui]") {
+TEST_CASE("Tools - notifying queue", "[unit][gui]") {
     size_t counter = 0;
     auto inc = [&]{++counter;};
     NotifyingQueue<int, decltype(inc)> queue(std::move(inc));
@@ -172,41 +172,10 @@ TEST_CASE("GUI messages - notifying queue", "[unit][gui]") {
 }
 
 
-TEST_CASE("GUI messages - lazy notifying queue", "[unit][gui]") {
-    size_t counter = 0;
-    auto inc = [&]{++counter;};
-    LazyNotifyingQueue<int, decltype(inc)> queue;
-    REQUIRE(queue.empty() == true);
-    REQUIRE(counter == 0);
-
-    queue.push(0);
-    REQUIRE(queue.empty() == false);
-    REQUIRE(counter == 0);
-    int a = 1;
-    queue.push(a);
-    REQUIRE(counter == 0);
-    queue.push(2);
-    REQUIRE(counter == 0);
-    queue.setNotifier(std::move(inc));
-    REQUIRE(counter == 3);
-    REQUIRE(queue.take() == 0);
-    REQUIRE(queue.take() == 1);
-    REQUIRE(queue.take() == 2);
-    REQUIRE(counter == 3);
-    queue.push(3);
-    REQUIRE(counter == 4);
-    queue.push(4);
-    REQUIRE(counter == 5);
-    REQUIRE(queue.take() == 3);
-    REQUIRE(queue.take() == 4);
-    REQUIRE(queue.empty() == true);
-}
-
-
-TEST_CASE("GUI messages - synchronized notifying queue", "[unit][gui]") {
+TEST_CASE("Tools - synchronized notifying queue", "[unit][gui]") {
     std::counting_semaphore sem{0};
     auto notifier = [&]{ sem.release(); };
-    SyncLazyNotifyingQueue<int, decltype(notifier)> queue;
+    SyncNotifyingQueue<int, decltype(notifier)> queue(std::move(notifier));
     REQUIRE(queue.empty() == true);
 
     std::thread thread([&]{
@@ -220,7 +189,6 @@ TEST_CASE("GUI messages - synchronized notifying queue", "[unit][gui]") {
         }
     });
     std::this_thread::sleep_for(10ms);
-    queue.setNotifier(std::move(notifier));
     for (int i = 0; i < 20; ++i) {
         sem.acquire();
         REQUIRE(queue.take() == i);
