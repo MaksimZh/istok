@@ -48,6 +48,5 @@ TEST_CASE("GUI - Core", "[unit][gui]") {
 
 
 TEST_CASE("GUI - GUI", "[unit][gui]") {
-    std::unique_ptr<MockPlatform> platform = std::make_unique<MockPlatform>();
-    PlatformGUI gui(std::move(platform));
+    GUIFor<MockPlatform> gui;
 }

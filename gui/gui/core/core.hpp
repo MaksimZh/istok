@@ -32,12 +32,12 @@ using AppQueue = Tools::SyncWaitingQueue<AppMessage>;
 
 
 template <typename Platform>
-class PlatformGUI {
+class GUIFor {
 public:
     using GUIQueue = Platform::InQueue;
     using SharedGUIQueue = std::shared_ptr<GUIQueue>;
     
-    PlatformGUI() {
+    GUIFor() {
         std::shared_ptr<AppQueue> appQueue = std::make_shared<AppQueue>();
         std::promise<SharedGUIQueue> guiQueuePromise;
         std::future<SharedGUIQueue> guiQueueFuture = guiQueuePromise.get_future();
@@ -45,14 +45,14 @@ public:
         channel = Tools::Channel(guiQueueFuture.get(), appQueue);
     }
 
-    ~PlatformGUI() {
+    ~GUIFor() {
         thread.join();
     }
 
-    PlatformGUI(const PlatformGUI&) = delete;
-    PlatformGUI& operator=(const PlatformGUI&) = delete;
-    PlatformGUI(PlatformGUI&&) = delete;
-    PlatformGUI& operator=(PlatformGUI&&) = delete;
+    GUIFor(const GUIFor&) = delete;
+    GUIFor& operator=(const GUIFor&) = delete;
+    GUIFor(GUIFor&&) = delete;
+    GUIFor& operator=(GUIFor&&) = delete;
 
 private:
     std::thread thread;
