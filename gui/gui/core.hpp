@@ -27,39 +27,6 @@ private:
 };
 
 
-template <typename InQueue, typename OutQueue>
-class Channel {
-public:
-    Channel(
-        std::shared_ptr<InQueue> inQueue,
-        std::shared_ptr<OutQueue> outQueue
-    ) : inQueue(inQueue), outQueue(outQueue)
-    {
-        assert(this->inQueue);
-        assert(this->outQueue);
-    }
-
-    bool empty() {
-        return inQueue->empty();
-    }
-
-    void push(OutQueue::element_type&& value) {
-        outQueue->push(std::move(value));
-    }
-
-    void push(const OutQueue::element_type& value) {
-        outQueue->push(value);
-    }
-
-    InQueue::element_type take() {
-        return inQueue->take();
-    }
-
-private:
-    std::shared_ptr<InQueue> inQueue;
-    std::shared_ptr<OutQueue> outQueue;
-};
-
 template <typename Notifier>
 using GUIQueue = Tools::SyncNotifyingQueue<GUIMessage, Notifier>;
 

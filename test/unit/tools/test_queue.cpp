@@ -12,7 +12,7 @@ using namespace Istok::Tools;
 
 using namespace std::chrono_literals;
 
-TEST_CASE("Tools - simple queue", "[unit][gui]") {
+TEST_CASE("Tools - simple queue", "[unit][tools]") {
     SimpleQueue<int> queue;
     REQUIRE(queue.empty() == true);
 
@@ -54,7 +54,7 @@ TEST_CASE("Tools - simple queue", "[unit][gui]") {
 }
 
 
-TEST_CASE("Tools - simple queue - moving", "[unit][gui]") {
+TEST_CASE("Tools - simple queue - moving", "[unit][tools]") {
     SimpleQueue<std::unique_ptr<int>> queue;
     REQUIRE(queue.empty() == true);
 
@@ -68,7 +68,7 @@ TEST_CASE("Tools - simple queue - moving", "[unit][gui]") {
 }
 
 
-TEST_CASE("Tools - waiting queue", "[unit][gui]") {
+TEST_CASE("Tools - waiting queue", "[unit][tools]") {
     WaitingQueue<int> queue;
     REQUIRE(queue.empty() == true);
 
@@ -107,7 +107,7 @@ TEST_CASE("Tools - waiting queue", "[unit][gui]") {
 }
 
 
-TEST_CASE("Tools - synchronized waiting queue", "[unit][gui]") {
+TEST_CASE("Tools - synchronized waiting queue", "[unit][tools]") {
     SyncWaitingQueue<int> queue;
     REQUIRE(queue.empty() == true);
 
@@ -142,7 +142,7 @@ TEST_CASE("Tools - synchronized waiting queue", "[unit][gui]") {
 }
 
 
-TEST_CASE("Tools - notifying queue", "[unit][gui]") {
+TEST_CASE("Tools - notifying queue", "[unit][tools]") {
     size_t counter = 0;
     auto inc = [&]{++counter;};
     NotifyingQueue<int, decltype(inc)> queue(std::move(inc));
@@ -172,7 +172,7 @@ TEST_CASE("Tools - notifying queue", "[unit][gui]") {
 }
 
 
-TEST_CASE("Tools - synchronized notifying queue", "[unit][gui]") {
+TEST_CASE("Tools - synchronized notifying queue", "[unit][tools]") {
     std::counting_semaphore sem{0};
     auto notifier = [&]{ sem.release(); };
     SyncNotifyingQueue<int, decltype(notifier)> queue(std::move(notifier));
@@ -194,4 +194,62 @@ TEST_CASE("Tools - synchronized notifying queue", "[unit][gui]") {
         REQUIRE(queue.take() == i);
     }
     thread.join();
+}
+
+
+TEST_CASE("Tools - channel", "[unit][tools]") {
+    using Queue = SyncWaitingQueue<int>;
+    auto inQueue = std::make_shared<Queue>();
+    auto outQueue = std::make_shared<Queue>();
+
+    Channel<Queue, Queue> channel(inQueue, outQueue);
+
+    SECTION("Synchronous push") {
+        REQUIRE(outQueue->empty() == true);
+        channel.push(1);
+        REQUIRE(outQueue->take() == 1);
+        channel.push(2);
+        channel.push(3);
+        REQUIRE(outQueue->take() == 2);
+        REQUIRE(outQueue->take() == 3);
+    }
+
+    SECTION("Synchronous take") {
+        REQUIRE(channel.empty() == true);
+        inQueue->push(1);
+        REQUIRE(channel.empty() == false);
+        REQUIRE(channel.take() == 1);
+        inQueue->push(2);
+        inQueue->push(3);
+        REQUIRE(channel.take() == 2);
+        REQUIRE(channel.take() == 3);
+    }
+
+    SECTION("Asynchronous push") {
+        std::thread thread([&]{
+            for (int i = 0; i < 20; ++i) {
+                std::this_thread::sleep_for(1ms);
+                channel.push(i);
+            }
+        });
+        for (int i = 0; i < 20; ++i) {
+            std::this_thread::sleep_for(1ms);
+            REQUIRE(outQueue->take() == i);
+        }
+        thread.join();
+    }
+
+    SECTION("Asynchronous take") {
+        std::thread thread([&]{
+            for (int i = 0; i < 20; ++i) {
+                std::this_thread::sleep_for(1ms);
+                inQueue->push(i);
+            }
+        });
+        for (int i = 0; i < 20; ++i) {
+            std::this_thread::sleep_for(1ms);
+            REQUIRE(channel.take() == i);
+        }
+        thread.join();
+    }
 }
