@@ -13,13 +13,26 @@ namespace {
 
 class FakePlatform {
 public:
-    class Notifier {};
+    class Notifier {
+    public:
+        Notifier(FakePlatform& platform) : platform(&platform) {}
 
-    Notifier getNotifier() {
-        return Notifier{};
+    private:
+        FakePlatform* platform;
+    };
+
+    using InQueue = SyncNotifyingQueue<std::string, Notifier>;
+
+    FakePlatform() : queue(std::make_shared<InQueue>(Notifier(*this))) {}
+    
+    void setMessageHandler(WindowMessageHandler& handler) {}
+
+    std::shared_ptr<InQueue> getInQueue() {
+        return queue;
     }
 
-    void setMessageHandler(WindowMessageHandler& handler) {}
+private:
+    std::shared_ptr<InQueue> queue;
 };
 
 }

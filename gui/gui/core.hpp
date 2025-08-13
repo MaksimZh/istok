@@ -3,6 +3,7 @@
 
 #include <tools/queue.hpp>
 
+#include <type_traits>
 #include <thread>
 #include <future>
 #include <memory>
@@ -27,17 +28,14 @@ private:
 };
 
 
-template <typename Notifier>
-using GUIQueue = Tools::SyncNotifyingQueue<GUIMessage, Notifier>;
-
 using AppQueue = Tools::SyncWaitingQueue<AppMessage>;
 
 
 template <typename Platform>
 class GUIFor {
 public:
-    using GUIQueueType = GUIQueue<typename Platform::Notifier>;
-    using SharedGUIQueue = std::shared_ptr<GUIQueueType>;
+    using GUIQueue = Platform::InQueue;
+    using SharedGUIQueue = std::shared_ptr<GUIQueue>;
     
     GUIFor() {
         std::shared_ptr<AppQueue> appQueue = std::make_shared<AppQueue>();
@@ -58,15 +56,14 @@ public:
 
 private:
     std::thread thread;
-    Tools::Channel<GUIQueueType, AppQueue> channel;
+    Tools::Channel<GUIQueue, AppQueue> channel;
 
     static void proc(
         std::promise<SharedGUIQueue> guiQueuePromise,
         std::shared_ptr<AppQueue> appQueue)
     {
         Platform platform;
-        SharedGUIQueue guiQueue = std::make_shared<GUIQueueType>(platform.getNotifier());
-        guiQueuePromise.set_value(guiQueue);
+        guiQueuePromise.set_value(platform.getInQueue());
         Core core(platform, appQueue);
         platform.setMessageHandler(core);
     }
