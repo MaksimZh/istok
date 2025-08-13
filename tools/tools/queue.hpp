@@ -2,6 +2,7 @@
 #pragma once
 
 #include <cassert>
+#include <type_traits>
 #include <queue>
 #include <mutex>
 
@@ -79,8 +80,6 @@ private:
 template <typename T>
 class SyncWaitingQueue {
 public:
-    using element_type = T;
-
     SyncWaitingQueue() = default;
     SyncWaitingQueue(const SyncWaitingQueue&) = delete;
     SyncWaitingQueue& operator=(const SyncWaitingQueue&) = delete;
@@ -151,8 +150,6 @@ private:
 template <typename T, typename Notifier>
 class SyncNotifyingQueue {
 public:
-    using element_type = T;
-
     SyncNotifyingQueue(const SyncNotifyingQueue&) = delete;
     SyncNotifyingQueue& operator=(const SyncNotifyingQueue&) = delete;
     SyncNotifyingQueue(SyncNotifyingQueue&&) = delete;
@@ -191,6 +188,9 @@ private:
 template <typename InQueue, typename OutQueue>
 class Channel {
 public:
+    using InType = decltype(std::declval<InQueue>().take());
+    using OutType = decltype(std::declval<OutQueue>().take());
+
     Channel() = default;
     
     Channel(
@@ -206,15 +206,15 @@ public:
         return inQueue->empty();
     }
 
-    void push(OutQueue::element_type&& value) {
+    void push(OutType&& value) {
         outQueue->push(std::move(value));
     }
 
-    void push(const OutQueue::element_type& value) {
+    void push(const OutType& value) {
         outQueue->push(value);
     }
 
-    InQueue::element_type take() {
+    InType take() {
         return inQueue->take();
     }
 
