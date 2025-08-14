@@ -37,6 +37,10 @@ public:
         return value;
     }
 
+    void clean() {
+        container = {};
+    }
+
 private:
     std::queue<T> container;
 };
@@ -69,6 +73,10 @@ public:
         cv.wait(lock, [&]{ return !empty(); });
         assert(!container.empty());
         return container.take();
+    }
+
+    void clean() {
+        container.clean();
     }
 
 private:
@@ -105,6 +113,11 @@ public:
         std::unique_lock lock(mut);
         return container.take(lock);
     }
+    
+    void clean() {
+        std::unique_lock lock(mut);
+        container.clean();
+    }
 
 private:
     std::mutex mut;
@@ -139,6 +152,10 @@ public:
     T take() {
         assert(!container.empty());
         return container.take();
+    }
+
+    void clean() {
+        container.clean();
     }
 
 private:
@@ -177,6 +194,11 @@ public:
         std::lock_guard lock(mut);
         assert(!container.empty());
         return container.take();
+    }
+
+    void clean() {
+        std::unique_lock lock(mut);
+        container.clean();
     }
 
 private:
