@@ -68,7 +68,7 @@ TEST_CASE("GUI - Handler", "[unit][gui]") {
 
 namespace {
 
-class FakePlatform {
+class AsyncMockPlatform {
 public:
     static SyncWaitingQueue<std::string> debugQueue;
     
@@ -80,11 +80,11 @@ public:
 
     using InQueue = SyncWaitingQueue<GUIMessage<int>>;
 
-    FakePlatform() : queue(std::make_shared<InQueue>()) {
+    AsyncMockPlatform() : queue(std::make_shared<InQueue>()) {
         debugQueue.push("create");
     }
 
-    ~FakePlatform() {
+    ~AsyncMockPlatform() {
         debugQueue.push("destroy");
     }
     
@@ -105,26 +105,35 @@ public:
         running = false;
     }
 
-    void newWindow(int id, WindowParams params) {}
-    void destroyWindow(int id) {}
+    void newWindow(int id, WindowParams params) {
+        debugQueue.push(std::format("new window {}", id));
+    }
+
+    void destroyWindow(int id) {
+        debugQueue.push(std::format("destroy window {}", id));
+    }
 
 private:
     std::shared_ptr<InQueue> queue;
     bool running;
 };
 
-SyncWaitingQueue<std::string> FakePlatform::debugQueue;
+SyncWaitingQueue<std::string> AsyncMockPlatform::debugQueue;
 
 }
 
 
 TEST_CASE("GUI - GUI", "[unit][gui]") {
-    FakePlatform::cleanDebugQueue();
+    AsyncMockPlatform::cleanDebugQueue();
     {
-        GUIFor<int, FakePlatform> gui;
-        REQUIRE(FakePlatform::debugQueue.take() == "create");
-        REQUIRE(FakePlatform::debugQueue.take() == "run");
+        GUIFor<int, AsyncMockPlatform> gui;
+        REQUIRE(AsyncMockPlatform::debugQueue.take() == "create");
+        REQUIRE(AsyncMockPlatform::debugQueue.take() == "run");
+        gui.newWindow(42, WindowParams{});
+        REQUIRE(AsyncMockPlatform::debugQueue.take() == "new window 42");
+        gui.destroyWindow(42);
+        REQUIRE(AsyncMockPlatform::debugQueue.take() == "destroy window 42");
     }
-    REQUIRE(FakePlatform::debugQueue.take() == "stop");
-    REQUIRE(FakePlatform::debugQueue.take() == "destroy");
+    REQUIRE(AsyncMockPlatform::debugQueue.take() == "stop");
+    REQUIRE(AsyncMockPlatform::debugQueue.take() == "destroy");
 }

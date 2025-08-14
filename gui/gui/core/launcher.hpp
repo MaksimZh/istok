@@ -70,6 +70,14 @@ public:
     GUIFor(GUIFor&&) = delete;
     GUIFor& operator=(GUIFor&&) = delete;
 
+    void newWindow(ID id, WindowParams params) {
+        channel.push(Message::GUINewWindow<ID>(id, params));
+    }
+
+    void destroyWindow(ID id) {
+        channel.push(Message::GUIDestroyWindow<ID>(id));
+    }
+
 private:
     Tools::Channel<AppQueue, GUIQueue> channel;
     std::thread thread;
