@@ -14,10 +14,33 @@ namespace {
 
 class MockPlatform {
 public:
-    SimpleQueue<std::string> debugQueue;
+    static SyncWaitingQueue<std::string> debugQueue;
+
+    using InQueue = SyncWaitingQueue<GUIMessage<int>>;
+
+    MockPlatform() : queue(std::make_shared<InQueue>()) {
+        debugQueue.push("create");
+    }
+
+    ~MockPlatform() {
+        debugQueue.push("destroy");
+    }
+    
+    std::shared_ptr<InQueue> getInQueue() {
+        return queue;
+    }
+
+    void runStart(WindowMessageHandler<int>& handler) {
+        debugQueue.push("run");
+        this->handler = &handler;
+        running = true;
+    }
 
     void run(WindowMessageHandler<int>& handler) {
-        this->handler = &handler;
+        runStart(handler);
+        while (running) {
+            this->handler->handleMessage(queue->take());
+        }
     }
 
     void sendQueue(GUIMessage<int> msg) {
@@ -26,6 +49,7 @@ public:
 
     void stop() {
         debugQueue.push("stop");
+        running = false;
     }
 
     void newWindow(int id, WindowParams params) {
@@ -37,17 +61,23 @@ public:
     }
 
 private:
-    WindowMessageHandler<int>* handler = nullptr;
+    WindowMessageHandler<int>* handler;
+    std::shared_ptr<InQueue> queue;
+    bool running;
 };
+
+SyncWaitingQueue<std::string> MockPlatform::debugQueue;
 
 }
 
 
 TEST_CASE("GUI - Handler", "[unit][gui]") {
     MockPlatform platform;
+    platform.debugQueue.clean();
     std::shared_ptr<AppQueue> appQueue = std::make_shared<AppQueue>();
     Handler<int, MockPlatform, AppQueue> handler(platform, appQueue);
-    platform.run(handler);
+    platform.runStart(handler);
+    REQUIRE(platform.debugQueue.take() == "run");
 
     SECTION("exit") {
         platform.sendQueue(Message::GUIExit{});
@@ -66,74 +96,17 @@ TEST_CASE("GUI - Handler", "[unit][gui]") {
 }
 
 
-namespace {
-
-class AsyncMockPlatform {
-public:
-    static SyncWaitingQueue<std::string> debugQueue;
-    
-    static void cleanDebugQueue() {
-        while (!debugQueue.empty()) {
-            debugQueue.take();
-        }
-    }
-
-    using InQueue = SyncWaitingQueue<GUIMessage<int>>;
-
-    AsyncMockPlatform() : queue(std::make_shared<InQueue>()) {
-        debugQueue.push("create");
-    }
-
-    ~AsyncMockPlatform() {
-        debugQueue.push("destroy");
-    }
-    
-    std::shared_ptr<InQueue> getInQueue() {
-        return queue;
-    }
-
-    void run(WindowMessageHandler<int>& handler) {
-        debugQueue.push("run");
-        running = true;
-        while (running) {
-            handler.handleMessage(queue->take());
-        }
-    }
-
-    void stop() {
-        debugQueue.push("stop");
-        running = false;
-    }
-
-    void newWindow(int id, WindowParams params) {
-        debugQueue.push(std::format("new window {}", id));
-    }
-
-    void destroyWindow(int id) {
-        debugQueue.push(std::format("destroy window {}", id));
-    }
-
-private:
-    std::shared_ptr<InQueue> queue;
-    bool running;
-};
-
-SyncWaitingQueue<std::string> AsyncMockPlatform::debugQueue;
-
-}
-
-
 TEST_CASE("GUI - GUI", "[unit][gui]") {
-    AsyncMockPlatform::cleanDebugQueue();
+    MockPlatform::debugQueue.clean();
     {
-        GUIFor<int, AsyncMockPlatform> gui;
-        REQUIRE(AsyncMockPlatform::debugQueue.take() == "create");
-        REQUIRE(AsyncMockPlatform::debugQueue.take() == "run");
+        GUIFor<int, MockPlatform> gui;
+        REQUIRE(MockPlatform::debugQueue.take() == "create");
+        REQUIRE(MockPlatform::debugQueue.take() == "run");
         gui.newWindow(42, WindowParams{});
-        REQUIRE(AsyncMockPlatform::debugQueue.take() == "new window 42");
+        REQUIRE(MockPlatform::debugQueue.take() == "new window 42");
         gui.destroyWindow(42);
-        REQUIRE(AsyncMockPlatform::debugQueue.take() == "destroy window 42");
+        REQUIRE(MockPlatform::debugQueue.take() == "destroy window 42");
     }
-    REQUIRE(AsyncMockPlatform::debugQueue.take() == "stop");
-    REQUIRE(AsyncMockPlatform::debugQueue.take() == "destroy");
+    REQUIRE(MockPlatform::debugQueue.take() == "stop");
+    REQUIRE(MockPlatform::debugQueue.take() == "destroy");
 }
