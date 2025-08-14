@@ -12,9 +12,9 @@
 namespace Istok::GUI {
 
 template <typename Platform, typename AppQueue>
-class Core : public WindowMessageHandler {
+class Handler : public WindowMessageHandler {
 public:
-    Core(Platform& platform, std::shared_ptr<AppQueue> appQueue)
+    Handler(Platform& platform, std::shared_ptr<AppQueue> appQueue)
         : platform(platform), appQueue(appQueue) {}
 
 private:
@@ -62,8 +62,8 @@ private:
         assert(appQueue);
         Platform platform;
         guiQueue.set_value(platform.getInQueue());
-        Core core(platform, appQueue);
-        platform.setMessageHandler(core);
+        Handler handler(platform, appQueue);
+        platform.setMessageHandler(handler);
     }
 };
 

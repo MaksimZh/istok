@@ -56,10 +56,10 @@ SyncWaitingQueue<std::string> MockPlatform::debugQueue;
 }
 
 
-TEST_CASE("GUI - Core", "[unit][gui]") {
+TEST_CASE("GUI - Handler", "[unit][gui]") {
     MockPlatform platform;
     std::shared_ptr<AppQueue> appQueue = std::make_shared<AppQueue>();
-    Core<MockPlatform, AppQueue> core(platform, appQueue);
+    Handler core(platform, appQueue);
 }
 
 
