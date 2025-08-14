@@ -15,12 +15,31 @@ namespace {
 
 using AppQueue = SyncWaitingQueue<AppMessage<int>>;
 
+/**
+ * @brief Mock for GUI platform-dependent stuff
+ * 
+ * Pointer to instance can be obtained even if it is created implicitly.
+ * Each instance holds its own debug message queue as a shared pointer.
+ * Thus the queue is accessible even after instance destruction.
+ * 
+ */
 class MockPlatform {
 public:
     using InQueue = SyncWaitingQueue<GUIMessage<int>>;
     using DebugQueue = SyncWaitingQueue<std::string>;
+
+    /**
+     * @brief Debug message queue
+     */
     std::shared_ptr<DebugQueue> debugQueue;
 
+    /**
+     * @brief Construct a new MockPlatform instance
+     * 
+     * The pointer to new instance can be obtained via static `release` method.
+     * If there is already an instance that is not released yet the constructor
+     * will wait.
+     */
     MockPlatform()
         : queue(std::make_shared<InQueue>()),
         debugQueue(std::make_shared<DebugQueue>())
@@ -31,6 +50,12 @@ public:
         instance = this;
     }
 
+    /**
+     * @brief Destroy the MockPlatform instance
+     * 
+     * Releases the instance on destruction so that other instances
+     * can be created.
+     */
     ~MockPlatform() {
         std::lock_guard lock(mut);
         debugQueue->push("destroy");
@@ -40,6 +65,24 @@ public:
         }
     }
 
+    /**
+     * @brief Get pointer to last created instance
+     * 
+     * This method returns the pointer to the last created instance of
+     * this class. Call of this method unlocks creation of other instances.
+     * 
+     * @return MockPlatform* 
+     * 
+     * @details
+     * When instance is created all further constructor calls wait until
+     * the pointer to this instance is obtained by call of this function
+     * or until the destructor is called.
+     * Creation of instances and obtaining pointers to them is thread-safe.
+     * 
+     * @usage
+     * ... // some code creating instance
+     * MockPlatform* instance = MockPlatform::release();
+     */
     static MockPlatform* release() {
         std::lock_guard lock(mut);
         MockPlatform* tmp = instance;
@@ -57,14 +100,29 @@ public:
         return queue;
     }
 
-    void runStart(WindowMessageHandler<int>& handler) {
+    /**
+     * @brief Make all preparations for run and return immediately
+     * 
+     * To be used for handler testing when the mock platform is managed
+     * synchronously in the same thread.
+     * 
+     * @param handler The object used to handle messages that are not processed
+     * by the platform itself
+     */
+    void startRun(WindowMessageHandler<int>& handler) {
         debugQueue->push("run");
         this->handler = &handler;
         running = true;
     }
 
+    /**
+     * @brief Run the message handling loop
+     * 
+     * @param handler The object used to handle messages that are not processed
+     * by the platform itself
+     */
     void run(WindowMessageHandler<int>& handler) {
-        runStart(handler);
+        startRun(handler);
         while (running) {
             this->handler->onMessage(queue->take());
         }
@@ -78,6 +136,11 @@ public:
         handler->onClose(id);
     }
 
+    /**
+     * @brief Stop the message handling loop
+     * 
+     * Not thread-safe. Must be called only in the same thread with `run`.
+     */
     void stop() {
         debugQueue->push("stop");
         running = false;
@@ -115,7 +178,7 @@ TEST_CASE("GUI - Handler", "[unit][gui]") {
     REQUIRE(debugQueue->take() == "create");
     std::shared_ptr<AppQueue> appQueue = std::make_shared<AppQueue>();
     Handler<int, MockPlatform, AppQueue> handler(platform, appQueue);
-    platform.runStart(handler);
+    platform.startRun(handler);
     REQUIRE(debugQueue->take() == "run");
 
     SECTION("exit") {
