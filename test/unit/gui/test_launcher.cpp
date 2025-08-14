@@ -12,6 +12,8 @@ using namespace Istok::GUI;
 
 namespace {
 
+using AppQueue = SyncWaitingQueue<AppMessage<int>>;
+
 class MockPlatform {
 public:
     static SyncWaitingQueue<std::string> debugQueue;
@@ -39,12 +41,16 @@ public:
     void run(WindowMessageHandler<int>& handler) {
         runStart(handler);
         while (running) {
-            this->handler->handleMessage(queue->take());
+            this->handler->onMessage(queue->take());
         }
     }
 
     void sendQueue(GUIMessage<int> msg) {
-        handler->handleMessage(msg);
+        handler->onMessage(msg);
+    }
+
+    void sendClose(int id) {
+        handler->onClose(id);
     }
 
     void stop() {
@@ -92,6 +98,15 @@ TEST_CASE("GUI - Handler", "[unit][gui]") {
     SECTION("destroy window") {
         platform.sendQueue(Message::GUIDestroyWindow<int>(42));
         REQUIRE(platform.debugQueue.take() == "destroy window 42");
+    }
+
+    SECTION("on close") {
+        platform.sendQueue(Message::GUINewWindow<int>(42, WindowParams{}));
+        REQUIRE(platform.debugQueue.take() == "new window 42");
+        platform.sendClose(42);
+        auto msg = appQueue->take();
+        REQUIRE(std::holds_alternative<Message::AppWindowClosed<int>>(msg));
+        REQUIRE(std::get<Message::AppWindowClosed<int>>(msg).id == 42);
     }
 }
 

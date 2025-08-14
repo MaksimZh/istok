@@ -35,6 +35,11 @@ struct GUIDestroyWindow {
     ID id;
 };
 
+template <typename ID>
+struct AppWindowClosed {
+    ID id;
+};
+
 }
 
 template <typename ID>
@@ -44,12 +49,16 @@ using GUIMessage = std::variant<
     Message::GUIDestroyWindow<ID>
 >;
 
-class AppMessage {};
+template <typename ID>
+using AppMessage = std::variant<
+    Message::AppWindowClosed<ID>
+>;
 
 template <typename ID>
 class WindowMessageHandler {
 public:
-    virtual void handleMessage(GUIMessage<ID> msg) = 0;
+    virtual void onMessage(GUIMessage<ID> msg) = 0;
+    virtual void onClose(ID id) = 0;
 };
 
 } // namespace Istok::GUI

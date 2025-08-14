@@ -12,13 +12,14 @@
 
 namespace Istok::GUI {
 
+
 template <typename ID, typename Platform, typename AppQueue>
 class Handler : public WindowMessageHandler<ID> {
 public:
     Handler(Platform& platform, std::shared_ptr<AppQueue> appQueue)
         : platform(platform), appQueue(appQueue) {}
 
-    void handleMessage(GUIMessage<ID> msg) {
+    void onMessage(GUIMessage<ID> msg) {
         if (std::holds_alternative<Message::GUIExit>(msg)) {
             platform.stop();
             return;
@@ -36,19 +37,21 @@ public:
         }
     }
 
+    void onClose(ID id) {
+        appQueue->push(Message::AppWindowClosed<ID>(id));
+    }
+
 private:
     Platform& platform;
     std::shared_ptr<AppQueue> appQueue;
 };
 
 
-using AppQueue = Tools::SyncWaitingQueue<AppMessage>;
-
-
 template <typename ID, typename Platform>
 class GUIFor {
 public:
     using GUIQueue = Platform::InQueue;
+    using AppQueue = Tools::SyncWaitingQueue<AppMessage<ID>>;
     using SharedGUIQueue = std::shared_ptr<GUIQueue>;
     using SharedAppQueue = std::shared_ptr<AppQueue>;
     
