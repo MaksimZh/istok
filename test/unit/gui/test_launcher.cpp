@@ -13,6 +13,14 @@ namespace {
 
 class MockPlatform {
 public:
+    static SyncWaitingQueue<std::string> debugQueue;
+    
+    static void cleanDebugQueue() {
+        while (!debugQueue.empty()) {
+            debugQueue.take();
+        }
+    }
+
     class Notifier {
     public:
         Notifier(MockPlatform& platform) : platform(&platform) {}
@@ -39,12 +47,8 @@ public:
         return queue;
     }
 
-    static SyncWaitingQueue<std::string> debugQueue;
-    
-    static void cleanDebugQueue() {
-        while (!debugQueue.empty()) {
-            debugQueue.take();
-        }
+    void run() {
+        debugQueue.push("run platform");
     }
 
 private:
@@ -68,6 +72,7 @@ TEST_CASE("GUI - GUI", "[unit][gui]") {
     {
         GUIFor<MockPlatform> gui;
         REQUIRE(MockPlatform::debugQueue.take() == "create platform");
+        REQUIRE(MockPlatform::debugQueue.take() == "run platform");
     }
     REQUIRE(MockPlatform::debugQueue.take() == "destroy platform");
 }
