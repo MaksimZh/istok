@@ -269,7 +269,7 @@ private:
 };
 
 
-template <typename K, typename V, typename Hash = std::hash<K>>
+template <typename ID, typename V, typename Hash = std::hash<ID>>
 class DenseMap {
 public:
     DenseMap() = default;
@@ -282,14 +282,14 @@ public:
         return values.size();
     }
 
-    bool contains(const K& key) const {
+    bool contains(const ID& key) const {
         return indices.contains(key);
     }
 
     template <typename KVal, typename VVal>
     void insert(KVal&& key, VVal&& value)
         requires (
-            std::same_as<std::decay_t<KVal>, K> &&
+            std::same_as<std::decay_t<KVal>, ID> &&
             std::same_as<std::decay_t<VVal>, V>)
     {
         if (contains(key)) {
@@ -302,19 +302,19 @@ public:
         values.pushBack(std::forward<KVal>(key), std::forward<VVal>(value));
     }
 
-    V& get(const K& key) {
+    V& get(const ID& key) {
         assert(contains(key));
         size_t index = indices.get(key);
         return values.second(index);
     }
 
-    const V& get(const K& key) const {
+    const V& get(const ID& key) const {
         assert(contains(key));
         size_t index = indices.get(key);
         return values.second(index);
     }
 
-    void erase(const K& key) {
+    void erase(const ID& key) {
         assert(contains(key));
         size_t index = indices.get(key);
         indices.erase(key);
@@ -324,17 +324,17 @@ public:
         }
     }
 
-    DenseRange< K> byKey() noexcept {
+    DenseRange< ID> byKey() noexcept {
         return values.firstElements();
     }
 
-    DenseRange<const K> byKey() const noexcept {
+    DenseRange<const ID> byKey() const noexcept {
         return values.firstElements();
     }
 
 private:
-    IndexMap<K, Hash> indices;
-    DenseArrayPair<K, V> values;
+    IndexMap<ID, Hash> indices;
+    DenseArrayPair<ID, V> values;
 };
 
 

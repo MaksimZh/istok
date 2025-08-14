@@ -8,18 +8,30 @@
 #include <thread>
 #include <future>
 #include <memory>
+#include <variant>
 
 namespace Istok::GUI {
 
-template <typename Platform, typename AppQueue>
-class Handler : public WindowMessageHandler {
+template <typename ID, typename Platform, typename AppQueue>
+class Handler : public WindowMessageHandler<ID> {
 public:
     Handler(Platform& platform, std::shared_ptr<AppQueue> appQueue)
         : platform(platform), appQueue(appQueue) {}
 
-    void handleMessage(GUIMessage msg) {
+    void handleMessage(GUIMessage<ID> msg) {
         if (std::holds_alternative<Message::GUIExit>(msg)) {
             platform.stop();
+            return;
+        }
+        if (std::holds_alternative<Message::GUINewWindow<ID>>(msg)) {
+            Message::GUINewWindow<ID> message =
+                std::get<Message::GUINewWindow<ID>>(msg);
+            platform.newWindow(message.id, message.params);
+            return;
+        }
+        if (std::holds_alternative<Message::GUIDestroyWindow<ID>>(msg)) {
+            platform.destroyWindow(
+                std::get<Message::GUIDestroyWindow<ID>>(msg).id);
             return;
         }
     }
@@ -33,7 +45,7 @@ private:
 using AppQueue = Tools::SyncWaitingQueue<AppMessage>;
 
 
-template <typename Platform>
+template <typename ID, typename Platform>
 class GUIFor {
 public:
     using GUIQueue = Platform::InQueue;
@@ -69,7 +81,7 @@ private:
         assert(appQueue);
         Platform platform;
         guiQueue.set_value(platform.getInQueue());
-        Handler handler(platform, appQueue);
+        Handler<ID, Platform, AppQueue> handler(platform, appQueue);
         platform.run(handler);
     }
 };
