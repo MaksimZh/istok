@@ -31,13 +31,14 @@ class GUIFor {
 public:
     using GUIQueue = Platform::InQueue;
     using SharedGUIQueue = std::shared_ptr<GUIQueue>;
+    using SharedAppQueue = std::shared_ptr<AppQueue>;
     
     GUIFor() {
-        std::unique_ptr<Platform> platform = std::make_unique<Platform>();
-        std::shared_ptr<AppQueue> appQueue = std::make_shared<AppQueue>();
-        std::shared_ptr<GUIQueue> guiQueue = platform->getInQueue();
-        channel = Tools::Channel(appQueue, guiQueue);
-        thread = std::thread(proc, std::move(platform), appQueue);
+        SharedAppQueue appQueue = std::make_shared<AppQueue>();
+        std::promise<SharedGUIQueue> guiQueuePromise;
+        std::future<SharedGUIQueue> guiQueueFuture = guiQueuePromise.get_future();
+        thread = std::thread(proc, std::move(guiQueuePromise), appQueue);
+        channel = Tools::Channel(appQueue, guiQueueFuture.get());
     }
 
     ~GUIFor() {
@@ -55,13 +56,14 @@ private:
     std::thread thread;
 
     static void proc(
-        std::unique_ptr<Platform>&& platform,
-        std::shared_ptr<AppQueue> appQueue)
+        std::promise<SharedGUIQueue> guiQueue,
+        SharedAppQueue appQueue)
     {
-        assert(platform);
         assert(appQueue);
-        Core core(*platform, appQueue);
-        platform->setMessageHandler(core);
+        Platform platform;
+        guiQueue.set_value(platform.getInQueue());
+        Core core(platform, appQueue);
+        platform.setMessageHandler(core);
     }
 };
 
