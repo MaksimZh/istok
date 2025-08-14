@@ -15,6 +15,9 @@ using GUIMessage = std::variant<Message::GUIExit>;
 
 class AppMessage {};
 
-class WindowMessageHandler {};
+class WindowMessageHandler {
+public:
+    virtual void handleMessage(GUIMessage msg) = 0;
+};
 
 } // namespace Istok::GUI

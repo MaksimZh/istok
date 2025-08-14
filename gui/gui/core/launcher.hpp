@@ -17,6 +17,13 @@ public:
     Handler(Platform& platform, std::shared_ptr<AppQueue> appQueue)
         : platform(platform), appQueue(appQueue) {}
 
+    void handleMessage(GUIMessage msg) {
+        if (std::holds_alternative<Message::GUIExit>(msg)) {
+            platform.stop();
+            return;
+        }
+    }
+
 private:
     Platform& platform;
     std::shared_ptr<AppQueue> appQueue;
