@@ -25,7 +25,13 @@ public:
 
     using InQueue = SyncNotifyingQueue<GUIMessage, Notifier>;
 
-    MockPlatform() : queue(std::make_shared<InQueue>(Notifier(*this))) {}
+    MockPlatform() : queue(std::make_shared<InQueue>(Notifier(*this))) {
+        debugQueue.push("create platform");
+    }
+
+    ~MockPlatform() {
+        debugQueue.push("destroy platform");
+    }
     
     void setMessageHandler(WindowMessageHandler& handler) {}
 
@@ -33,9 +39,19 @@ public:
         return queue;
     }
 
+    static SyncWaitingQueue<std::string> debugQueue;
+    
+    static void cleanDebugQueue() {
+        while (!debugQueue.empty()) {
+            debugQueue.take();
+        }
+    }
+
 private:
     std::shared_ptr<InQueue> queue;
 };
+
+SyncWaitingQueue<std::string> MockPlatform::debugQueue;
 
 }
 
@@ -48,5 +64,10 @@ TEST_CASE("GUI - Core", "[unit][gui]") {
 
 
 TEST_CASE("GUI - GUI", "[unit][gui]") {
-    GUIFor<MockPlatform> gui;
+    MockPlatform::cleanDebugQueue();
+    {
+        GUIFor<MockPlatform> gui;
+        REQUIRE(MockPlatform::debugQueue.take() == "create platform");
+    }
+    REQUIRE(MockPlatform::debugQueue.take() == "destroy platform");
 }
