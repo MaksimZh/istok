@@ -11,50 +11,17 @@ using namespace Istok::GUI;
 
 
 namespace {
-/*
+
 class MockPlatform {
 public:
-    static SyncWaitingQueue<std::string> debugQueue;
-    
-    static void cleanDebugQueue() {
-        while (!debugQueue.empty()) {
-            debugQueue.take();
-        }
-    }
-
-    class Notifier {
-    public:
-        Notifier(MockPlatform& platform) : platform(&platform) {}
-        
-        void operator()() {}
-    
-    private:
-        MockPlatform* platform;
-    };
-
-    using InQueue = SyncNotifyingQueue<GUIMessage, Notifier>;
-
-    MockPlatform() : queue(std::make_shared<InQueue>(Notifier(*this))) {
-        debugQueue.push("create");
-    }
-
-    ~MockPlatform() {
-        debugQueue.push("destroy");
-    }
-    
-    std::shared_ptr<InQueue> getInQueue() {
-        return queue;
-    }
+    SimpleQueue<std::string> debugQueue;
 
     void run(WindowMessageHandler& handler) {
-        debugQueue.push("run");
         this->handler = &handler;
     }
 
-    void sendQueue() {
-        assert(handler);
-        assert(!queue->empty());
-        handler->handleMessage(queue->take());
+    void sendQueue(GUIMessage msg) {
+        handler->handleMessage(msg);
     }
 
     void stop() {
@@ -62,33 +29,23 @@ public:
     }
 
 private:
-    std::shared_ptr<InQueue> queue;
     WindowMessageHandler* handler = nullptr;
 };
 
-SyncWaitingQueue<std::string> MockPlatform::debugQueue;
-*/
 }
 
-/*
+
 TEST_CASE("GUI - Handler", "[unit][gui]") {
-    MockPlatform::cleanDebugQueue();
     MockPlatform platform;
     std::shared_ptr<AppQueue> appQueue = std::make_shared<AppQueue>();
-    auto guiQueue = platform.getInQueue();
     Handler handler(platform, appQueue);
     platform.run(handler);
-    REQUIRE(MockPlatform::debugQueue.take() == "create");
-    REQUIRE(MockPlatform::debugQueue.take() == "run");
 
     SECTION("exit") {
-        guiQueue->push(Message::GUIExit{});
-        platform.sendQueue();
-        REQUIRE(MockPlatform::debugQueue.take() == "stop");
+        platform.sendQueue(Message::GUIExit{});
+        REQUIRE(platform.debugQueue.take() == "stop");
     }
 }
-*/
-
 
 
 namespace {
