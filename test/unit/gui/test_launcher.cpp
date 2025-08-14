@@ -41,13 +41,11 @@ public:
         debugQueue.push("destroy platform");
     }
     
-    void setMessageHandler(WindowMessageHandler& handler) {}
-
     std::shared_ptr<InQueue> getInQueue() {
         return queue;
     }
 
-    void run() {
+    void run(WindowMessageHandler& handler) {
         debugQueue.push("run platform");
     }
 

@@ -63,8 +63,7 @@ private:
         Platform platform;
         guiQueue.set_value(platform.getInQueue());
         Handler handler(platform, appQueue);
-        platform.setMessageHandler(handler);
-        platform.run();
+        platform.run(handler);
     }
 };
 
