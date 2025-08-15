@@ -3,6 +3,7 @@
 
 #include <tools/queue.hpp>
 #include <gui/core/message.hpp>
+#include <gui/winapi/window.hpp>
 
 #include <windows.h>
 
@@ -13,11 +14,22 @@ using namespace Istok::Tools;
 
 namespace Istok::GUI::WinAPI {
 
+class Window {
+public:
+    void postQueueNotification() {}
+};
+
+
 template <typename Queue>
 class Translator {
 public:
-    Translator(std::shared_ptr<Queue> queue) : queue(queue) {}
+    Translator() {}
     
+    void setQueue(std::shared_ptr<Queue> value) {
+        assert(queue == nullptr);
+        queue = value;
+    }
+
     std::shared_ptr<Queue> getQueue() {
         return queue;
     }
@@ -27,7 +39,22 @@ private:
 };
 
 
-class Notifier {};
+class Notifier {
+public:
+    Notifier(std::shared_ptr<Window> target) : target(target) {}
+
+    Notifier(const Notifier&) = default;
+    Notifier& operator=(const Notifier&) = default;
+    Notifier(Notifier&&) = default;
+    Notifier& operator=(Notifier&&) = default;
+
+    void operator()() {
+        target->postQueueNotification();
+    }
+
+private:
+    std::shared_ptr<Window> target;
+};
 
 
 template <typename ID>
@@ -35,7 +62,11 @@ class Platform {
 public:
     using InQueue = SyncNotifyingQueue<GUIMessage<ID>, Notifier>;
 
-    Platform() {}
+    Platform() {
+        std::shared_ptr<Window> sampleWindow =
+            std::make_shared<Window>(translator);
+        translator.setQueue(std::make_shared<InQueue>(Notifier(sampleWindow)));
+    }
 
     Platform(const Platform&) = delete;
     Platform& operator=(const Platform&) = delete;
@@ -67,7 +98,7 @@ public:
     void destroyWindow(int id) {}
 
 private:
-    std::unique_ptr<Translator<InQueue>> translator;
+    Translator<InQueue> translator;
 };
 
 } // namespace Istok::GUI::WinAPI
