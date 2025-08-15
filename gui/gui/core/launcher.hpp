@@ -12,7 +12,6 @@
 
 namespace Istok::GUI {
 
-
 template <typename ID, typename Platform, typename AppQueue>
 class Handler : public WindowMessageHandler<ID> {
 public:
