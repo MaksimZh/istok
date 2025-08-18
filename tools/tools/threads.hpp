@@ -49,6 +49,7 @@ private:
             queue.set_value(core->getQueue());
         } catch (...) {
             queue.set_exception(std::current_exception());
+            return;
         }
         try {
             core->run();

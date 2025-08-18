@@ -21,7 +21,10 @@ using StringQueue = SyncWaitingQueue<std::string>;
 
 class MockCore {
 public:
-    MockCore(std::promise<MockCore*> self) {
+    MockCore(std::promise<MockCore*> self, std::string mission = "") {
+        if (mission == "fail creation") {
+            throw std::runtime_error(mission);
+        }
         queue = std::make_shared<StringQueue>();
         log = std::make_shared<StringQueue>();
         log->push("create");
@@ -74,6 +77,26 @@ TEST_CASE("Tools - launcher - just exit", "[unit][tools]") {
     REQUIRE(log->take() == "msg: exit");
     REQUIRE(log->take() == "finish");
 }
+
+
+TEST_CASE("Tools - launcher - fail", "[unit][tools]") {
+    std::promise<MockCore*> prom;
+    std::future<MockCore*> fut = prom.get_future();
+    
+    SECTION("fail creation") {
+        REQUIRE_THROWS_MATCHES(
+            Launcher<MockCore>(std::move(prom), std::string("fail creation")),
+            std::runtime_error,
+            Catch::Matchers::Predicate<std::runtime_error>(
+                [](const std::runtime_error& e) {
+                    return std::string(e.what()) == "fail creation";
+                },
+                "Fail creation"
+            )
+        );
+    }
+}
+
 
 
 TEST_CASE("Tools - channel", "[unit][tools]") {
