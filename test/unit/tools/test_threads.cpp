@@ -6,9 +6,74 @@
 
 using namespace Istok::Tools;
 
+#include <memory>
+#include <stdexcept>
+#include <string>
+#include <format>
 #include <thread>
+#include <future>
 #include <chrono>
 using namespace std::chrono_literals;
+
+namespace {
+
+using StringQueue = SyncWaitingQueue<std::string>;
+
+class MockCore {
+public:
+    MockCore(std::promise<MockCore*> self) {
+        queue = std::make_shared<StringQueue>();
+        log = std::make_shared<StringQueue>();
+        log->push("create");
+        self.set_value(this);
+    }
+    
+    static std::string exitMessage() {
+        return "exit";
+    }
+    
+    std::shared_ptr<StringQueue> getQueue() {
+        return queue;
+    }
+
+    void run() {
+        log->push("start");
+        while (true) {
+            std::string msg = queue->take();
+            log->push(std::format("msg: {}", msg));
+            if (msg == "exit") {
+                break;
+            }
+        }
+        log->push("finish");
+    }
+
+    void onException(std::exception_ptr e) {
+        log->push("exception");
+    }
+
+    std::shared_ptr<StringQueue> log;
+
+private:
+    std::shared_ptr<StringQueue> queue;
+};
+
+}
+
+
+TEST_CASE("Tools - launcher - just exit", "[unit][tools]") {
+    std::promise<MockCore*> prom;
+    std::future<MockCore*> fut = prom.get_future();
+    std::shared_ptr<StringQueue> log;
+    {
+        Launcher<MockCore> launcher(std::move(prom));
+        log = fut.get()->log;
+        REQUIRE(log->take() == "create");
+        REQUIRE(log->take() == "start");
+    }
+    REQUIRE(log->take() == "msg: exit");
+    REQUIRE(log->take() == "finish");
+}
 
 
 TEST_CASE("Tools - channel", "[unit][tools]") {
