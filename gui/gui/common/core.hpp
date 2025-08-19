@@ -6,13 +6,16 @@
 #include "message.hpp"
 
 #include <type_traits>
+#include <concepts>
 #include <memory>
 
 namespace Istok::GUI {
 
 template <typename Platform>
-concept GUIPlatform = requires(Platform platform) {
+concept GUIPlatform = requires {
     typename Platform::WindowID;
+    requires std::default_initializable<Platform>;
+} && requires(Platform platform) {
     {platform.getQueue()} noexcept;
     platform.run(std::declval<GUIHandler<typename Platform::WindowID>&>());
     {platform.stop()} noexcept;
@@ -82,7 +85,7 @@ private:
 };
 
 
-template <typename Platform>
+template <GUIPlatform Platform>
 class GUIFor {
 public:
     using WindowID = Platform::WindowID;
