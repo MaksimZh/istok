@@ -48,7 +48,7 @@ private:
     SharedAppQueue<WindowID> appQueue;
 };
 
-/*
+
 template <typename Platform>
 class GUIFor {
 public:
@@ -74,7 +74,7 @@ private:
         : launcher(appQueue), channel(appQueue, launcher.getQueue()) {}
 
     Tools::Launcher<GUICore<Platform>> launcher;
-    Tools::Channel<AppQueue<WindowID>, GUIQueue> channel;
+    Tools::Channel<AppQueue<WindowID>, typename Platform::InQueue> channel;
 };
-*/
+
 } // namespace Istok::GUI

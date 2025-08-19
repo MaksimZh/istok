@@ -215,21 +215,22 @@ TEST_CASE("GUI - Core", "[unit][gui]") {
     */
 }
 
-/*
+
 TEST_CASE("GUI - GUI", "[unit][gui]") {
-    std::shared_ptr<MockPlatform::DebugQueue> debugQueue;
+    using Platform = MockPlatform<int>;
+    std::shared_ptr<DebugQueue> debugQueue;
     {
-        GUIFor<int, MockPlatform> gui;
-        MockPlatform* platform = MockPlatform::release();
+        GUIFor<Platform> gui;
+        Platform* platform = Platform::release();
         debugQueue = platform->debugQueue;
         REQUIRE(debugQueue->take() == "create");
         REQUIRE(debugQueue->take() == "run");
-        gui.newWindow(42, WindowParams{});
+        /*gui.newWindow(42, WindowParams{});
         REQUIRE(debugQueue->take() == "new window 42");
         gui.destroyWindow(42);
         REQUIRE(debugQueue->take() == "destroy window 42");
+        */
     }
     REQUIRE(debugQueue->take() == "stop");
     REQUIRE(debugQueue->take() == "destroy");
 }
-*/

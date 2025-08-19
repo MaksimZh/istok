@@ -24,7 +24,7 @@ public:
 
     template <typename... Args>
         requires std::constructible_from<Core, Args...>
-    Launcher(Args&&... args) {
+    Launcher(Args... args) {
         std::promise<SharedQueue> prom;
         std::future<SharedQueue> fut = prom.get_future();
         thread = std::thread(
@@ -58,7 +58,7 @@ private:
     SharedQueue queue;
 
     template <typename... Args>
-    static void proc(std::promise<SharedQueue> queue, Args&&... args) {
+    static void proc(std::promise<SharedQueue> queue, Args... args) {
         std::unique_ptr<Core> core;
         try {
             core = std::make_unique<Core>(std::forward<Args>(args)...);
