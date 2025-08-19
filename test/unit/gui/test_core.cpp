@@ -237,16 +237,12 @@ TEST_CASE("GUI - Core", "[unit][gui]") {
         );
     }
 
-    /*
     SECTION("on close") {
-        platform.sendQueue(Message::GUINewWindow<int>(42, WindowParams{}));
-        REQUIRE(debugQueue->take() == "new window 42");
-        platform.sendClose(42);
+        core.onCloseWindow(42);
         auto msg = appQueue->take();
         REQUIRE(std::holds_alternative<Message::AppWindowClosed<int>>(msg));
         REQUIRE(std::get<Message::AppWindowClosed<int>>(msg).id == 42);
     }
-    */
 }
 
 

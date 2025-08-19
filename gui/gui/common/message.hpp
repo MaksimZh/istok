@@ -72,6 +72,7 @@ public:
     virtual void onExit() noexcept = 0;
     virtual void onNewWindow(WindowID id, WindowParams params) noexcept = 0;
     virtual void onDestroyWindow(WindowID id) noexcept = 0;
+    virtual void onCloseWindow(WindowID id) noexcept = 0;
 };
 
 } // namespace Istok::GUI

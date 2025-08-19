@@ -59,6 +59,10 @@ public:
         }
     }
 
+    void onCloseWindow(WindowID id) noexcept override {
+        appQueue->push(Message::AppWindowClosed(id));
+    }
+
 private:
     Platform platform;
     SharedAppQueue<WindowID> appQueue;
