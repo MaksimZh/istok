@@ -8,11 +8,22 @@
 namespace Istok::Tools {
 
 template <typename Core>
+concept ThreadCore = requires {
+    requires noexcept(std::declval<Core>().getQueue());
+    requires noexcept(std::declval<Core>().run());
+    requires noexcept(Core::exitMessage());
+    requires requires(decltype(std::declval<Core>().getQueue()) q) {
+        q->push(Core::exitMessage());
+    };
+};
+
+template <ThreadCore Core>
 class Launcher {
 public:
     using SharedQueue = decltype(std::declval<Core>().getQueue());
 
     template <typename... Args>
+        requires std::constructible_from<Core, Args...>
     Launcher(Args&&... args) {
         std::promise<SharedQueue> prom;
         std::future<SharedQueue> fut = prom.get_future();
