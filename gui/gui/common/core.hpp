@@ -17,11 +17,15 @@ concept GUIPlatform = requires {
     requires std::default_initializable<Platform>;
 } && requires(Platform platform) {
     {platform.getQueue()} noexcept;
-    platform.run(std::declval<GUIHandler<typename Platform::WindowID>&>());
-    {platform.stop()} noexcept;
+    {
+        platform.run(std::declval<GUIHandler<typename Platform::WindowID>&>())
+    } -> std::same_as<void>;
+    {platform.stop()} noexcept -> std::same_as<void>;
     requires requires(Platform::WindowID id) {
-        platform.newWindow(id, std::declval<WindowParams>());
-        platform.destroyWindow(id);
+        {
+            platform.newWindow(id, std::declval<WindowParams>())
+        } -> std::same_as<void>;
+        {platform.destroyWindow(id)} -> std::same_as<void>;
     };
 };
 

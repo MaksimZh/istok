@@ -11,8 +11,8 @@ template <typename Core>
 concept ThreadCore = requires(Core core) {
     {Core::exitMessage()} noexcept;
     {core.getQueue()} noexcept;
-    {core.run()} noexcept;
-    {core.getQueue()->push(Core::exitMessage())} noexcept;
+    {core.run()} noexcept -> std::same_as<void>;
+    {core.getQueue()->push(Core::exitMessage())} noexcept -> std::same_as<void>;
 };
 
 template <ThreadCore Core>
