@@ -110,7 +110,8 @@ private:
         : launcher(appQueue), channel(appQueue, launcher.getQueue()) {}
 
     Tools::Launcher<GUICore<Platform>> launcher;
-    Tools::Channel<AppQueue<WindowID>, typename Platform::InQueue> channel;
+    using GUIQueue = std::decay_t<decltype(*launcher.getQueue())>;
+    Tools::Channel<AppQueue<WindowID>, GUIQueue> channel;
 };
 
 } // namespace Istok::GUI
