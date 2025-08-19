@@ -51,15 +51,6 @@ TEST_CASE("Tools - simple queue", "[unit][tools]") {
         REQUIRE(queue.take() == 4);
         REQUIRE(queue.empty() == true);
     }
-
-    SECTION("clean") {
-        queue.push(0);
-        queue.push(1);
-        queue.push(2);
-        REQUIRE(queue.empty() == false);
-        queue.clean();
-        REQUIRE(queue.empty() == true);
-    }
 }
 
 
@@ -95,15 +86,6 @@ TEST_CASE("Tools - waiting queue", "[unit][tools]") {
         queue.push(4);
         REQUIRE(queue.take(lock) == 3);
         REQUIRE(queue.take(lock) == 4);
-        REQUIRE(queue.empty() == true);
-    }
-
-    SECTION("clean") {
-        queue.push(0);
-        queue.push(1);
-        queue.push(2);
-        REQUIRE(queue.empty() == false);
-        queue.clean();
         REQUIRE(queue.empty() == true);
     }
 
@@ -144,15 +126,6 @@ TEST_CASE("Tools - synchronized waiting queue", "[unit][tools]") {
         REQUIRE(queue.empty() == true);
     }
 
-    SECTION("clean") {
-        queue.push(0);
-        queue.push(1);
-        queue.push(2);
-        REQUIRE(queue.empty() == false);
-        queue.clean();
-        REQUIRE(queue.empty() == true);
-    }
-
     SECTION("muti-thread usage") {
         std::thread second([&queue]{
             for (int i = 0; i < 20; ++i) {
@@ -162,20 +135,6 @@ TEST_CASE("Tools - synchronized waiting queue", "[unit][tools]") {
         });
         for (int i = 0; i < 20; ++i) {
             REQUIRE(queue.take() == i);
-            std::this_thread::sleep_for(1ms);
-        }
-        second.join();
-    }
-
-    SECTION("muti-thread clean") {
-        std::thread second([&queue]{
-            for (int i = 0; i < 20; ++i) {
-                queue.push(std::move(i));
-                std::this_thread::sleep_for(1ms);
-            }
-        });
-        for (int i = 0; i < 20; ++i) {
-            queue.clean();
             std::this_thread::sleep_for(1ms);
         }
         second.join();
@@ -212,15 +171,6 @@ TEST_CASE("Tools - notifying queue", "[unit][tools]") {
         REQUIRE(queue.empty() == true);
         REQUIRE(counter == 5);
     }
-
-    SECTION("clean") {
-        queue.push(0);
-        queue.push(1);
-        queue.push(2);
-        REQUIRE(queue.empty() == false);
-        queue.clean();
-        REQUIRE(queue.empty() == true);
-    }
 }
 
 
@@ -231,37 +181,26 @@ TEST_CASE("Tools - synchronized notifying queue", "[unit][tools]") {
     REQUIRE(queue.empty() == true);
     REQUIRE(counter == 0);
 
-    SECTION("push + take") {
-        queue.push(0);
-        REQUIRE(queue.empty() == false);
-        REQUIRE(counter == 1);
-        int a = 1;
-        queue.push(a);
-        REQUIRE(counter == 2);
-        REQUIRE(queue.take() == 0);
-        REQUIRE(counter == 2);
-        queue.push(2);
-        REQUIRE(counter == 3);
-        queue.push(3);
-        REQUIRE(counter == 4);
-        REQUIRE(queue.take() == 1);
-        REQUIRE(queue.take() == 2);
-        queue.push(4);
-        REQUIRE(counter == 5);
-        REQUIRE(queue.take() == 3);
-        REQUIRE(queue.take() == 4);
-        REQUIRE(queue.empty() == true);
-        REQUIRE(counter == 5);
-    }
-
-    SECTION("clean") {
-        queue.push(0);
-        queue.push(1);
-        queue.push(2);
-        REQUIRE(queue.empty() == false);
-        queue.clean();
-        REQUIRE(queue.empty() == true);
-    }
+    queue.push(0);
+    REQUIRE(queue.empty() == false);
+    REQUIRE(counter == 1);
+    int a = 1;
+    queue.push(a);
+    REQUIRE(counter == 2);
+    REQUIRE(queue.take() == 0);
+    REQUIRE(counter == 2);
+    queue.push(2);
+    REQUIRE(counter == 3);
+    queue.push(3);
+    REQUIRE(counter == 4);
+    REQUIRE(queue.take() == 1);
+    REQUIRE(queue.take() == 2);
+    queue.push(4);
+    REQUIRE(counter == 5);
+    REQUIRE(queue.take() == 3);
+    REQUIRE(queue.take() == 4);
+    REQUIRE(queue.empty() == true);
+    REQUIRE(counter == 5);
 }
 
 
