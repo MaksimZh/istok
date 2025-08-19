@@ -36,7 +36,7 @@ struct GUIDestroyWindow {
 };
 
 struct AppGUIException {
-    std::exception_ptr e;
+    std::exception_ptr exception;
 };
 
 template <typename WindowID>

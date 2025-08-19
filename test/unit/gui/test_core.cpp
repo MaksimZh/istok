@@ -130,10 +130,16 @@ public:
     }
 
     void newWindow(WindowID id, WindowParams params) {
+        if (id < 0) {
+            throw std::runtime_error("newWindow failed");
+        }
         debugQueue->push(std::format("new window {}", id));
     }
 
     void destroyWindow(WindowID id) {
+        if (id < 0) {
+            throw std::runtime_error("destroyWindow failed");
+        }
         debugQueue->push(std::format("destroy window {}", id));
     }
 
@@ -192,9 +198,43 @@ TEST_CASE("GUI - Core", "[unit][gui]") {
         REQUIRE(debugQueue->take() == "new window 42");
     }
 
+    SECTION("new window fail") {
+        core.onNewWindow(-1, WindowParams{});
+        auto msg = appQueue->take();
+        REQUIRE(std::holds_alternative<Message::AppGUIException>(msg));
+        REQUIRE_THROWS_MATCHES(
+            std::rethrow_exception(
+                std::get<Message::AppGUIException>(msg).exception),
+            std::runtime_error,
+            Catch::Matchers::Predicate<std::runtime_error>(
+                [](const std::runtime_error& e) {
+                    return std::string(e.what()) == "newWindow failed";
+                },
+                "received a message about newWindow fail"
+            )
+        );
+    }
+
     SECTION("destroy window") {
         core.onDestroyWindow(42);
         REQUIRE(debugQueue->take() == "destroy window 42");
+    }
+
+    SECTION("destroy window fail") {
+        core.onDestroyWindow(-1);
+        auto msg = appQueue->take();
+        REQUIRE(std::holds_alternative<Message::AppGUIException>(msg));
+        REQUIRE_THROWS_MATCHES(
+            std::rethrow_exception(
+                std::get<Message::AppGUIException>(msg).exception),
+            std::runtime_error,
+            Catch::Matchers::Predicate<std::runtime_error>(
+                [](const std::runtime_error& e) {
+                    return std::string(e.what()) == "destroyWindow failed";
+                },
+                "received a message about newWindow fail"
+            )
+        );
     }
 
     /*
