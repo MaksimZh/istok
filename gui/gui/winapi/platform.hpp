@@ -2,7 +2,7 @@
 #pragma once
 
 #include <tools/queue.hpp>
-#include <gui/core/message.hpp>
+#include <gui/common/message.hpp>
 #include <gui/winapi/window.hpp>
 
 #include <windows.h>

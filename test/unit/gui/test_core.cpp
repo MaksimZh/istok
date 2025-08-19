@@ -1,7 +1,7 @@
 // Copyright 2025 Maksim Sergeevich Zholudev. All rights reserved
 #include <catch.hpp>
 
-#include <gui/core/launcher.hpp>
+#include <gui/common/core.hpp>
 
 using namespace Istok::Tools;
 using namespace Istok::GUI;
