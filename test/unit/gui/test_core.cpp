@@ -160,6 +160,16 @@ private:
             this->handler->appExit();
             return;
         }
+        if (std::holds_alternative<Message::GUINewWindow<WindowID>>(msg)) {
+            auto message = std::get<Message::GUINewWindow<WindowID>>(msg);
+            this->handler->appNewWindow(message.id, message.params);
+            return;
+        }
+        if (std::holds_alternative<Message::GUIDestroyWindow<WindowID>>(msg)) {
+            auto message = std::get<Message::GUIDestroyWindow<WindowID>>(msg);
+            this->handler->appDestroyWindow(message.id);
+            return;
+        }
     }
 };
 
