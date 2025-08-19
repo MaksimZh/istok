@@ -24,41 +24,52 @@ namespace Message {
 
 struct GUIExit {};
 
-template <typename ID>
+template <typename WindowID>
 struct GUINewWindow {
-    ID id;
+    WindowID id;
     WindowParams params;
 };
 
-template <typename ID>
+template <typename WindowID>
 struct GUIDestroyWindow {
-    ID id;
+    WindowID id;
 };
 
-template <typename ID>
+struct AppGUIException {
+    std::exception_ptr e;
+};
+
+template <typename WindowID>
 struct AppWindowClosed {
-    ID id;
+    WindowID id;
 };
 
 }
 
-template <typename ID>
+template <typename WindowID>
 using GUIMessage = std::variant<
     Message::GUIExit,
-    Message::GUINewWindow<ID>,
-    Message::GUIDestroyWindow<ID>
+    Message::GUINewWindow<WindowID>,
+    Message::GUIDestroyWindow<WindowID>
 >;
 
-template <typename ID>
+template <typename WindowID>
 using AppMessage = std::variant<
-    Message::AppWindowClosed<ID>
+    Message::AppGUIException,
+    Message::AppWindowClosed<WindowID>
 >;
 
-template <typename ID>
-class WindowMessageHandler {
+template <typename WindowID>
+using AppQueue = Tools::SyncWaitingQueue<AppMessage<WindowID>>;
+
+template <typename WindowID>
+using SharedAppQueue = std::shared_ptr<AppQueue<WindowID>>;
+
+
+template <typename WindowID>
+class GUIHandler {
 public:
-    virtual void onMessage(GUIMessage<ID> msg) = 0;
-    virtual void onClose(ID id) = 0;
+    virtual void onExit() noexcept = 0;
 };
 
 } // namespace Istok::GUI

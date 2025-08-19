@@ -43,14 +43,19 @@ public:
         queue->push(Core::exitMessage());
         thread.join();
     }
+
+    Launcher(const Launcher&) = delete;
+    Launcher& operator=(const Launcher&) = delete;
+    Launcher(Launcher&&) = delete;
+    Launcher& operator=(Launcher&&) = delete;
     
     SharedQueue getQueue() {
         return queue;
     }
 
 private:
-    SharedQueue queue;
     std::thread thread;
+    SharedQueue queue;
 
     template <typename... Args>
     static void proc(std::promise<SharedQueue> queue, Args&&... args) {

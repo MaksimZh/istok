@@ -9,11 +9,12 @@ using namespace Istok::GUI;
 #include <mutex>
 #include <string>
 #include <format>
+#include <variant>
 
 
 namespace {
 
-using AppQueue = SyncWaitingQueue<AppMessage<int>>;
+using DebugQueue = SyncWaitingQueue<std::string>;
 
 /**
  * @brief Mock for GUI platform-dependent stuff
@@ -23,10 +24,11 @@ using AppQueue = SyncWaitingQueue<AppMessage<int>>;
  * Thus the queue is accessible even after instance destruction.
  * 
  */
+template <typename WindowID_>
 class MockPlatform {
 public:
-    using InQueue = SyncWaitingQueue<GUIMessage<int>>;
-    using DebugQueue = SyncWaitingQueue<std::string>;
+    using WindowID = WindowID_;
+    using InQueue = SyncWaitingQueue<GUIMessage<WindowID>>;
 
     /**
      * @brief Debug message queue
@@ -81,7 +83,7 @@ public:
      * 
      * @usage
      * ... // some code creating instance
-     * MockPlatform* instance = MockPlatform::release();
+     * MockPlatform<T>* instance = MockPlatform<T>::release();
      */
     static MockPlatform* release() {
         std::lock_guard lock(mut);
@@ -96,61 +98,47 @@ public:
     MockPlatform(MockPlatform&&) = delete;
     MockPlatform& operator=(MockPlatform&&) = delete;
     
-    std::shared_ptr<InQueue> getInQueue() {
+    std::shared_ptr<InQueue> getQueue() noexcept {
         return queue;
     }
 
-    /**
-     * @brief Make all preparations for run and return immediately
-     * 
-     * To be used for handler testing when the mock platform is managed
-     * synchronously in the same thread.
-     * 
-     * @param handler The object used to handle messages that are not processed
-     * by the platform itself
-     */
-    void startRun(WindowMessageHandler<int>& handler) {
+    void run(GUIHandler<WindowID>& handler) {
         debugQueue->push("run");
         this->handler = &handler;
         running = true;
-    }
-
-    /**
-     * @brief Run the message handling loop
-     * 
-     * @param handler The object used to handle messages that are not processed
-     * by the platform itself
-     */
-    void run(WindowMessageHandler<int>& handler) {
-        startRun(handler);
+        if (sync) {
+            return;
+        }
         while (running) {
-            this->handler->onMessage(queue->take());
+            processQueue();
         }
     }
 
-    void sendQueue(GUIMessage<int> msg) {
-        handler->onMessage(msg);
-    }
-
-    void sendClose(int id) {
-        handler->onClose(id);
-    }
-
     /**
-     * @brief Stop the message handling loop
+     * @brief Enter synchronous mode
      * 
-     * Not thread-safe. Must be called only in the same thread with `run`.
+     * Must be called before `run`.
+     * 
      */
+    void syncStart() {
+        sync = true;
+    }
+
+    void syncProcessQueue() {
+        assert(!queue->empty());
+        processQueue();
+    }
+
     void stop() {
         debugQueue->push("stop");
         running = false;
     }
 
-    void newWindow(int id, WindowParams params) {
+    void newWindow(WindowID id, WindowParams params) {
         debugQueue->push(std::format("new window {}", id));
     }
 
-    void destroyWindow(int id) {
+    void destroyWindow(WindowID id) {
         debugQueue->push(std::format("destroy window {}", id));
     }
 
@@ -159,33 +147,53 @@ private:
     static std::mutex mut;
     static std::condition_variable cv;
 
-    WindowMessageHandler<int>* handler;
+    GUIHandler<WindowID>* handler;
     std::shared_ptr<InQueue> queue;
-    bool running;
+    bool running = false;
+    bool sync = false;
+
+    void processQueue() {
+        assert(this->handler);
+        GUIMessage<WindowID> msg = queue->take();
+        if (std::holds_alternative<Message::GUIExit>(msg)) {
+            this->handler->onExit();
+            return;
+        }
+    }
 };
 
-MockPlatform* MockPlatform::instance = nullptr;
-std::mutex MockPlatform::mut;
-std::condition_variable MockPlatform::cv;
+template <typename WindowID>
+MockPlatform<WindowID>* MockPlatform<WindowID>::instance = nullptr;
+
+template <typename WindowID>
+std::mutex MockPlatform<WindowID>::mut;
+
+template <typename WindowID>
+std::condition_variable MockPlatform<WindowID>::cv;
 
 }
 
 
-TEST_CASE("GUI - Handler", "[unit][gui]") {
-    MockPlatform platform;
-    std::shared_ptr<MockPlatform::DebugQueue> debugQueue =
-        MockPlatform::release()->debugQueue;
+TEST_CASE("GUI - Core", "[unit][gui]") {
+    using Platform = MockPlatform<int>;
+    auto appQueue = std::make_shared<AppQueue<int>>();
+    GUICore<Platform> core(appQueue);
+    auto platform = Platform::release();
+    auto queue = core.getQueue();
+    auto debugQueue = platform->debugQueue;
     REQUIRE(debugQueue->take() == "create");
-    std::shared_ptr<AppQueue> appQueue = std::make_shared<AppQueue>();
-    Handler<int, MockPlatform, AppQueue> handler(platform, appQueue);
-    platform.startRun(handler);
+    
+    platform->syncStart();
+    core.run();
     REQUIRE(debugQueue->take() == "run");
 
     SECTION("exit") {
-        platform.sendQueue(Message::GUIExit{});
+        queue->push(Message::GUIExit{});
+        platform->syncProcessQueue();
         REQUIRE(debugQueue->take() == "stop");
     }
 
+    /*
     SECTION("new window") {
         platform.sendQueue(Message::GUINewWindow<int>(42, WindowParams{}));
         REQUIRE(debugQueue->take() == "new window 42");
@@ -204,9 +212,10 @@ TEST_CASE("GUI - Handler", "[unit][gui]") {
         REQUIRE(std::holds_alternative<Message::AppWindowClosed<int>>(msg));
         REQUIRE(std::get<Message::AppWindowClosed<int>>(msg).id == 42);
     }
+    */
 }
 
-
+/*
 TEST_CASE("GUI - GUI", "[unit][gui]") {
     std::shared_ptr<MockPlatform::DebugQueue> debugQueue;
     {
@@ -223,3 +232,4 @@ TEST_CASE("GUI - GUI", "[unit][gui]") {
     REQUIRE(debugQueue->take() == "stop");
     REQUIRE(debugQueue->take() == "destroy");
 }
+*/

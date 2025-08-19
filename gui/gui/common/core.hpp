@@ -6,95 +6,75 @@
 #include "message.hpp"
 
 #include <type_traits>
-#include <thread>
-#include <future>
 #include <memory>
-#include <variant>
 
 namespace Istok::GUI {
 
-template <typename ID, typename Platform, typename AppQueue>
-class Handler : public WindowMessageHandler<ID> {
+template <typename Platform>
+class GUICore : public GUIHandler<typename Platform::WindowID> {
 public:
-    Handler(Platform& platform, std::shared_ptr<AppQueue> appQueue)
-        : platform(platform), appQueue(appQueue) {}
+    using WindowID = Platform::WindowID;
 
-    void onMessage(GUIMessage<ID> msg) {
-        if (std::holds_alternative<Message::GUIExit>(msg)) {
-            platform.stop();
-            return;
-        }
-        if (std::holds_alternative<Message::GUINewWindow<ID>>(msg)) {
-            Message::GUINewWindow<ID> message =
-                std::get<Message::GUINewWindow<ID>>(msg);
-            platform.newWindow(message.id, message.params);
-            return;
-        }
-        if (std::holds_alternative<Message::GUIDestroyWindow<ID>>(msg)) {
-            platform.destroyWindow(
-                std::get<Message::GUIDestroyWindow<ID>>(msg).id);
-            return;
+    GUICore(SharedAppQueue<WindowID> appQueue) : appQueue(appQueue) {}
+
+    GUICore(const GUICore&) = delete;
+    GUICore& operator=(const GUICore&) = delete;
+    GUICore(GUICore&&) = delete;
+    GUICore& operator=(GUICore&&) = delete;
+    
+    static GUIMessage<WindowID> exitMessage() noexcept {
+        return Message::GUIExit{};
+    }
+    
+    auto getQueue() noexcept {
+        return platform.getQueue();
+    }
+
+    void run() noexcept {
+        try {
+            platform.run(*this);
+        } catch (...) {
+            appQueue->push(Message::AppGUIException(std::current_exception()));
         }
     }
 
-    void onClose(ID id) {
-        appQueue->push(Message::AppWindowClosed<ID>(id));
+
+    void onExit() noexcept override {
+        platform.stop();
     }
 
 private:
-    Platform& platform;
-    std::shared_ptr<AppQueue> appQueue;
+    Platform platform;
+    SharedAppQueue<WindowID> appQueue;
 };
 
-
-template <typename ID, typename Platform>
+/*
+template <typename Platform>
 class GUIFor {
 public:
-    using GUIQueue = Platform::InQueue;
-    using AppQueue = Tools::SyncWaitingQueue<AppMessage<ID>>;
-    using SharedGUIQueue = std::shared_ptr<GUIQueue>;
-    using SharedAppQueue = std::shared_ptr<AppQueue>;
+    using WindowID = Platform::WindowID;
     
-    GUIFor() {
-        SharedAppQueue appQueue = std::make_shared<AppQueue>();
-        std::promise<SharedGUIQueue> guiQueuePromise;
-        std::future<SharedGUIQueue> guiQueueFuture = guiQueuePromise.get_future();
-        thread = std::thread(proc, std::move(guiQueuePromise), appQueue);
-        channel = Tools::Channel(appQueue, guiQueueFuture.get());
-    }
-
-    ~GUIFor() {
-        channel.push(Message::GUIExit{});
-        thread.join();
-    }
+    GUIFor() : GUIFor(std::make_shared<AppQueue<WindowID>>()) {}
 
     GUIFor(const GUIFor&) = delete;
     GUIFor& operator=(const GUIFor&) = delete;
     GUIFor(GUIFor&&) = delete;
     GUIFor& operator=(GUIFor&&) = delete;
 
-    void newWindow(ID id, WindowParams params) {
-        channel.push(Message::GUINewWindow<ID>(id, params));
+    void newWindow(WindowID id, WindowParams params) {
+        channel.push(Message::GUINewWindow<WindowID>(id, params));
     }
 
-    void destroyWindow(ID id) {
-        channel.push(Message::GUIDestroyWindow<ID>(id));
+    void destroyWindow(WindowID id) {
+        channel.push(Message::GUIDestroyWindow<WindowID>(id));
     }
 
 private:
-    Tools::Channel<AppQueue, GUIQueue> channel;
-    std::thread thread;
+    GUIFor(SharedAppQueue<WindowID> appQueue)
+        : launcher(appQueue), channel(appQueue, launcher.getQueue()) {}
 
-    static void proc(
-        std::promise<SharedGUIQueue> guiQueue,
-        SharedAppQueue appQueue)
-    {
-        assert(appQueue);
-        Platform platform;
-        guiQueue.set_value(platform.getInQueue());
-        Handler<ID, Platform, AppQueue> handler(platform, appQueue);
-        platform.run(handler);
-    }
+    Tools::Launcher<GUICore<Platform>> launcher;
+    Tools::Channel<AppQueue<WindowID>, GUIQueue> channel;
 };
-
+*/
 } // namespace Istok::GUI

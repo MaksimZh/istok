@@ -57,10 +57,10 @@ private:
 };
 
 
-template <typename ID>
+template <typename WindowID>
 class Platform {
 public:
-    using InQueue = SyncNotifyingQueue<GUIMessage<ID>, Notifier>;
+    using InQueue = SyncNotifyingQueue<GUIMessage<WindowID>, Notifier>;
 
     Platform() {
         std::shared_ptr<Window> sampleWindow =
