@@ -255,11 +255,10 @@ TEST_CASE("GUI - GUI", "[unit][gui]") {
         debugQueue = platform->debugQueue;
         REQUIRE(debugQueue->take() == "create");
         REQUIRE(debugQueue->take() == "run");
-        /*gui.newWindow(42, WindowParams{});
+        gui.newWindow(42, WindowParams{});
         REQUIRE(debugQueue->take() == "new window 42");
         gui.destroyWindow(42);
         REQUIRE(debugQueue->take() == "destroy window 42");
-        */
     }
     REQUIRE(debugQueue->take() == "stop");
     REQUIRE(debugQueue->take() == "destroy");
