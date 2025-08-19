@@ -2,6 +2,7 @@
 #pragma once
 
 #include <tools/queue.hpp>
+#include <tools/threads.hpp>
 #include "message.hpp"
 
 #include <type_traits>
@@ -93,59 +94,6 @@ private:
         guiQueue.set_value(platform.getInQueue());
         Handler<ID, Platform, AppQueue> handler(platform, appQueue);
         platform.run(handler);
-    }
-};
-
-
-template <typename Core>
-class Launcher {
-public:
-    using Channel = Tools::Channel<Core::InQueue, Core::OutQueue>;
-    
-    Launcher(std::shared_ptr<Core::OutQueue> outQueue) {
-        std::promise<std::shared_ptr<Core::InQueue>> inQueuePromise;
-        std::future<std::shared_ptr<Core::InQueue>> inQueueFuture =
-            inQueuePromise.get_future();
-        thread = std::thread(proc, std::move(inQueuePromise), outQueue);
-        channel = Tools::Channel(outQueue, inQueueFuture.get());
-    }
-
-    ~Launcher() {
-        channel.push(Core::ExitInMessage{});
-        thread.join();
-    }
-
-    bool empty() {
-        return channel.empty();
-    }
-
-    void push(Channel::OutType&& value) {
-        channel.push(std::move(value));
-    }
-
-    void push(const Channel::OutType& value) {
-        channel.push(value);
-    }
-
-    Channel::InType take() {
-        return channel.take();
-    }
-
-private:
-    Channel channel;
-    std::thread thread;
-
-    static void proc(
-        std::promise<std::shared_ptr<Core::InQueue>> inQueue,
-        std::shared_ptr<Core::OutQueue> outQueue,
-    ) {
-        try {
-            Core core(outQueue);
-            inQueue.set_value(core.getInQueue());
-            core.run();
-        } catch (...) {
-            outQueue.push(Core::ErrorOutMessage(std::current_exception()));
-        }
     }
 };
 
