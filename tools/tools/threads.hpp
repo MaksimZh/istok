@@ -8,13 +8,11 @@
 namespace Istok::Tools {
 
 template <typename Core>
-concept ThreadCore = requires {
-    requires noexcept(std::declval<Core>().getQueue());
-    requires noexcept(std::declval<Core>().run());
+concept ThreadCore = requires(Core core) {
     requires noexcept(Core::exitMessage());
-    requires requires(decltype(std::declval<Core>().getQueue()) q) {
-        q->push(Core::exitMessage());
-    };
+    requires noexcept(core.getQueue());
+    requires noexcept(core.run());
+    requires noexcept(core.getQueue()->push(Core::exitMessage()));
 };
 
 template <ThreadCore Core>

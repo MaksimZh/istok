@@ -18,15 +18,15 @@ public:
     SimpleQueue(SimpleQueue&&) = default;
     SimpleQueue& operator=(SimpleQueue&&) = default;
 
-    bool empty() const {
+    bool empty() const noexcept {
         return container.empty();
     }
 
-    void push(T&& value) {
+    void push(T&& value) noexcept {
         container.push(std::move(value));
     }
 
-    void push(const T& value) {
+    void push(const T& value) noexcept {
         container.push(value);
     }
 
@@ -55,16 +55,16 @@ public:
     WaitingQueue(WaitingQueue&&) = delete;
     WaitingQueue& operator=(WaitingQueue&&) = delete;
 
-    bool empty() const {
+    bool empty() const noexcept {
         return container.empty();
     }
 
-    void push(T&& value) {
+    void push(T&& value) noexcept {
         container.push(std::move(value));
         cv.notify_one();
     }
 
-    void push(const T& value) {
+    void push(const T& value) noexcept {
         container.push(value);
         cv.notify_one();
     }
@@ -94,17 +94,17 @@ public:
     SyncWaitingQueue(SyncWaitingQueue&&) = delete;
     SyncWaitingQueue& operator=(SyncWaitingQueue&&) = delete;
 
-    bool empty() {
+    bool empty() noexcept {
         std::lock_guard lock(mut);
         return container.empty();
     }
 
-    void push(T&& value) {
+    void push(T&& value) noexcept {
         std::lock_guard lock(mut);
         container.push(std::move(value));
     }
 
-    void push(const T& value) {
+    void push(const T& value) noexcept {
         std::lock_guard lock(mut);
         container.push(value);
     }
@@ -135,16 +135,16 @@ public:
 
     NotifyingQueue(Notifier&& notifier) : notifier(std::move(notifier)) {}
     
-    bool empty() const {
+    bool empty() const noexcept {
         return container.empty();
     }
 
-    void push(T&& value) {
+    void push(T&& value) noexcept {
         container.push(std::move(value));
         notifier();
     }
 
-    void push(const T& value) {
+    void push(const T& value) noexcept {
         container.push(value);
         notifier();
     }
@@ -175,17 +175,17 @@ public:
     SyncNotifyingQueue(Notifier&& notifier)
         : container(std::move(notifier)) {}
 
-    bool empty() {
+    bool empty() noexcept {
         std::lock_guard lock(mut);
         return container.empty();
     }
 
-    void push(T&& value) {
+    void push(T&& value) noexcept {
         std::lock_guard lock(mut);
         container.push(std::move(value));
     }
 
-    void push(const T& value) {
+    void push(const T& value) noexcept {
         std::lock_guard lock(mut);
         container.push(value);
     }
