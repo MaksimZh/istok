@@ -75,27 +75,26 @@ class Channel {
 public:
     using InType = decltype(std::declval<InQueue>().take());
     using OutType = decltype(std::declval<OutQueue>().take());
-
-    Channel() = default;
     
     Channel(
         std::shared_ptr<InQueue> inQueue,
         std::shared_ptr<OutQueue> outQueue
     ) : inQueue(inQueue), outQueue(outQueue)
     {
-        assert(this->inQueue);
-        assert(this->outQueue);
+        if (!this->inQueue || !this->outQueue) {
+            throw std::runtime_error("Uninitialized queues");
+        }
     }
 
-    bool empty() {
+    bool empty() noexcept {
         return inQueue->empty();
     }
 
-    void push(OutType&& value) {
+    void push(OutType&& value) noexcept {
         outQueue->push(std::move(value));
     }
 
-    void push(const OutType& value) {
+    void push(const OutType& value) noexcept {
         outQueue->push(value);
     }
 

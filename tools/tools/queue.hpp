@@ -31,7 +31,9 @@ public:
     }
 
     T take() {
-        assert(!container.empty());
+        if (container.empty()) {
+            throw std::runtime_error("Reading from empty queue");
+        }
         T value = std::move(container.front());
         container.pop();
         return value;
@@ -137,7 +139,9 @@ public:
     }
 
     T take() {
-        assert(!container.empty());
+        if (container.empty()) {
+            throw std::runtime_error("Reading from empty queue");
+        }
         return container.take();
     }
 
@@ -175,7 +179,9 @@ public:
 
     T take() {
         std::lock_guard lock(mut);
-        assert(!container.empty());
+        if (container.empty()) {
+            throw std::runtime_error("Reading from empty queue");
+        }
         return container.take();
     }
 
