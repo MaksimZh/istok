@@ -124,11 +124,6 @@ public:
         sync = true;
     }
 
-    void syncProcessQueue() {
-        assert(!queue->empty());
-        processQueue();
-    }
-
     void stop() {
         debugQueue->push("stop");
         running = false;
@@ -188,22 +183,21 @@ TEST_CASE("GUI - Core", "[unit][gui]") {
     REQUIRE(debugQueue->take() == "run");
 
     SECTION("exit") {
-        queue->push(Message::GUIExit{});
-        platform->syncProcessQueue();
+        core.onExit();
         REQUIRE(debugQueue->take() == "stop");
     }
 
-    /*
     SECTION("new window") {
-        platform.sendQueue(Message::GUINewWindow<int>(42, WindowParams{}));
+        core.onNewWindow(42, WindowParams{});
         REQUIRE(debugQueue->take() == "new window 42");
     }
 
     SECTION("destroy window") {
-        platform.sendQueue(Message::GUIDestroyWindow<int>(42));
+        core.onDestroyWindow(42);
         REQUIRE(debugQueue->take() == "destroy window 42");
     }
 
+    /*
     SECTION("on close") {
         platform.sendQueue(Message::GUINewWindow<int>(42, WindowParams{}));
         REQUIRE(debugQueue->take() == "new window 42");

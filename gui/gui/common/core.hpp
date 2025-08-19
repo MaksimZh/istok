@@ -43,6 +43,22 @@ public:
         platform.stop();
     }
 
+    void onNewWindow(WindowID id, WindowParams params) noexcept override {
+        try {
+            platform.newWindow(id, params);
+        } catch(...) {
+            appQueue->push(Message::AppGUIException(std::current_exception()));
+        }
+    }
+
+    void onDestroyWindow(WindowID id) noexcept override {
+        try {
+            platform.destroyWindow(id);
+        } catch(...) {
+            appQueue->push(Message::AppGUIException(std::current_exception()));
+        }
+    }
+
 private:
     Platform platform;
     SharedAppQueue<WindowID> appQueue;
