@@ -39,11 +39,11 @@ public:
     }
 
 
-    void onExit() noexcept override {
+    void appExit() noexcept override {
         platform.stop();
     }
 
-    void onNewWindow(WindowID id, WindowParams params) noexcept override {
+    void appNewWindow(WindowID id, WindowParams params) noexcept override {
         try {
             platform.newWindow(id, params);
         } catch(...) {
@@ -51,7 +51,7 @@ public:
         }
     }
 
-    void onDestroyWindow(WindowID id) noexcept override {
+    void appDestroyWindow(WindowID id) noexcept override {
         try {
             platform.destroyWindow(id);
         } catch(...) {
@@ -59,7 +59,7 @@ public:
         }
     }
 
-    void onCloseWindow(WindowID id) noexcept override {
+    void sysCloseWindow(WindowID id) noexcept override {
         appQueue->push(Message::AppWindowClosed(id));
     }
 

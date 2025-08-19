@@ -157,7 +157,7 @@ private:
         assert(this->handler);
         GUIMessage<WindowID> msg = queue->take();
         if (std::holds_alternative<Message::GUIExit>(msg)) {
-            this->handler->onExit();
+            this->handler->appExit();
             return;
         }
     }
@@ -189,17 +189,17 @@ TEST_CASE("GUI - Core", "[unit][gui]") {
     REQUIRE(debugQueue->take() == "run");
 
     SECTION("exit") {
-        core.onExit();
+        core.appExit();
         REQUIRE(debugQueue->take() == "stop");
     }
 
     SECTION("new window") {
-        core.onNewWindow(42, WindowParams{});
+        core.appNewWindow(42, WindowParams{});
         REQUIRE(debugQueue->take() == "new window 42");
     }
 
     SECTION("new window fail") {
-        core.onNewWindow(-1, WindowParams{});
+        core.appNewWindow(-1, WindowParams{});
         auto msg = appQueue->take();
         REQUIRE(std::holds_alternative<Message::AppGUIException>(msg));
         REQUIRE_THROWS_MATCHES(
@@ -216,12 +216,12 @@ TEST_CASE("GUI - Core", "[unit][gui]") {
     }
 
     SECTION("destroy window") {
-        core.onDestroyWindow(42);
+        core.appDestroyWindow(42);
         REQUIRE(debugQueue->take() == "destroy window 42");
     }
 
     SECTION("destroy window fail") {
-        core.onDestroyWindow(-1);
+        core.appDestroyWindow(-1);
         auto msg = appQueue->take();
         REQUIRE(std::holds_alternative<Message::AppGUIException>(msg));
         REQUIRE_THROWS_MATCHES(
@@ -238,7 +238,7 @@ TEST_CASE("GUI - Core", "[unit][gui]") {
     }
 
     SECTION("on close") {
-        core.onCloseWindow(42);
+        core.sysCloseWindow(42);
         auto msg = appQueue->take();
         REQUIRE(std::holds_alternative<Message::AppWindowClosed<int>>(msg));
         REQUIRE(std::get<Message::AppWindowClosed<int>>(msg).id == 42);
