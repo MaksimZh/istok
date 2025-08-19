@@ -51,11 +51,7 @@ private:
             queue.set_exception(std::current_exception());
             return;
         }
-        try {
-            core->run();
-        } catch (...) {
-            core->onException(std::current_exception());
-        }
+        core->run();
     }
 };
 

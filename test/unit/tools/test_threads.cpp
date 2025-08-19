@@ -18,28 +18,29 @@ using namespace std::chrono_literals;
 namespace {
 
 using StringQueue = SyncWaitingQueue<std::string>;
+using SharedStringQueue = std::shared_ptr<StringQueue>;
 
 class MockCore {
 public:
-    MockCore(std::promise<MockCore*> self, std::string mission = "") {
-        if (mission == "fail creation") {
-            throw std::runtime_error(mission);
+    MockCore(std::promise<SharedStringQueue> logQueue, bool success = true) {
+        log = std::make_shared<StringQueue>();
+        logQueue.set_value(log);
+        log->push("create");
+        if (!success) {
+            throw std::runtime_error("constructor failed");
         }
         queue = std::make_shared<StringQueue>();
-        log = std::make_shared<StringQueue>();
-        log->push("create");
-        self.set_value(this);
     }
     
-    static std::string exitMessage() {
+    static std::string exitMessage() noexcept {
         return "exit";
     }
     
-    std::shared_ptr<StringQueue> getQueue() {
+    SharedStringQueue getQueue() noexcept {
         return queue;
     }
 
-    void run() {
+    void run() noexcept {
         log->push("start");
         while (true) {
             std::string msg = queue->take();
@@ -51,52 +52,57 @@ public:
         log->push("finish");
     }
 
-    void onException(std::exception_ptr e) {
-        log->push("exception");
-    }
-
-    std::shared_ptr<StringQueue> log;
-
 private:
-    std::shared_ptr<StringQueue> queue;
+    SharedStringQueue queue;
+    SharedStringQueue log;
 };
 
 }
 
 
-TEST_CASE("Tools - launcher - just exit", "[unit][tools]") {
-    std::promise<MockCore*> prom;
-    std::future<MockCore*> fut = prom.get_future();
-    std::shared_ptr<StringQueue> log;
-    {
-        Launcher<MockCore> launcher(std::move(prom));
-        log = fut.get()->log;
-        REQUIRE(log->take() == "create");
-        REQUIRE(log->take() == "start");
+TEST_CASE("Tools - launcher", "[unit][tools]") {
+    std::promise<SharedStringQueue> prom;
+    std::future<SharedStringQueue> fut = prom.get_future();
+    SharedStringQueue log;
+
+    SECTION("normal") {
+        {
+            Launcher<MockCore> launcher(std::move(prom));
+            log = fut.get();
+            REQUIRE(log->take() == "create");
+            REQUIRE(log->take() == "start");
+        }
+        REQUIRE(log->take() == "msg: exit");
+        REQUIRE(log->take() == "finish");
     }
-    REQUIRE(log->take() == "msg: exit");
-    REQUIRE(log->take() == "finish");
-}
-
-
-TEST_CASE("Tools - launcher - fail", "[unit][tools]") {
-    std::promise<MockCore*> prom;
-    std::future<MockCore*> fut = prom.get_future();
     
-    SECTION("fail creation") {
+    SECTION("fail launch") {
         REQUIRE_THROWS_MATCHES(
-            Launcher<MockCore>(std::move(prom), std::string("fail creation")),
+            Launcher<MockCore>(std::move(prom), false),
             std::runtime_error,
             Catch::Matchers::Predicate<std::runtime_error>(
                 [](const std::runtime_error& e) {
-                    return std::string(e.what()) == "fail creation";
+                    return std::string(e.what()) == "constructor failed";
                 },
-                "Fail creation"
+                "constructor must fail"
             )
         );
+        log = fut.get();
+        REQUIRE(log->take() == "create");
+    }
+
+    SECTION("emergency stop") {
+        try {
+            Launcher<MockCore> launcher(std::move(prom));
+            log = fut.get();
+            REQUIRE(log->take() == "create");
+            REQUIRE(log->take() == "start");
+            throw std::runtime_error("stop");
+        } catch(...) {}
+        REQUIRE(log->take() == "msg: exit");
+        REQUIRE(log->take() == "finish");
     }
 }
-
 
 
 TEST_CASE("Tools - channel", "[unit][tools]") {
