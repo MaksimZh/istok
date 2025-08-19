@@ -124,7 +124,7 @@ public:
         sync = true;
     }
 
-    void stop() {
+    void stop() noexcept {
         debugQueue->push("stop");
         running = false;
     }

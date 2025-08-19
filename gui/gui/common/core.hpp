@@ -11,6 +11,19 @@
 namespace Istok::GUI {
 
 template <typename Platform>
+concept GUIPlatform = requires(Platform platform) {
+    typename Platform::WindowID;
+    {platform.getQueue()} noexcept;
+    platform.run(std::declval<GUIHandler<typename Platform::WindowID>&>());
+    {platform.stop()} noexcept;
+    requires requires(Platform::WindowID id) {
+        platform.newWindow(id, std::declval<WindowParams>());
+        platform.destroyWindow(id);
+    };
+};
+
+
+template <GUIPlatform Platform>
 class GUICore : public GUIHandler<typename Platform::WindowID> {
 public:
     using WindowID = Platform::WindowID;
