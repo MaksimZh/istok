@@ -14,70 +14,26 @@ using namespace Istok::Tools;
 
 namespace Istok::GUI::WinAPI {
 
-class Window {
+class Notifier {};
+
+template <typename WindowID_>
+class WinPlatform {
 public:
-    void postQueueNotification() {}
-};
-
-
-template <typename Queue>
-class Translator {
-public:
-    Translator() {}
-    
-    void setQueue(std::shared_ptr<Queue> value) {
-        assert(queue == nullptr);
-        queue = value;
-    }
-
-    std::shared_ptr<Queue> getQueue() {
-        return queue;
-    }
-
-private:
-    std::shared_ptr<Queue> queue;
-};
-
-
-class Notifier {
-public:
-    Notifier(std::shared_ptr<Window> target) : target(target) {}
-
-    Notifier(const Notifier&) = default;
-    Notifier& operator=(const Notifier&) = default;
-    Notifier(Notifier&&) = default;
-    Notifier& operator=(Notifier&&) = default;
-
-    void operator()() {
-        target->postQueueNotification();
-    }
-
-private:
-    std::shared_ptr<Window> target;
-};
-
-
-template <typename WindowID>
-class Platform {
-public:
+    using WindowID = WindowID_;
     using InQueue = SyncNotifyingQueue<GUIMessage<WindowID>, Notifier>;
 
-    Platform() {
-        std::shared_ptr<Window> sampleWindow =
-            std::make_shared<Window>(translator);
-        translator.setQueue(std::make_shared<InQueue>(Notifier(sampleWindow)));
-    }
+    WinPlatform() {}
 
-    Platform(const Platform&) = delete;
-    Platform& operator=(const Platform&) = delete;
-    Platform(Platform&&) = delete;
-    Platform& operator=(Platform&&) = delete;
+    WinPlatform(const WinPlatform&) = delete;
+    WinPlatform& operator=(const WinPlatform&) = delete;
+    WinPlatform(WinPlatform&&) = delete;
+    WinPlatform& operator=(WinPlatform&&) = delete;
     
-    std::shared_ptr<InQueue> getInQueue() {
-        return translator->getQueue();
+    std::shared_ptr<InQueue> getQueue() noexcept {
+        return nullptr;
     }
 
-    void run(WindowMessageHandler<int>& handler) {
+    void run(GUIHandler<WindowID>& handler) {
         while (true) {
             MSG msg;
             GetMessage(&msg, NULL, 0, 0);
@@ -89,7 +45,7 @@ public:
         }
     }
 
-    void stop() {
+    void stop() noexcept {
         PostQuitMessage(0);
     }
 
@@ -98,7 +54,6 @@ public:
     void destroyWindow(int id) {}
 
 private:
-    Translator<InQueue> translator;
 };
 
 } // namespace Istok::GUI::WinAPI
