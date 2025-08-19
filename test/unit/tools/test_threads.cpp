@@ -71,6 +71,11 @@ TEST_CASE("Tools - launcher", "[unit][tools]") {
             log = fut.get();
             REQUIRE(log->take() == "create");
             REQUIRE(log->take() == "start");
+            SharedStringQueue queue = launcher.getQueue();
+            queue->push("foo");
+            REQUIRE(log->take() == "msg: foo");
+            queue->push("boo");
+            REQUIRE(log->take() == "msg: boo");
         }
         REQUIRE(log->take() == "msg: exit");
         REQUIRE(log->take() == "finish");
