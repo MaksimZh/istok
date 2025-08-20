@@ -3,7 +3,7 @@
 
 #include <tools/queue.hpp>
 #include <gui/common/message.hpp>
-#include <gui/winapi/window.hpp>
+#include "window.hpp"
 
 #include <windows.h>
 
@@ -16,24 +16,40 @@ namespace Istok::GUI::WinAPI {
 
 class Notifier {};
 
-template <typename WindowID_>
-class WinPlatform {
+template <typename WindowID>
+class QueueManager {
 public:
-    using WindowID = WindowID_;
-    using InQueue = SyncNotifyingQueue<GUIMessage<WindowID>, Notifier>;
-
-    WinPlatform() {}
-
-    WinPlatform(const WinPlatform&) = delete;
-    WinPlatform& operator=(const WinPlatform&) = delete;
-    WinPlatform(WinPlatform&&) = delete;
-    WinPlatform& operator=(WinPlatform&&) = delete;
-    
-    std::shared_ptr<InQueue> getQueue() noexcept {
+    std::shared_ptr<SyncNotifyingQueue<GUIMessage<WindowID>, Notifier>> getQueue() noexcept {
         return nullptr;
     }
+};
 
-    void run(GUIHandler<WindowID>& handler) {
+
+template <typename WindowID>
+class WindowManager {
+public:
+    void newWindow(WindowID id, WindowParams params) {}
+    void destroyWindow(WindowID id) {}
+};
+
+
+template <typename WindowID_>
+class Platform {
+public:
+    using WindowID = WindowID_;
+
+    Platform(GUIHandler<WindowID>& handler) {}
+
+    Platform(const Platform&) = delete;
+    Platform& operator=(const Platform&) = delete;
+    Platform(Platform&&) = delete;
+    Platform& operator=(Platform&&) = delete;
+    
+    auto getQueue() noexcept {
+        return queueManager.getQueue();
+    }
+
+    void run() {
         while (true) {
             MSG msg;
             GetMessage(&msg, NULL, 0, 0);
@@ -49,11 +65,17 @@ public:
         PostQuitMessage(0);
     }
 
-    void newWindow(int id, WindowParams params) {}
+    void newWindow(WindowID id, WindowParams params) {
+        windowManager.newWindow(id, params);
+    }
 
-    void destroyWindow(int id) {}
+    void destroyWindow(WindowID id) {
+        windowManager.destroyWindow(id);
+    }
 
 private:
+    QueueManager<WindowID> queueManager;
+    WindowManager<WindowID> windowManager;
 };
 
 } // namespace Istok::GUI::WinAPI

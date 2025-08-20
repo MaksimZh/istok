@@ -14,12 +14,10 @@ namespace Istok::GUI {
 template <typename Platform>
 concept GUIPlatform = requires {
     typename Platform::WindowID;
-    requires std::default_initializable<Platform>;
-} && requires(Platform platform) {
+} && requires(Platform platform, GUIHandler<typename Platform::WindowID> handler) {
+    Platform(handler);
     {platform.getQueue()} noexcept;
-    {
-        platform.run(std::declval<GUIHandler<typename Platform::WindowID>&>())
-    } -> std::same_as<void>;
+    {platform.run()} -> std::same_as<void>;
     {platform.stop()} noexcept -> std::same_as<void>;
     requires requires(Platform::WindowID id) {
         {
@@ -35,7 +33,8 @@ class GUICore : public GUIHandler<typename Platform::WindowID> {
 public:
     using WindowID = Platform::WindowID;
 
-    GUICore(SharedAppQueue<WindowID> appQueue) : appQueue(appQueue) {}
+    GUICore(SharedAppQueue<WindowID> appQueue)
+        : platform(*this), appQueue(appQueue) {}
 
     GUICore(const GUICore&) = delete;
     GUICore& operator=(const GUICore&) = delete;
@@ -52,7 +51,7 @@ public:
 
     void run() noexcept {
         try {
-            platform.run(*this);
+            platform.run();
         } catch (...) {
             appQueue->push(Message::AppGUIException(std::current_exception()));
         }

@@ -42,8 +42,8 @@ public:
      * If there is already an instance that is not released yet the constructor
      * will wait.
      */
-    MockPlatform()
-        : queue(std::make_shared<InQueue>()),
+    MockPlatform(GUIHandler<WindowID>& handler)
+        : handler(&handler), queue(std::make_shared<InQueue>()),
         debugQueue(std::make_shared<DebugQueue>())
     {
         std::unique_lock lock(mut);
@@ -102,9 +102,8 @@ public:
         return queue;
     }
 
-    void run(GUIHandler<WindowID>& handler) {
+    void run() {
         debugQueue->push("run");
-        this->handler = &handler;
         running = true;
         if (sync) {
             return;
