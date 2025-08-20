@@ -25,20 +25,60 @@ public:
 };
 
 
-template <typename WindowID>
-class WindowManager {
-public:
-    void newWindow(WindowID id, WindowParams params) {}
-    void destroyWindow(WindowID id) {}
+template <typename Handle, typename Window>
+class WindowMapping {};
+
+
+template <typename WindowID, typename Handle, typename Window>
+class WindowStorage: public WindowMapping<Handle, Window> {};
+
+
+template <typename Factory>
+concept WindowFactory = requires {
+    typename Factory::Handle;
+    typename Factory::Window;
+    typename Factory::Window::ID;
+} && requires(WindowMapping<
+    typename Factory::Handle,
+    typename Factory::Window> mapping,
+    GUIHandler<typename Factory::Window::ID> handler
+) {
+    Factory(mapping, handler);
+} && requires(Factory factory, WindowParams params) {
+    {factory.create(params)} -> std::same_as<typename Factory::Window>;
 };
 
 
-template <typename WindowID_>
+template <WindowFactory Factory>
+class WindowManager {
+public:
+    using WindowID = typename Factory::Window::ID;
+    
+    WindowManager(GUIHandler<WindowID>& handler)
+        : factory(storage, handler) {}
+    
+    void newWindow(WindowID id, WindowParams params) {
+        auto [handle, window] = factory.create(params);
+        storage.add(id, handle, window);
+    }
+    
+    void destroyWindow(WindowID id) {
+        storage.remove(id);
+    }
+
+private:
+    WindowStorage<WindowID, Factory::Handle, Factory::Window> storage;
+    Factory factory;
+};
+
+
+template <WindowFactory Factory>
 class Platform {
 public:
-    using WindowID = WindowID_;
+    using WindowID = Factory::Window::ID;
 
-    Platform(GUIHandler<WindowID>& handler) {}
+    Platform(GUIHandler<WindowID>& handler)
+        : windowManager(handler) {}
 
     Platform(const Platform&) = delete;
     Platform& operator=(const Platform&) = delete;
@@ -75,7 +115,11 @@ public:
 
 private:
     QueueManager<WindowID> queueManager;
-    WindowManager<WindowID> windowManager;
+    WindowManager<WindowID, Factory> windowManager;
 };
+
+
+class WindowProxy {};
+
 
 } // namespace Istok::GUI::WinAPI
