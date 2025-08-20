@@ -69,10 +69,8 @@ using SharedAppQueue = std::shared_ptr<AppQueue<WindowID>>;
 template <typename WindowID>
 class GUIHandler {
 public:
-    virtual void appExit() noexcept = 0;
-    virtual void appNewWindow(WindowID id, WindowParams params) noexcept = 0;
-    virtual void appDestroyWindow(WindowID id) noexcept = 0;
-    virtual void sysCloseWindow(WindowID id) noexcept = 0;
+    virtual void onMessage(GUIMessage<WindowID> msg) noexcept = 0;
+    virtual void onWindowClose(WindowID id) noexcept = 0;
 };
 
 } // namespace Istok::GUI

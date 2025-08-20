@@ -58,34 +58,39 @@ public:
         }
     }
 
-
-    void appExit() noexcept override {
-        platform.stop();
-    }
-
-    void appNewWindow(WindowID id, WindowParams params) noexcept override {
+    void onMessage(GUIMessage<WindowID> msg) noexcept override {
+        if (std::holds_alternative<Message::GUIExit>(msg)) {
+            platform.stop();
+            return;
+        }
         try {
-            platform.newWindow(id, params);
+            onGUIMessage(msg);
+            return;
         } catch(...) {
             appQueue->push(Message::AppGUIException(std::current_exception()));
         }
     }
-
-    void appDestroyWindow(WindowID id) noexcept override {
-        try {
-            platform.destroyWindow(id);
-        } catch(...) {
-            appQueue->push(Message::AppGUIException(std::current_exception()));
-        }
-    }
-
-    void sysCloseWindow(WindowID id) noexcept override {
+    
+    void onWindowClose(WindowID id) noexcept override {
         appQueue->push(Message::AppWindowClosed(id));
     }
 
 private:
     Platform platform;
     SharedAppQueue<WindowID> appQueue;
+
+    void onGUIMessage(GUIMessage<WindowID> msg) {
+        if (std::holds_alternative<Message::GUINewWindow<WindowID>>(msg)) {
+            auto message = std::get<Message::GUINewWindow<WindowID>>(msg);
+            platform.newWindow(message.id, message.params);
+            return;
+        }
+        if (std::holds_alternative<Message::GUIDestroyWindow<WindowID>>(msg)) {
+            auto message = std::get<Message::GUIDestroyWindow<WindowID>>(msg);
+            platform.destroyWindow(message.id);
+            return;
+        }
+    }
 };
 
 
