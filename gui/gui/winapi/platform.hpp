@@ -44,7 +44,7 @@ constexpr UINT WM_APP_QUEUE = WM_APP + 1;
 template <typename NotifierWindow>
 class Notifier {
 public:
-    Notifier(std::shared_ptr<NotifierWindow> window) {}
+    Notifier(std::shared_ptr<NotifierWindow> window) : target(window) {}
 
     void operator()() {
         if (std::shared_ptr<NotifierWindow> window = target.lock()) {
@@ -56,7 +56,7 @@ private:
     std::weak_ptr<NotifierWindow> target;
 };
 
-
+/*
 template <typename WindowID, typename NotifierWindow>
 class QueueProxy: public MessageProxy {
 public:
@@ -216,6 +216,6 @@ private:
     QueueManager<WindowID, NotifierWindow> queueManager;
     WindowManager<WindowID, SysWindowManager> windowManager;
 };
-
+*/
 
 } // namespace Istok::GUI::WinAPI
