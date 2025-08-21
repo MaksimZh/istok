@@ -56,11 +56,13 @@ private:
     std::weak_ptr<NotifierWindow> target;
 };
 
-/*
+
 template <typename WindowID, typename NotifierWindow>
 class QueueProxy: public MessageProxy {
 public:
-    using Queue = SyncNotifyingQueue<GUIMessage<WindowID>, Notifier>;
+    using Queue = SyncNotifyingQueue<
+        GUIMessage<WindowID>,
+        Notifier<NotifierWindow>>;
     
     QueueProxy(GUIHandler<WindowID>& handler)
         :handler(handler) {}
@@ -83,7 +85,7 @@ public:
         if (!queue || queue->empty()) {
             return 0;
         }
-        handler->onMessage(queue->take());
+        handler.onMessage(queue->take());
         return 0;
     }
 
@@ -93,6 +95,7 @@ private:
 };
 
 
+/*
 template <typename WindowID, typename Window>
 class AppWindowManager {
 public:
