@@ -278,7 +278,8 @@ TEST_CASE("WinAPI - WindowManager", "[unit][gui]") {
 
 
 TEST_CASE("WinAPI - Platform", "[unit][gui]") {
-    using P = Platform<int, MockNotifierWindow, MockSysWindowManager>;
-    auto appQueue = std::make_shared<AppQueue<int>>();
-    GUICore<P> core(appQueue);
+    MockHandler<int> handler;
+    Platform<int, MockNotifierWindow, MockSysWindowManager> platform(handler);
+    auto queue = platform.getQueue();
+    REQUIRE(queue != nullptr);
 }
