@@ -8,7 +8,7 @@
 #include <windows.h>
 
 #include <memory>
-#include <map>
+#include <unordered_map>
 
 
 using namespace Istok::Tools;
@@ -95,7 +95,22 @@ private:
 };
 
 
-/*
+template <typename WindowID>
+class WindowMessageTranslator {
+public:
+    WindowMessageTranslator(WindowID id, GUIHandler<WindowID>& handler)
+        : id(id), handler(&handler) {}
+
+    void onClose() noexcept {
+        handler->onWindowClose(id);
+    }
+
+private:
+    WindowID id;
+    GUIHandler<WindowID>* handler;
+};
+
+
 template <typename WindowID, typename Window>
 class AppWindowManager {
 public:
@@ -125,11 +140,12 @@ private:
     std::unordered_map<
         WindowID,
         std::shared_ptr<Window>,
-        Istok::Tools::Hasher<WindowID>
+        Istok::Tools::hash<WindowID>
     > storage; //TODO: wrap
 };
 
 
+/*
 template <typename WindowID, typename NotifierWindow>
 class QueueManager {
 public:

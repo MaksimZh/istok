@@ -95,6 +95,21 @@ TEST_CASE("WinAPI - Queue proxy", "[unit][gui]") {
 }
 
 
+TEST_CASE("WinAPI - WindowMessageTranslator", "[unit][gui]") {
+    MockHandler<int> handler;
+    WindowMessageTranslator<int> translator(42, handler);
+    REQUIRE(handler.debugQueue.empty());
+    translator.onClose();
+    REQUIRE(handler.debugQueue.take() == "window close 42");
+}
+
+
+/*
+TEST_CASE("WinAPI - AppWindowManager", "[unit][gui]") {
+
+}
+*/
+
 /*
 TEST_CASE("WinAPI - Platform", "[unit][gui]") {
     using P = Platform<int>;
