@@ -137,7 +137,8 @@ TEST_CASE("WinAPI - AppWindowManager", "[unit][gui]") {
     REQUIRE(handler.debugQueue.take() == "window close 1");
     b->translator->onClose();
     REQUIRE(handler.debugQueue.take() == "window close 2");
-
+    REQUIRE(manager.release(2).get() == b.get());
+    REQUIRE(b->translator == nullptr);
 }
 
 
