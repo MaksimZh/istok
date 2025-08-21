@@ -11,24 +11,14 @@ using namespace Istok::GUI::WinAPI;
 #include <memory>
 
 
-namespace {
-
-class MockNotifierWindow {
-public:
-    MockNotifierWindow(int& counter) : counter(counter) {}
-    
-    void postQueueNotification() {
-        ++counter;
-    }
-private:
-    int& counter;
-};
-
-}
-
 TEST_CASE("WinAPI - Notifier", "[unit][gui]") {
+    struct Window {
+        int& counter;
+        void postQueueNotification() { ++counter; }
+    };
+
     int counter = 0;
-    auto window = std::make_shared<MockNotifierWindow>(counter);
+    auto window = std::make_shared<Window>(counter);
     Notifier notifier(window);
     REQUIRE(counter == 0);
     notifier();
@@ -39,6 +29,12 @@ TEST_CASE("WinAPI - Notifier", "[unit][gui]") {
     notifier();
     REQUIRE(counter == 2);
 }
+
+/*
+TEST_CASE("WinAPI - Queue proxy", "[unit][gui]") {
+    QueueProxy<int, NotifierWindow> proxy;
+}
+*/
 
 /*
 TEST_CASE("WinAPI - Platform", "[unit][gui]") {
