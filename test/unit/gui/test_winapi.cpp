@@ -224,6 +224,24 @@ TEST_CASE("WinAPI - QueueManager", "[unit][gui]") {
 }
 
 
+namespace {
+
+class MockWindow {};
+
+class MockSysWindowManager {
+public:
+    using Window = MockWindow;
+};
+
+}
+
+
+TEST_CASE("WinAPI - WindowManager", "[unit][gui]") {
+    MockHandler<int> handler;
+    WindowManager<int, MockSysWindowManager> manager(handler);
+}
+
+
 /*
 TEST_CASE("WinAPI - Platform", "[unit][gui]") {
     using P = Platform<int>;

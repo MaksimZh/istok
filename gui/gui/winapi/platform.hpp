@@ -170,7 +170,6 @@ private:
 };
 
 
-/*
 template <typename WindowID, typename SysWindowManager>
 class WindowManager {
 public:
@@ -195,6 +194,7 @@ private:
 };
 
 
+/*
 template <typename WindowID_, typename NotifierWindow, typename SysWindowManager>
 class Platform {
 public:
