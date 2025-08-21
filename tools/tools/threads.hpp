@@ -10,7 +10,7 @@ namespace Istok::Tools {
 template <typename Core>
 concept ThreadCore = requires(Core core) {
     {Core::exitMessage()} noexcept;
-    {core.getQueue()} noexcept;
+    {core.getQueue()};
     {core.run()} noexcept -> std::same_as<void>;
     {core.getQueue()->push(Core::exitMessage())} noexcept -> std::same_as<void>;
 };

@@ -1,91 +1,190 @@
 // Copyright 2025 Maksim Sergeevich Zholudev. All rights reserved
 #pragma once
 
+#include <tools/helpers.hpp>
 #include <tools/queue.hpp>
 #include <gui/common/message.hpp>
-#include "window.hpp"
 
 #include <windows.h>
 
 #include <memory>
+#include <map>
 
 
 using namespace Istok::Tools;
 
 namespace Istok::GUI::WinAPI {
 
-class Notifier {};
-
-template <typename WindowID>
-class QueueManager {
-public:
-    std::shared_ptr<SyncNotifyingQueue<GUIMessage<WindowID>, Notifier>> getQueue() noexcept {
-        return nullptr;
-    }
+struct SysMessage {
+    HWND hWnd;
+    UINT msg;
+    WPARAM wParam;
+    LPARAM lParam;
 };
 
+using SysResult = LRESULT;
 
-template <typename Handle, typename Window>
-class WindowMapping {};
+SysResult handleByDefault(SysMessage message) {
+    return DefWindowProc(
+        message.hWnd,
+        message.msg,
+        message.wParam,
+        message.lParam
+    );
+}
 
-
-template <typename WindowID, typename Handle, typename Window>
-class WindowStorage: public WindowMapping<Handle, Window> {};
-
-
-template <typename Factory>
-concept WindowFactory = requires {
-    typename Factory::Handle;
-    typename Factory::Window;
-    typename Factory::Window::ID;
-} && requires(WindowMapping<
-    typename Factory::Handle,
-    typename Factory::Window> mapping,
-    GUIHandler<typename Factory::Window::ID> handler
-) {
-    Factory(mapping, handler);
-} && requires(Factory factory, WindowParams params) {
-    {factory.create(params)} -> std::same_as<typename Factory::Window>;
+class MessageProxy {
+public:
+    virtual SysResult handleMessage(SysMessage message) noexcept = 0;
 };
 
+constexpr UINT WM_APP_QUEUE = WM_APP + 1;
 
-template <WindowFactory Factory>
-class WindowManager {
+
+template <typename NotifierWindow>
+class Notifier {
 public:
-    using WindowID = typename Factory::Window::ID;
-    
-    WindowManager(GUIHandler<WindowID>& handler)
-        : factory(storage, handler) {}
-    
-    void newWindow(WindowID id, WindowParams params) {
-        auto [handle, window] = factory.create(params);
-        storage.add(id, handle, window);
-    }
-    
-    void destroyWindow(WindowID id) {
-        storage.remove(id);
+    Notifier(std::shared_ptr<NotifierWindow> window) {}
+
+    void operator()() {
+        if (std::shared_ptr<NotifierWindow> window = target.lock()) {
+            window->postQueueNotification();
+        }
     }
 
 private:
-    WindowStorage<WindowID, Factory::Handle, Factory::Window> storage;
-    Factory factory;
+    std::weak_ptr<NotifierWindow> target;
 };
 
 
-template <WindowFactory Factory>
+template <typename WindowID, typename NotifierWindow>
+class QueueProxy: public MessageProxy {
+public:
+    using Queue = SyncNotifyingQueue<GUIMessage<WindowID>, Notifier>;
+    
+    QueueProxy(GUIHandler<WindowID>& handler)
+        :handler(handler) {}
+
+    void setNotifier(std::shared_ptr<NotifierWindow> window) {
+        queue = std::make_shared<Queue>(Notifier(window));
+    }
+
+    std::shared_ptr<Queue> getQueue() {
+        if (queue == nullptr) {
+            throw std::runtime_error("Notifier is not set");
+        }
+        return queue;
+    }
+
+    SysResult handleMessage(SysMessage message) noexcept {
+        if (message.msg != WM_APP_QUEUE) {
+            return handleByDefault(message);
+        }
+        if (!queue || queue->empty()) {
+            return 0;
+        }
+        handler->onMessage(queue->take());
+        return 0;
+    }
+
+private:
+    GUIHandler<WindowID>& handler;
+    std::shared_ptr<Queue> queue;
+};
+
+
+template <typename WindowID, typename Window>
+class AppWindowManager {
+public:
+    AppWindowManager(GUIHandler<WindowID>& handler)
+        : handler(&handler) {}
+
+    void attach(WindowID id, std::shared_ptr<Window> window) {
+        if (storage.contains[id]) {
+            throw std::runtime_error("Duplicate window id");
+        }
+        storage[id] = window;
+        window->setTranslator(Translator(id, handler));
+    }
+    
+    std::shared_ptr<Window> release(WindowID id) {
+        if (!storage.contains[id]) {
+            throw std::runtime_error("Window not found by id");
+        }
+        std::shared_ptr<Window> window = storage[id];
+        storage.erase(id);
+        window->removeTranslator();
+        return window;
+    }
+
+private:
+    GUIHandler<WindowID>& handler;
+    std::unordered_map<
+        WindowID,
+        std::shared_ptr<Window>,
+        Istok::Tools::Hasher<WindowID>
+    > storage; //TODO: wrap
+};
+
+
+template <typename WindowID, typename NotifierWindow>
+class QueueManager {
+public:
+    QueueManager(GUIHandler<WindowID>& handler)
+        : proxy(handler),
+        window(std::make_shared<NotifierWindow>(proxy))
+    {
+        proxy.setNotifier(window);
+    }
+
+    auto getQueue() {
+        return proxy.getQueue();
+    }
+
+private:
+    std::shared_ptr<NotifierWindow> window;
+    QueueProxy<WindowID, NotifierWindow> proxy;
+};
+
+
+template <typename WindowID, typename SysWindowManager>
+class WindowManager {
+public:
+    using Window = SysWindowManager::Window;
+    
+    WindowManager(GUIHandler<WindowID>& handler)
+        : appManager(handler) {}
+    
+    void newWindow(WindowID id, WindowParams params) {
+        std::shared_ptr<Window> window = sysManager.create(params);
+        appManager.attach(id, window);
+    }
+    
+    void destroyWindow(WindowID id) {
+        std::shared_ptr<Window> window = appManager.release(id);
+        sysManager.destroy(window);
+    }
+
+private:
+    SysWindowManager sysManager;
+    AppWindowManager<WindowID, Window> appManager;
+};
+
+
+template <typename WindowID_, typename NotifierWindow, typename SysWindowManager>
 class Platform {
 public:
-    using WindowID = Factory::Window::ID;
+    using WindowID = WindowID_i;
 
     Platform(GUIHandler<WindowID>& handler)
-        : windowManager(handler) {}
+        : queueManager(handler), windowManager(handler) {}
 
     Platform(const Platform&) = delete;
     Platform& operator=(const Platform&) = delete;
     Platform(Platform&&) = delete;
     Platform& operator=(Platform&&) = delete;
     
-    auto getQueue() noexcept {
+    auto getQueue() {
         return queueManager.getQueue();
     }
 
@@ -114,12 +213,9 @@ public:
     }
 
 private:
-    QueueManager<WindowID> queueManager;
-    WindowManager<WindowID, Factory> windowManager;
+    QueueManager<WindowID, NotifierWindow> queueManager;
+    WindowManager<WindowID, SysWindowManager> windowManager;
 };
-
-
-class WindowProxy {};
 
 
 } // namespace Istok::GUI::WinAPI

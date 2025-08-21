@@ -16,7 +16,7 @@ concept GUIPlatform = requires {
     typename Platform::WindowID;
 } && requires(Platform platform, GUIHandler<typename Platform::WindowID> handler) {
     Platform(handler);
-    {platform.getQueue()} noexcept;
+    platform.getQueue();
     {platform.run()} -> std::same_as<void>;
     {platform.stop()} noexcept -> std::same_as<void>;
     requires requires(Platform::WindowID id) {

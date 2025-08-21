@@ -98,7 +98,7 @@ public:
     MockPlatform(MockPlatform&&) = delete;
     MockPlatform& operator=(MockPlatform&&) = delete;
     
-    std::shared_ptr<InQueue> getQueue() noexcept {
+    std::shared_ptr<InQueue> getQueue() {
         return queue;
     }
 
