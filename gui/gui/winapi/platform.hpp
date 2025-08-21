@@ -195,11 +195,10 @@ private:
 };
 
 
-/*
 template <typename WindowID_, typename NotifierWindow, typename SysWindowManager>
 class Platform {
 public:
-    using WindowID = WindowID_i;
+    using WindowID = WindowID_;
 
     Platform(GUIHandler<WindowID>& handler)
         : queueManager(handler), windowManager(handler) {}
@@ -241,6 +240,5 @@ private:
     QueueManager<WindowID, NotifierWindow> queueManager;
     WindowManager<WindowID, SysWindowManager> windowManager;
 };
-*/
 
 } // namespace Istok::GUI::WinAPI
