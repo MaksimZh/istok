@@ -10,6 +10,7 @@ using namespace Istok::GUI::WinAPI;
 
 #include <memory>
 #include <string>
+#include <optional>
 
 namespace {
 
@@ -95,20 +96,43 @@ TEST_CASE("WinAPI - Queue proxy", "[unit][gui]") {
 }
 
 
-TEST_CASE("WinAPI - WindowMessageTranslator", "[unit][gui]") {
+TEST_CASE("WinAPI - IDTranslator", "[unit][gui]") {
     MockHandler<int> handler;
-    WindowMessageTranslator<int> translator(42, handler);
+    IDTranslator<int> translator(42, handler);
     REQUIRE(handler.debugQueue.empty());
     translator.onClose();
     REQUIRE(handler.debugQueue.take() == "window close 42");
 }
 
 
-/*
 TEST_CASE("WinAPI - AppWindowManager", "[unit][gui]") {
+    struct Window {
+        std::optional<IDTranslator<int>> translator;
+        
+        void setTranslator(const IDTranslator<int> value) {
+            translator = value;
+        }
 
+        void removeTranslator() {
+            translator = std::nullopt;
+        }
+    };
+    
+    MockHandler<int> handler;
+    AppWindowManager<int, Window> manager(handler);
+    auto a = std::make_shared<Window>();
+    auto b = std::make_shared<Window>();
+    manager.attach(1, a);
+    manager.attach(2, b);
+    REQUIRE(a->translator.has_value());
+    REQUIRE(b->translator.has_value());
+    REQUIRE(handler.debugQueue.empty());
+    a->translator->onClose();
+    REQUIRE(handler.debugQueue.take() == "window close 1");
+    b->translator->onClose();
+    REQUIRE(handler.debugQueue.take() == "window close 2");
 }
-*/
+
 
 /*
 TEST_CASE("WinAPI - Platform", "[unit][gui]") {

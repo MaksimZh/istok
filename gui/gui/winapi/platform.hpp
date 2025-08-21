@@ -95,13 +95,18 @@ private:
 };
 
 
-template <typename WindowID>
-class WindowMessageTranslator {
+class WindowTranslator {
 public:
-    WindowMessageTranslator(WindowID id, GUIHandler<WindowID>& handler)
+    virtual void onClose() noexcept = 0;
+};
+
+template <typename WindowID>
+class IDTranslator: public WindowTranslator {
+public:
+    IDTranslator(WindowID id, GUIHandler<WindowID>& handler)
         : id(id), handler(&handler) {}
 
-    void onClose() noexcept {
+    void onClose() noexcept override {
         handler->onWindowClose(id);
     }
 
@@ -115,14 +120,14 @@ template <typename WindowID, typename Window>
 class AppWindowManager {
 public:
     AppWindowManager(GUIHandler<WindowID>& handler)
-        : handler(&handler) {}
+        : handler(handler) {}
 
     void attach(WindowID id, std::shared_ptr<Window> window) {
-        if (storage.contains[id]) {
+        if (storage.contains(id)) {
             throw std::runtime_error("Duplicate window id");
         }
         storage[id] = window;
-        window->setTranslator(Translator(id, handler));
+        window->setTranslator(IDTranslator(id, handler));
     }
     
     std::shared_ptr<Window> release(WindowID id) {
