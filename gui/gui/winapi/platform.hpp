@@ -150,7 +150,6 @@ private:
 };
 
 
-/*
 template <typename WindowID, typename NotifierWindow>
 class QueueManager {
 public:
@@ -171,6 +170,7 @@ private:
 };
 
 
+/*
 template <typename WindowID, typename SysWindowManager>
 class WindowManager {
 public:

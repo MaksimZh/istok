@@ -8,9 +8,12 @@
 using namespace Istok::GUI;
 using namespace Istok::GUI::WinAPI;
 
+#include <cassert>
 #include <memory>
 #include <string>
 #include <optional>
+#include <thread>
+#include <semaphore>
 
 namespace {
 
@@ -131,6 +134,93 @@ TEST_CASE("WinAPI - AppWindowManager", "[unit][gui]") {
     REQUIRE(handler.debugQueue.take() == "window close 1");
     b->translator->onClose();
     REQUIRE(handler.debugQueue.take() == "window close 2");
+}
+
+
+namespace {
+
+template <typename T>
+class ImplicitInstanceGetter {
+public:
+    ImplicitInstanceGetter(T* self) : self(self) {
+        std::unique_lock lock(mut);
+        cv.wait(lock, [] { return instance == nullptr; });
+        instance = self;
+    }
+
+    ~ImplicitInstanceGetter() {
+        std::lock_guard lock(mut);
+        if (instance == self) {
+            instance = nullptr;
+            cv.notify_all();
+        }
+    }
+
+    static T* release() {
+        std::lock_guard lock(mut);
+        T* tmp = instance;
+        instance = nullptr;
+        cv.notify_all();
+        return tmp;
+    }
+
+private:
+    T* self;
+    static T* instance;
+    static std::mutex mut;
+    static std::condition_variable cv;
+};
+
+template <typename T>
+T* ImplicitInstanceGetter<T>::instance;
+
+template <typename T>
+std::mutex ImplicitInstanceGetter<T>::mut;
+
+template <typename T>
+std::condition_variable ImplicitInstanceGetter<T>::cv;
+
+
+class MockNotifierWindow {
+public:
+    MockNotifierWindow(MessageProxy& proxy)
+        : proxy(proxy), instanceGetter(this) {}
+    
+    void postQueueNotification() {
+        ++notifications;
+    }
+    
+    SysResult handleQueueMessage() {
+        assert(notifications > 0);
+        --notifications;
+        return proxy.handleMessage(SysMessage{0, WM_APP_QUEUE, 0, 0});
+    }
+
+    static MockNotifierWindow* release() {
+        return ImplicitInstanceGetter<MockNotifierWindow>::release();
+    }
+
+private:
+    MessageProxy& proxy;
+
+    ImplicitInstanceGetter<MockNotifierWindow> instanceGetter;
+    int notifications = 0;
+};
+
+}
+
+
+TEST_CASE("WinAPI - QueueManager", "[unit][gui]") {
+    MockHandler<int> handler;
+    QueueManager<int, MockNotifierWindow> manager(handler);
+    auto window = MockNotifierWindow::release();
+    auto queue = manager.getQueue();
+    queue->push(Message::GUIDestroyWindow<int>(42));
+    window->handleQueueMessage();
+    REQUIRE(handler.debugQueue.take() == "destroy window 42");
+    queue->push(Message::GUIExit{});
+    window->handleQueueMessage();
+    REQUIRE(handler.debugQueue.take() == "exit");
 }
 
 
