@@ -13,7 +13,7 @@ using namespace Istok::GUI::WinAPI;
 #include <string>
 #include <optional>
 #include <thread>
-#include <semaphore>
+#include <set>
 
 namespace {
 
@@ -44,6 +44,21 @@ public:
     void onWindowClose(WindowID id) noexcept override {
         debugQueue.push(std::format("window close {}", id));
     };
+};
+
+struct MockWindow {
+    std::string title;
+    std::unique_ptr<WindowTranslator> translator;
+
+    MockWindow(const std::string& title = "") : title(title) {}
+        
+    void setTranslator(std::unique_ptr<WindowTranslator>&& value) {
+        translator = std::move(value);
+    }
+
+    void removeTranslator() {
+        translator.reset();
+    }
 };
 
 }
@@ -109,22 +124,10 @@ TEST_CASE("WinAPI - IDTranslator", "[unit][gui]") {
 
 
 TEST_CASE("WinAPI - AppWindowManager", "[unit][gui]") {
-    struct Window {
-        std::unique_ptr<WindowTranslator> translator;
-        
-        void setTranslator(std::unique_ptr<WindowTranslator>&& value) {
-            translator = std::move(value);
-        }
-
-        void removeTranslator() {
-            translator.reset();
-        }
-    };
-    
     MockHandler<int> handler;
-    AppWindowManager<int, Window> manager(handler);
-    auto a = std::make_shared<Window>();
-    auto b = std::make_shared<Window>();
+    AppWindowManager<int, MockWindow> manager(handler);
+    auto a = std::make_shared<MockWindow>();
+    auto b = std::make_shared<MockWindow>();
     manager.attach(1, a);
     manager.attach(2, b);
     REQUIRE(a->translator != nullptr);
@@ -134,6 +137,7 @@ TEST_CASE("WinAPI - AppWindowManager", "[unit][gui]") {
     REQUIRE(handler.debugQueue.take() == "window close 1");
     b->translator->onClose();
     REQUIRE(handler.debugQueue.take() == "window close 2");
+
 }
 
 
@@ -226,11 +230,30 @@ TEST_CASE("WinAPI - QueueManager", "[unit][gui]") {
 
 namespace {
 
-class MockWindow {};
-
 class MockSysWindowManager {
 public:
+    std::set<std::string> titles;
+
     using Window = MockWindow;
+
+    MockSysWindowManager() : instanceGetter(this) {}
+
+    std::shared_ptr<Window> create(WindowParams params) {
+        std::string title = params.title.value_or("");
+        titles.insert(title);
+        return std::make_shared<Window>(title);
+    }
+
+    void remove(std::shared_ptr<Window> window) {
+        titles.erase(window->title);
+    }
+
+    static MockSysWindowManager* release() {
+        return ImplicitInstanceGetter<MockSysWindowManager>::release();
+    }
+
+private:
+    ImplicitInstanceGetter<MockSysWindowManager> instanceGetter;
 };
 
 }
@@ -239,6 +262,17 @@ public:
 TEST_CASE("WinAPI - WindowManager", "[unit][gui]") {
     MockHandler<int> handler;
     WindowManager<int, MockSysWindowManager> manager(handler);
+    auto sysManager = MockSysWindowManager::release();
+    REQUIRE(sysManager->titles.empty() == true);
+    manager.newWindow(1, WindowParams{{}, "a"});
+    REQUIRE(sysManager->titles.contains("a") == true);
+    REQUIRE(sysManager->titles.contains("b") == false);
+    manager.newWindow(2, WindowParams{{}, "b"});
+    REQUIRE(sysManager->titles.contains("a") == true);
+    REQUIRE(sysManager->titles.contains("b") == true);
+    manager.destroyWindow(2);
+    REQUIRE(sysManager->titles.contains("a") == true);
+    REQUIRE(sysManager->titles.contains("b") == false);
 }
 
 

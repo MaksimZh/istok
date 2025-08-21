@@ -132,7 +132,7 @@ public:
     }
     
     std::shared_ptr<Window> release(WindowID id) {
-        if (!storage.contains[id]) {
+        if (!storage.contains(id)) {
             throw std::runtime_error("Window not found by id");
         }
         std::shared_ptr<Window> window = storage[id];
@@ -186,7 +186,7 @@ public:
     
     void destroyWindow(WindowID id) {
         std::shared_ptr<Window> window = appManager.release(id);
-        sysManager.destroy(window);
+        sysManager.remove(window);
     }
 
 private:
