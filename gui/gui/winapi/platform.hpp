@@ -127,7 +127,8 @@ public:
             throw std::runtime_error("Duplicate window id");
         }
         storage[id] = window;
-        window->setTranslator(IDTranslator(id, handler));
+        window->setTranslator(
+            std::make_unique<IDTranslator<WindowID>>(id, handler));
     }
     
     std::shared_ptr<Window> release(WindowID id) {

@@ -110,14 +110,14 @@ TEST_CASE("WinAPI - IDTranslator", "[unit][gui]") {
 
 TEST_CASE("WinAPI - AppWindowManager", "[unit][gui]") {
     struct Window {
-        std::optional<IDTranslator<int>> translator;
+        std::unique_ptr<WindowTranslator> translator;
         
-        void setTranslator(const IDTranslator<int> value) {
-            translator = value;
+        void setTranslator(std::unique_ptr<WindowTranslator>&& value) {
+            translator = std::move(value);
         }
 
         void removeTranslator() {
-            translator = std::nullopt;
+            translator.reset();
         }
     };
     
@@ -127,8 +127,8 @@ TEST_CASE("WinAPI - AppWindowManager", "[unit][gui]") {
     auto b = std::make_shared<Window>();
     manager.attach(1, a);
     manager.attach(2, b);
-    REQUIRE(a->translator.has_value());
-    REQUIRE(b->translator.has_value());
+    REQUIRE(a->translator != nullptr);
+    REQUIRE(b->translator != nullptr);
     REQUIRE(handler.debugQueue.empty());
     a->translator->onClose();
     REQUIRE(handler.debugQueue.take() == "window close 1");
