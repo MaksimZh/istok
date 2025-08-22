@@ -63,17 +63,17 @@ private:
 };
 
 
-template <typename WindowID, typename NotifierWindow>
+template <typename WindowID, NotifierWindow Window>
 class QueueProxy: public MessageProxy {
 public:
     using Queue = SyncNotifyingQueue<
         GUIMessage<WindowID>,
-        Notifier<NotifierWindow>>;
+        Notifier<Window>>;
     
     QueueProxy(GUIHandler<WindowID>& handler)
         :handler(handler) {}
 
-    void setNotifier(std::shared_ptr<NotifierWindow> window) {
+    void setNotifier(std::shared_ptr<Window> window) {
         queue = std::make_shared<Queue>(Notifier(window));
     }
 
@@ -126,7 +126,17 @@ private:
 };
 
 
-template <typename WindowID, typename Window>
+template <typename Window>
+concept AppWindow = requires(
+    Window window,
+    std::unique_ptr<WindowTranslator>&& translator
+) {
+    {window.setTranslator(std::move(translator))} -> std::same_as<void>;
+    {window.removeTranslator()} -> std::same_as<void>;
+};
+
+
+template <typename WindowID, AppWindow Window>
 class AppWindowManager {
 public:
     AppWindowManager(GUIHandler<WindowID>& handler)
@@ -161,12 +171,12 @@ private:
 };
 
 
-template <typename WindowID, typename NotifierWindow>
+template <typename WindowID, NotifierWindow Window>
 class QueueManager {
 public:
     QueueManager(GUIHandler<WindowID>& handler)
         : proxy(handler),
-        window(std::make_shared<NotifierWindow>(proxy))
+        window(std::make_shared<Window>(proxy))
     {
         proxy.setNotifier(window);
     }
@@ -176,15 +186,29 @@ public:
     }
 
 private:
-    std::shared_ptr<NotifierWindow> window;
-    QueueProxy<WindowID, NotifierWindow> proxy;
+    std::shared_ptr<Window> window;
+    QueueProxy<WindowID, Window> proxy;
 };
 
 
-template <typename WindowID, typename SysWindowManager>
+template <typename Manager>
+concept SysWindowManager = requires() {
+    typename Manager::Window;
+} && AppWindow<typename Manager::Window> && requires(
+        Manager manager,
+        std::shared_ptr<typename Manager::Window> window
+    ) {
+    {
+        manager.create(std::declval<WindowParams>())
+    } -> std::same_as<std::shared_ptr<typename Manager::Window>>;
+    {manager.remove(window)} -> std::same_as<void>;
+};
+
+
+template <typename WindowID, SysWindowManager SysManager>
 class WindowManager {
 public:
-    using Window = SysWindowManager::Window;
+    using Window = SysManager::Window;
     
     WindowManager(GUIHandler<WindowID>& handler)
         : appManager(handler) {}
@@ -200,12 +224,16 @@ public:
     }
 
 private:
-    SysWindowManager sysManager;
+    SysManager sysManager;
     AppWindowManager<WindowID, Window> appManager;
 };
 
 
-template <typename WindowID_, typename NotifierWindow, typename SysWindowManager>
+template <
+    typename WindowID_,
+    NotifierWindow NWindow,
+    SysWindowManager SysManager
+>
 class Platform {
 public:
     using WindowID = WindowID_;
@@ -247,8 +275,8 @@ public:
     }
 
 private:
-    QueueManager<WindowID, NotifierWindow> queueManager;
-    WindowManager<WindowID, SysWindowManager> windowManager;
+    QueueManager<WindowID, NWindow> queueManager;
+    WindowManager<WindowID, SysManager> windowManager;
 };
 
 } // namespace Istok::GUI::WinAPI

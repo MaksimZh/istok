@@ -119,14 +119,14 @@ private:
 };
 
 
-class SysWindowManager {
+class SysManager {
 public:
-    SysWindowManager(const SysWindowManager&) = delete;
-    SysWindowManager& operator=(const SysWindowManager&) = delete;
-    SysWindowManager(SysWindowManager&&) = delete;
-    SysWindowManager& operator=(SysWindowManager&&) = delete;
+    SysManager(const SysManager&) = delete;
+    SysManager& operator=(const SysManager&) = delete;
+    SysManager(SysManager&&) = delete;
+    SysManager& operator=(SysManager&&) = delete;
 
-    SysWindowManager(std::unique_ptr<SysWindow> sample)
+    SysManager(std::unique_ptr<SysWindow> sample)
         : sample(std::move(sample)) {
         assert(this->sample);
     }
@@ -191,7 +191,7 @@ public:
     }
 
 private:
-    SysWindowManager windowManager;
+    SysManager windowManager;
 };
 
 
