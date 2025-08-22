@@ -149,6 +149,10 @@ TEST_CASE("Tools - notifying queue", "[unit][tools]") {
     REQUIRE(queue.empty() == true);
     REQUIRE(counter == 0);
 
+    SECTION("take from empty") {
+        REQUIRE(queue.take().has_value() == false);
+    }
+
     SECTION("push + take") {
         queue.push(0);
         REQUIRE(queue.empty() == false);
@@ -181,26 +185,32 @@ TEST_CASE("Tools - synchronized notifying queue", "[unit][tools]") {
     REQUIRE(queue.empty() == true);
     REQUIRE(counter == 0);
 
-    queue.push(0);
-    REQUIRE(queue.empty() == false);
-    REQUIRE(counter == 1);
-    int a = 1;
-    queue.push(a);
-    REQUIRE(counter == 2);
-    REQUIRE(queue.take() == 0);
-    REQUIRE(counter == 2);
-    queue.push(2);
-    REQUIRE(counter == 3);
-    queue.push(3);
-    REQUIRE(counter == 4);
-    REQUIRE(queue.take() == 1);
-    REQUIRE(queue.take() == 2);
-    queue.push(4);
-    REQUIRE(counter == 5);
-    REQUIRE(queue.take() == 3);
-    REQUIRE(queue.take() == 4);
-    REQUIRE(queue.empty() == true);
-    REQUIRE(counter == 5);
+    SECTION("take from empty") {
+        REQUIRE(queue.take().has_value() == false);
+    }
+
+    SECTION("push + take") {
+        queue.push(0);
+        REQUIRE(queue.empty() == false);
+        REQUIRE(counter == 1);
+        int a = 1;
+        queue.push(a);
+        REQUIRE(counter == 2);
+        REQUIRE(queue.take() == 0);
+        REQUIRE(counter == 2);
+        queue.push(2);
+        REQUIRE(counter == 3);
+        queue.push(3);
+        REQUIRE(counter == 4);
+        REQUIRE(queue.take() == 1);
+        REQUIRE(queue.take() == 2);
+        queue.push(4);
+        REQUIRE(counter == 5);
+        REQUIRE(queue.take() == 3);
+        REQUIRE(queue.take() == 4);
+        REQUIRE(queue.empty() == true);
+        REQUIRE(counter == 5);
+    }
 }
 
 

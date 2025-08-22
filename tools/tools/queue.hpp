@@ -5,6 +5,7 @@
 #include <type_traits>
 #include <queue>
 #include <mutex>
+#include <optional>
 
 
 namespace Istok::Tools {
@@ -67,7 +68,7 @@ public:
         cv.notify_one();
     }
 
-    T take(std::unique_lock<std::mutex>& lock) {
+    T take(std::unique_lock<std::mutex>& lock) noexcept {
         cv.wait(lock, [&]{ return !empty(); });
         assert(!container.empty());
         return container.take();
@@ -103,7 +104,7 @@ public:
         container.push(value);
     }
 
-    T take() {
+    T take() noexcept {
         std::unique_lock lock(mut);
         return container.take(lock);
     }
@@ -138,9 +139,9 @@ public:
         notifier();
     }
 
-    T take() {
+    std::optional<T> take() noexcept {
         if (container.empty()) {
-            throw std::runtime_error("Reading from empty queue");
+            return std::nullopt;
         }
         return container.take();
     }
@@ -177,11 +178,8 @@ public:
         container.push(value);
     }
 
-    T take() {
+    std::optional<T> take() noexcept {
         std::lock_guard lock(mut);
-        if (container.empty()) {
-            throw std::runtime_error("Reading from empty queue");
-        }
         return container.take();
     }
 

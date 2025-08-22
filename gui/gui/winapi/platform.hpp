@@ -9,6 +9,7 @@
 
 #include <memory>
 #include <unordered_map>
+#include <optional>
 
 
 using namespace Istok::Tools;
@@ -82,10 +83,14 @@ public:
         if (message.msg != WM_APP_QUEUE) {
             return handleByDefault(message);
         }
-        if (!queue || queue->empty()) {
+        if (!queue) {
             return 0;
         }
-        handler.onMessage(queue->take());
+        std::optional<GUIMessage<WindowID>> msg = queue->take();
+        if (!msg.has_value) {
+            return 0;
+        }
+        handler.onMessage(msg.value());
         return 0;
     }
 
