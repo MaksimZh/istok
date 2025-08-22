@@ -11,16 +11,18 @@ using namespace Istok::GUI::WinAPI;
 #include <cassert>
 #include <memory>
 #include <string>
+#include <format>
 #include <optional>
 #include <thread>
-#include <set>
 
 namespace {
+
+using DebugQueue = SyncWaitingQueue<std::string>;
 
 template <typename WindowID>
 class MockHandler: public GUIHandler<WindowID> {
 public:
-    SyncWaitingQueue<std::string> debugQueue;
+    DebugQueue debugQueue;
     
     void onMessage(GUIMessage<WindowID> msg) noexcept override {
         if (std::holds_alternative<Message::GUIExit>(msg)) {
@@ -192,25 +194,31 @@ namespace {
 
 class MockSysWindowManager {
 public:
-    std::set<std::string> titles;
-
+    std::shared_ptr<DebugQueue> debugQueue;
+    
     using Window = MockWindow;
 
-    MockSysWindowManager() : instanceGetter(this) {}
+    MockSysWindowManager()
+        : instanceGetter(this),
+        debugQueue(std::make_shared<DebugQueue>()) {}
 
     std::shared_ptr<Window> create(WindowParams params) {
-        std::string title = params.title.value_or("");
-        titles.insert(title);
+        std::string title = params.title.value_or("");        
+        debugQueue->push(std::format("create {}", title));
         return std::make_shared<Window>(title);
     }
 
     void remove(std::shared_ptr<Window> window) {
-        titles.erase(window->title);
+        debugQueue->push(std::format("remove {}", window->title));
     }
 
-    void runMessageLoop() {}
+    void runMessageLoop() {
+        debugQueue->push("run message loop");
+    }
 
-    void stopMessageLoop() noexcept {}
+    void stopMessageLoop() noexcept {
+        debugQueue->push("stop message loop");
+    }
 
     static MockSysWindowManager* release() {
         return InstanceGetter<MockSysWindowManager>::release();
@@ -226,17 +234,17 @@ private:
 TEST_CASE("WinAPI - WindowManager", "[unit][gui]") {
     MockHandler<int> handler;
     WindowManager<int, MockSysWindowManager> manager(handler);
-    auto sysManager = MockSysWindowManager::release();
-    REQUIRE(sysManager->titles.empty() == true);
+    auto debugQueue = MockSysWindowManager::release()->debugQueue;
+    manager.runMessageLoop();
+    REQUIRE(debugQueue->take() == "run message loop");
     manager.newWindow(1, WindowParams{{}, "a"});
-    REQUIRE(sysManager->titles.contains("a") == true);
-    REQUIRE(sysManager->titles.contains("b") == false);
+    REQUIRE(debugQueue->take() == "create a");
     manager.newWindow(2, WindowParams{{}, "b"});
-    REQUIRE(sysManager->titles.contains("a") == true);
-    REQUIRE(sysManager->titles.contains("b") == true);
+    REQUIRE(debugQueue->take() == "create b");
     manager.destroyWindow(2);
-    REQUIRE(sysManager->titles.contains("a") == true);
-    REQUIRE(sysManager->titles.contains("b") == false);
+    REQUIRE(debugQueue->take() == "remove b");
+    manager.stopMessageLoop();
+    REQUIRE(debugQueue->take() == "stop message loop");
 }
 
 
