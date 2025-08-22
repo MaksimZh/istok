@@ -115,7 +115,12 @@ private:
 };
 
 
-template <typename T, typename Notifier>
+template <typename Notifier>
+concept QueueNotifier = requires(Notifier notifier) {
+    {notifier()} noexcept -> std::same_as<void>;
+};
+
+template <typename T, QueueNotifier Notifier>
 class NotifyingQueue {
 public:
     NotifyingQueue(const NotifyingQueue&) = delete;
@@ -152,7 +157,7 @@ private:
 };
 
 
-template <typename T, typename Notifier>
+template <typename T, QueueNotifier Notifier>
 class SyncNotifyingQueue {
 public:
     SyncNotifyingQueue(const SyncNotifyingQueue&) = delete;

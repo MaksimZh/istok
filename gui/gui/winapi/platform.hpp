@@ -47,7 +47,7 @@ class Notifier {
 public:
     Notifier(std::shared_ptr<NotifierWindow> window) : target(window) {}
 
-    void operator()() {
+    void operator()() noexcept {
         if (std::shared_ptr<NotifierWindow> window = target.lock()) {
             window->postQueueNotification();
         }

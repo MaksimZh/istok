@@ -144,7 +144,7 @@ TEST_CASE("Tools - synchronized waiting queue", "[unit][tools]") {
 
 TEST_CASE("Tools - notifying queue", "[unit][tools]") {
     size_t counter = 0;
-    auto inc = [&]{++counter;};
+    auto inc = [&]() noexcept {++counter;};
     NotifyingQueue<int, decltype(inc)> queue(std::move(inc));
     REQUIRE(queue.empty() == true);
     REQUIRE(counter == 0);
@@ -180,7 +180,7 @@ TEST_CASE("Tools - notifying queue", "[unit][tools]") {
 
 TEST_CASE("Tools - synchronized notifying queue", "[unit][tools]") {
     size_t counter = 0;
-    auto inc = [&]{++counter;};
+    auto inc = [&]() noexcept {++counter;};
     SyncNotifyingQueue<int, decltype(inc)> queue(std::move(inc));
     REQUIRE(queue.empty() == true);
     REQUIRE(counter == 0);
@@ -216,7 +216,7 @@ TEST_CASE("Tools - synchronized notifying queue", "[unit][tools]") {
 
 TEST_CASE("Tools - synchronized notifying queue - multithread", "[unit][tools]") {
     std::counting_semaphore sem{0};
-    auto notifier = [&]{ sem.release(); };
+    auto notifier = [&]() noexcept { sem.release(); };
     SyncNotifyingQueue<int, decltype(notifier)> queue(std::move(notifier));
     REQUIRE(queue.empty() == true);
 
