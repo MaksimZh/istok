@@ -208,6 +208,10 @@ public:
         titles.erase(window->title);
     }
 
+    void runMessageLoop() {}
+
+    void stopMessageLoop() noexcept {}
+
     static MockSysWindowManager* release() {
         return InstanceGetter<MockSysWindowManager>::release();
     }

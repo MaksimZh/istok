@@ -202,6 +202,8 @@ concept SysWindowManager = requires() {
         manager.create(std::declval<WindowParams>())
     } -> std::same_as<std::shared_ptr<typename Manager::Window>>;
     {manager.remove(window)} -> std::same_as<void>;
+    {manager.runMessageLoop()} -> std::same_as<void>;
+    {manager.stopMessageLoop()} noexcept -> std::same_as<void>;
 };
 
 
@@ -221,6 +223,14 @@ public:
     void destroyWindow(WindowID id) {
         std::shared_ptr<Window> window = appManager.release(id);
         sysManager.remove(window);
+    }
+
+    void runMessageLoop() {
+        sysManager.runMessageLoop();
+    }
+
+    void stopMessageLoop() noexcept {
+        sysManager.stopMessageLoop();
     }
 
 private:
@@ -251,19 +261,11 @@ public:
     }
 
     void run() {
-        while (true) {
-            MSG msg;
-            GetMessage(&msg, NULL, 0, 0);
-            if (msg.message == WM_QUIT) {
-                break;
-            }
-            TranslateMessage(&msg);
-            DispatchMessage(&msg);
-        }
+        windowManager.runMessageLoop();
     }
 
     void stop() noexcept {
-        PostQuitMessage(0);
+        windowManager.stopMessageLoop();
     }
 
     void newWindow(WindowID id, WindowParams params) {
