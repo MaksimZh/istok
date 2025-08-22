@@ -144,47 +144,6 @@ TEST_CASE("WinAPI - AppWindowManager", "[unit][gui]") {
 
 namespace {
 
-template <typename T>
-class ImplicitInstanceGetter {
-public:
-    ImplicitInstanceGetter(T* self) : self(self) {
-        std::unique_lock lock(mut);
-        cv.wait(lock, [] { return instance == nullptr; });
-        instance = self;
-    }
-
-    ~ImplicitInstanceGetter() {
-        std::lock_guard lock(mut);
-        if (instance == self) {
-            instance = nullptr;
-            cv.notify_all();
-        }
-    }
-
-    static T* release() {
-        std::lock_guard lock(mut);
-        T* tmp = instance;
-        instance = nullptr;
-        cv.notify_all();
-        return tmp;
-    }
-
-private:
-    T* self;
-    static T* instance;
-    static std::mutex mut;
-    static std::condition_variable cv;
-};
-
-template <typename T>
-T* ImplicitInstanceGetter<T>::instance;
-
-template <typename T>
-std::mutex ImplicitInstanceGetter<T>::mut;
-
-template <typename T>
-std::condition_variable ImplicitInstanceGetter<T>::cv;
-
 
 class MockNotifierWindow {
 public:
@@ -202,13 +161,13 @@ public:
     }
 
     static MockNotifierWindow* release() {
-        return ImplicitInstanceGetter<MockNotifierWindow>::release();
+        return InstanceGetter<MockNotifierWindow>::release();
     }
 
 private:
     MessageProxy& proxy;
 
-    ImplicitInstanceGetter<MockNotifierWindow> instanceGetter;
+    InstanceGetter<MockNotifierWindow> instanceGetter;
     int notifications = 0;
 };
 
@@ -250,11 +209,11 @@ public:
     }
 
     static MockSysWindowManager* release() {
-        return ImplicitInstanceGetter<MockSysWindowManager>::release();
+        return InstanceGetter<MockSysWindowManager>::release();
     }
 
 private:
-    ImplicitInstanceGetter<MockSysWindowManager> instanceGetter;
+    InstanceGetter<MockSysWindowManager> instanceGetter;
 };
 
 }

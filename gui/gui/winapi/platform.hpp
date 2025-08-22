@@ -87,7 +87,7 @@ public:
             return 0;
         }
         std::optional<GUIMessage<WindowID>> msg = queue->take();
-        if (!msg.has_value) {
+        if (!msg.has_value()) {
             return 0;
         }
         handler.onMessage(msg.value());
