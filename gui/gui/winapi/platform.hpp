@@ -42,19 +42,24 @@ public:
 constexpr UINT WM_APP_QUEUE = WM_APP + 1;
 
 
-template <typename NotifierWindow>
+template <typename Window>
+concept NotifierWindow = requires(Window window) {
+    {window.postQueueNotification()} noexcept -> std::same_as<void>;
+};
+
+template <NotifierWindow Window>
 class Notifier {
 public:
-    Notifier(std::shared_ptr<NotifierWindow> window) : target(window) {}
+    Notifier(std::shared_ptr<Window> window) : target(window) {}
 
     void operator()() noexcept {
-        if (std::shared_ptr<NotifierWindow> window = target.lock()) {
+        if (std::shared_ptr<Window> window = target.lock()) {
             window->postQueueNotification();
         }
     }
 
 private:
-    std::weak_ptr<NotifierWindow> target;
+    std::weak_ptr<Window> target;
 };
 
 

@@ -67,7 +67,7 @@ struct MockWindow {
 TEST_CASE("WinAPI - Notifier", "[unit][gui]") {
     struct Window {
         int& counter;
-        void postQueueNotification() { ++counter; }
+        void postQueueNotification() noexcept { ++counter; }
     };
 
     int counter = 0;
@@ -86,7 +86,7 @@ TEST_CASE("WinAPI - Notifier", "[unit][gui]") {
 
 TEST_CASE("WinAPI - Queue proxy", "[unit][gui]") {
     struct NotifierWindow {
-        void postQueueNotification() {}
+        void postQueueNotification() noexcept {}
     };
 
     MockHandler<int> handler;
@@ -150,7 +150,7 @@ public:
     MockNotifierWindow(MessageProxy& proxy)
         : proxy(proxy), instanceGetter(this) {}
     
-    void postQueueNotification() {
+    void postQueueNotification() noexcept {
         ++notifications;
     }
     
