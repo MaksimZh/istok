@@ -2,6 +2,7 @@
 #pragma once
 
 #include <type_traits>
+#include <mutex>
 
 namespace Istok::Tools {
 
@@ -17,5 +18,48 @@ struct Hash<T, std::void_t<typename T::Hasher>> {
 
 template<typename T>
 using hash = typename Hash<T>::type;
+
+
+template <typename T>
+class InstanceGetter {
+public:
+    InstanceGetter(T* self) : self(self) {
+        std::unique_lock lock(mut);
+        cv.wait(lock, [] { return instance == nullptr; });
+        instance = self;
+    }
+
+    ~InstanceGetter() {
+        std::lock_guard lock(mut);
+        if (instance == self) {
+            instance = nullptr;
+            cv.notify_all();
+        }
+    }
+
+    static T* release() {
+        std::lock_guard lock(mut);
+        T* tmp = instance;
+        instance = nullptr;
+        cv.notify_all();
+        return tmp;
+    }
+
+private:
+    T* self;
+    static T* instance;
+    static std::mutex mut;
+    static std::condition_variable cv;
+};
+
+template <typename T>
+T* InstanceGetter<T>::instance;
+
+template <typename T>
+std::mutex InstanceGetter<T>::mut;
+
+template <typename T>
+std::condition_variable InstanceGetter<T>::cv;
+
 
 } // namespace Istok::Tools
