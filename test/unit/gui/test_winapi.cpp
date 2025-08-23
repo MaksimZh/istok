@@ -68,8 +68,10 @@ struct MockWindow {
 
 TEST_CASE("WinAPI - Notifier", "[unit][gui]") {
     struct Window {
-        int& counter;
-        void postQueueNotification() noexcept { ++counter; }
+        int* counter;
+        Window(MessageProxy& proxy) {}
+        Window(int& counter) : counter(&counter) {}
+        void postQueueNotification() noexcept { ++*counter; }
     };
 
     int counter = 0;
@@ -87,19 +89,20 @@ TEST_CASE("WinAPI - Notifier", "[unit][gui]") {
 
 
 TEST_CASE("WinAPI - Queue proxy", "[unit][gui]") {
-    struct NotifierWindow {
+    struct Window {
+        Window(MessageProxy& proxy) {}
         void postQueueNotification() noexcept {}
     };
 
     MockHandler<int> handler;
-    QueueProxy<int, NotifierWindow> proxy(handler);
+    QueueProxy<int, Window> proxy(handler);
 
     REQUIRE_THROWS_AS(proxy.getQueue(), std::runtime_error);
     REQUIRE(proxy.handleMessage(SysMessage{0, 0, 0, 0}) == 0);
     REQUIRE(proxy.handleMessage(SysMessage{0, WM_APP_QUEUE, 0, 0}) == 0);
     REQUIRE(handler.debugQueue.empty());
 
-    auto window = std::make_shared<NotifierWindow>();
+    auto window = std::make_shared<Window>(proxy);
     proxy.setNotifier(window);
     auto queue = proxy.getQueue();
     REQUIRE(proxy.handleMessage(SysMessage{0, 0, 0, 0}) == 0);

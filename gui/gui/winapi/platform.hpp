@@ -43,7 +43,8 @@ constexpr UINT WM_APP_QUEUE = WM_APP + 1;
 
 
 template <typename Window>
-concept NotifierWindow = requires(Window window) {
+concept NotifierWindow = requires(Window window, MessageProxy& proxy) {
+    Window(proxy);
     {window.postQueueNotification()} noexcept -> std::same_as<void>;
 };
 
