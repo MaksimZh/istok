@@ -146,7 +146,6 @@ TEST_CASE("WinAPI - AppWindowManager", "[unit][gui]") {
 
 namespace {
 
-
 class MockNotifierWindow {
 public:
     MockNotifierWindow(MessageProxy& proxy)
@@ -251,6 +250,17 @@ TEST_CASE("WinAPI - WindowManager", "[unit][gui]") {
 TEST_CASE("WinAPI - Platform", "[unit][gui]") {
     MockHandler<int> handler;
     Platform<int, MockNotifierWindow, MockSysWindowManager> platform(handler);
+    auto debugQueue = MockSysWindowManager::release()->debugQueue;
     auto queue = platform.getQueue();
     REQUIRE(queue != nullptr);
+    platform.run();
+    REQUIRE(debugQueue->take() == "run message loop");
+    platform.newWindow(1, WindowParams{{}, "a"});
+    REQUIRE(debugQueue->take() == "create a");
+    platform.newWindow(2, WindowParams{{}, "b"});
+    REQUIRE(debugQueue->take() == "create b");
+    platform.destroyWindow(2);
+    REQUIRE(debugQueue->take() == "remove b");
+    platform.stop();
+    REQUIRE(debugQueue->take() == "stop message loop");
 }
