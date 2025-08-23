@@ -25,7 +25,7 @@ struct SysMessage {
 
 using SysResult = LRESULT;
 
-SysResult handleByDefault(SysMessage message) {
+SysResult handleByDefault(SysMessage message) noexcept {
     return DefWindowProc(
         message.hWnd,
         message.msg,

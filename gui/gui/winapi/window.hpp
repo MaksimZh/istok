@@ -8,7 +8,8 @@
 #include <windowsx.h>
 #include <dwmapi.h>
 
-#include <memory.h>
+#include <memory>
+#include <unordered_map>
 
 
 namespace Istok::GUI::WinAPI {
@@ -178,19 +179,77 @@ private:
 };
 
 
+
+HINSTANCE getHInstance() {
+    static HINSTANCE hInstance =
+        reinterpret_cast<HINSTANCE>(GetModuleHandle(NULL));
+    return hInstance;
+}
+
+LRESULT CALLBACK windowProc(
+        HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
+    if (auto handler = reinterpret_cast<MessageProxy*>(
+            GetWindowLongPtr(hWnd, GWLP_USERDATA)))
+    {
+        return handler->handleMessage(
+            SysMessage(hWnd, msg, wParam, lParam));
+    }
+    return DefWindowProc(hWnd, msg, wParam, lParam);
+}
+
+WindowClass& getWndClass() {
+    static WindowClass wc(
+        CS_OWNDC,
+        windowProc,
+        getHInstance(),
+        L"Istok",
+        0, 0, nullptr,
+        LoadCursor(NULL, IDC_ARROW));
+    return wc;
+}
+
+
 class WinAPINotifierWindow {
 public:
-    WinAPINotifierWindow(MessageProxy& proxy) {}
+    WinAPINotifierWindow(MessageProxy& proxy)
+        :wnd(makeWindow())
+    {
+        SetWindowLongPtr(
+            wnd.get(), GWLP_USERDATA, reinterpret_cast<LONG_PTR>(&proxy));
+    }
 
-    void postQueueNotification() noexcept {}
+    void postQueueNotification() noexcept {
+        PostMessage(wnd.get(), WM_APP_QUEUE, NULL, NULL);
+    }
 
 private:
     WndHandle wnd;
+
+    static WndHandle makeWindow() {
+        WndHandle wnd(CreateWindowEx(
+            WS_EX_TOOLWINDOW,
+            getWndClass(),
+            L"",
+            WS_POPUP,
+            0, 0, 0, 0,
+            NULL, NULL, getHInstance(), nullptr));
+        if (!wnd) {
+            throw std::runtime_error("Cannot create window");
+        }
+        return wnd;
+    }
 };
 
 
 class GLWindow {
 public:
+    GLWindow(WindowParams params, MessageProxy& proxy)
+        :wnd(makeWindow(params, proxy))
+    {
+        SetWindowLongPtr(
+            wnd.get(), GWLP_USERDATA, reinterpret_cast<LONG_PTR>(&proxy));
+    }
+
     void setTranslator(std::unique_ptr<WindowTranslator>&& value) {
         translator = std::move(value);
     }
@@ -199,20 +258,65 @@ public:
         translator.reset();
     }
 
+    HWND getHWnd() const noexcept {
+        return wnd.get();
+    }
+
+    void onClose() noexcept {
+        if (!translator) {
+            return;
+        }
+        translator->onClose();
+    }
+
 private:
+    WndHandle wnd;
     std::unique_ptr<WindowTranslator> translator;
+
+    static WndHandle makeWindow(WindowParams params, MessageProxy& proxy) {
+        WndHandle wnd(CreateWindowEx(
+            params.title.has_value() ? NULL : WS_EX_TOOLWINDOW,
+            getWndClass(),
+            toUTF16(params.title.value_or("")).c_str(),
+            WS_OVERLAPPEDWINDOW, //WS_POPUP,
+            params.location.left, params.location.top,
+            params.location.right - params.location.left,
+            params.location.bottom - params.location.top,
+            NULL, NULL, getHInstance(), nullptr));
+        if (!wnd) {
+            throw std::runtime_error("Cannot create window");
+        }
+        enableTransparency(wnd);
+        SetWindowLongPtr(
+            wnd.get(), GWLP_USERDATA, reinterpret_cast<LONG_PTR>(&proxy));
+        return wnd;
+    }
+
+    static void enableTransparency(WndHandle& wnd) {
+        DWM_BLURBEHIND bb = { 0 };
+        HRGN hRgn = CreateRectRgn(0, 0, -1, -1);
+        bb.dwFlags = DWM_BB_ENABLE | DWM_BB_BLURREGION;
+        bb.hRgnBlur = hRgn;
+        bb.fEnable = TRUE;
+        DwmEnableBlurBehindWindow(wnd.get(), &bb);
+    }
 };
 
 
-class WinAPIWindowManager {
+class WinAPIWindowManager: public MessageProxy {
 public:
     using Window = GLWindow;
 
     std::shared_ptr<Window> create(WindowParams params) {
-        return std::make_shared<Window>();
+        auto window = std::make_shared<Window>(params, *this);
+        windows[window->getHWnd()] = window;
+        ShowWindow(window->getHWnd(), SW_SHOW);
+        return window;
     }
 
-    void remove(std::shared_ptr<Window>) {}
+    void remove(std::shared_ptr<Window> window) {
+        windows.erase(window->getHWnd());
+    }
     
     void runMessageLoop() {
         while (true) {
@@ -229,6 +333,25 @@ public:
     void stopMessageLoop() noexcept {
         PostQuitMessage(0);
     }
+
+    SysResult handleMessage(SysMessage message) noexcept override {
+        if (!windows.contains(message.hWnd)) {
+            return handleByDefault(message);
+        }
+        auto window = windows[message.hWnd];
+        switch (message.msg) {
+        case WM_CLOSE:
+            window->onClose();
+            return 0;
+        case WM_DESTROY:
+            return 0;
+        default:
+            return handleByDefault(message);
+        }
+    }
+
+private:
+    std::unordered_map<HWND, std::shared_ptr<Window>> windows;
 };
 
 } // namespace Istok::GUI::WinAPI
