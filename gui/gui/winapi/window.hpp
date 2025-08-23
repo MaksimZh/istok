@@ -2,41 +2,16 @@
 // Copyright 2025 Maksim Sergeevich Zholudev. All rights reserved
 #pragma once
 
-#include <tools/queue.hpp>
-#include <gui/winapi/basic.hpp>
+#include "platform.hpp"
 
-#include <cassert>
+#include <windows.h>
 #include <windowsx.h>
 #include <dwmapi.h>
-#include <stdexcept>
-#include <iostream>
-#include <optional>
 
-constexpr UINT WM_APP_QUEUE = WM_APP + 1;
+#include <memory.h>
 
 
-template <typename T>
-struct Position {
-    T x;
-    T y;
-};
-
-
-template <typename T>
-struct Size {
-    T width;
-    T height;
-};
-
-
-template <typename T>
-struct Rect {
-    T left;
-    T top;
-    T right;
-    T bottom;
-};
-
+namespace Istok::GUI::WinAPI {
 
 class WindowClass {
 public:
@@ -152,33 +127,113 @@ std::string toUTF8(LPCWSTR source) {
 }
 
 
-struct WinAPIMessage {
-    HWND hWnd;
-    UINT msg;
-    WPARAM wParam;
-    LPARAM lParam;
-};
-
-
-using SysResult = LRESULT;
-
-
-class WinAPIMessageHandler {
+class WndHandle {
 public:
-    virtual SysResult handleMessage(WinAPIMessage message) = 0;
+    WndHandle() = default;
+
+    WndHandle(HWND hWnd) : hWnd(hWnd) {}
+
+    ~WndHandle() {
+        clean();
+    }
+
+    WndHandle(const WndHandle&) = delete;
+    WndHandle& operator=(const WndHandle&) = delete;
+
+    WndHandle(WndHandle&& other) noexcept
+        : hWnd(other.hWnd) {
+        other.drop();
+    }
+
+    WndHandle& operator=(WndHandle&& other) noexcept {
+        if (this != &other) {
+            clean();
+            hWnd = other.hWnd;
+            other.drop();
+        }
+        return *this;
+    }
+
+    operator bool() const {
+        return hWnd != nullptr;
+    }
+
+    HWND get() const {
+        return hWnd;
+    }
+
+private:
+    HWND hWnd = nullptr;
+
+    void clean() {
+        if (hWnd != nullptr) {
+            DestroyWindow(hWnd);
+        }
+        drop();
+    }
+
+    void drop() {
+        hWnd = nullptr;
+    }
 };
 
 
-SysResult defaultWinAPIHandler(WinAPIMessage message) {
-    return DefWindowProc(
-        message.hWnd,
-        message.msg,
-        message.wParam,
-        message.lParam
-    );
-}
+class WinAPINotifierWindow {
+public:
+    WinAPINotifierWindow(MessageProxy& proxy) {}
+
+    void postQueueNotification() noexcept {}
+
+private:
+    WndHandle wnd;
+};
 
 
+class GLWindow {
+public:
+    void setTranslator(std::unique_ptr<WindowTranslator>&& value) {
+        translator = std::move(value);
+    }
+    
+    void removeTranslator() {
+        translator.reset();
+    }
+
+private:
+    std::unique_ptr<WindowTranslator> translator;
+};
+
+
+class WinAPIWindowManager {
+public:
+    using Window = GLWindow;
+
+    std::shared_ptr<Window> create(WindowParams params) {
+        return std::make_shared<Window>();
+    }
+
+    void remove(std::shared_ptr<Window>) {}
+    
+    void runMessageLoop() {
+        while (true) {
+            MSG msg;
+            GetMessage(&msg, NULL, 0, 0);
+            if (msg.message == WM_QUIT) {
+                break;
+            }
+            TranslateMessage(&msg);
+            DispatchMessage(&msg);
+        }
+    }
+    
+    void stopMessageLoop() noexcept {
+        PostQuitMessage(0);
+    }
+};
+
+} // namespace Istok::GUI::WinAPI
+
+/*
 class SysWindow;
 
 class SysMessageHandler {
@@ -442,3 +497,4 @@ private:
     SmartWindow core;
     SysMessageHandler* messageHandler;
 };
+*/

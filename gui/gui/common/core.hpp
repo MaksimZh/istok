@@ -113,6 +113,10 @@ public:
         channel.push(Message::GUIDestroyWindow<WindowID>(id));
     }
 
+    AppMessage<WindowID> getMessage() {
+        return channel.take();
+    }
+
 private:
     GUIFor(SharedAppQueue<WindowID> appQueue)
         : launcher(appQueue), channel(appQueue, launcher.getQueue()) {}

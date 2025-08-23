@@ -92,6 +92,10 @@ public:
         debugQueue->push(std::format("destroy window {}", id));
     }
 
+    void sendClose(WindowID id) {
+        handler->onWindowClose(id);
+    }
+
 private:
     InstanceGetter<MockPlatform> instanceGetter;
 
@@ -186,6 +190,10 @@ TEST_CASE("GUI - GUI", "[unit][gui]") {
         REQUIRE(debugQueue->take() == "run");
         gui.newWindow(42, WindowParams{});
         REQUIRE(debugQueue->take() == "new window 42");
+        platform->sendClose(42);
+        auto msg = gui.getMessage();
+        REQUIRE(std::holds_alternative<Message::AppWindowClosed<int>>(msg));
+        REQUIRE(std::get<Message::AppWindowClosed<int>>(msg).id == 42);
         gui.destroyWindow(42);
         REQUIRE(debugQueue->take() == "destroy window 42");
     }

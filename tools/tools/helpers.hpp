@@ -20,6 +20,20 @@ template<typename T>
 using hash = typename Hash<T>::type;
 
 
+template<typename T>
+struct UnwrapOptional {
+    using type = T;
+};
+
+template<typename T>
+struct UnwrapOptional<std::optional<T>> {
+    using type = T;
+};
+
+template<typename T>
+using unwrapOptional = typename UnwrapOptional<T>::type;
+
+
 /**
  * @brief Auxiliary class for retrieving implicitly created instances
  * 

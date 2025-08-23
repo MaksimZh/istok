@@ -5,6 +5,8 @@
 #include <thread>
 #include <future>
 
+#include <tools/helpers.hpp>
+
 namespace Istok::Tools {
 
 template <typename Core>
@@ -74,8 +76,9 @@ template <typename InQueue, typename OutQueue>
 class Channel {
 public:
     using InType = decltype(std::declval<InQueue>().take());
-    using OutType = decltype(std::declval<OutQueue>().take());
-    
+    using OutType = Istok::Tools::unwrapOptional<
+        decltype(std::declval<OutQueue>().take())>;
+
     Channel(
         std::shared_ptr<InQueue> inQueue,
         std::shared_ptr<OutQueue> outQueue
