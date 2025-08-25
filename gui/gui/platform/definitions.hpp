@@ -38,7 +38,7 @@ using PlatformEvent = std::variant<
     Event::PlatformHeartbeatTimeout,
     Event::PlatformException,
     Event::PlatformShutdown,
-    Event::WindowClose
+    Event::WindowClose<ID>
 >;
 
 
