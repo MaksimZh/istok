@@ -5,6 +5,7 @@
 #include <type_traits>
 #include <optional>
 #include <string>
+#include <memory>
 
 namespace Istok::GUI {
 
@@ -26,12 +27,12 @@ namespace Event {
     struct PlatformShutdown {};
     
     /// @brief Request to close a window
-    /// @tparam WindowID Window identifier type
-    template <typename WindowID>
-    struct WindowClose { WindowID id; };
+    /// @tparam ID Window identifier type
+    template <typename ID>
+    struct WindowClose { ID id; };
 }
 
-template <typename WindowID>
+template <typename ID>
 using PlatformEvent = std::variant<
     Event::PlatformHeartbeatResponse,
     Event::PlatformHeartbeatTimeout,
@@ -55,27 +56,33 @@ struct WindowParams {
 };
 
 
+template <typename ID>
+struct Scene {};
+
+
+template <typename ID>
+struct ScenePatch {};
+
+
 template <typename Platform>
 concept GUIPlatform = requires {
-    typename Platform::WindowID;
-    typename Platform::Scene;
-    typename Platform::ScenePatch;
+    typename Platform::ID;
     requires std::is_default_constructible_v<Platform>;
 } && requires(
     Platform platform,
-    typename Platform::WindowID id,
+    typename Platform::ID id,
     WindowParams windowParams,
     Rect<int> location,
-    typename Platform::Scene scene,
-    typename Platform::ScenePatch scenePatch
+    std::unique_ptr<Scene<typename Platform::ID>>&& scene,
+    std::unique_ptr<ScenePatch<typename Platform::ID>>&& scenePatch
 ) {
     {platform.getMessage()} noexcept ->
-        std::same_as<PlatformEvent<typename Platform::WindowID>>;
+        std::same_as<PlatformEvent<typename Platform::ID>>;
     {platform.createWindow(id, windowParams)} -> std::same_as<void>;
     {platform.destroyWindow(id)} -> std::same_as<void>;
     {platform.setWindowLocation(id, location)} -> std::same_as<void>;
-    {platform.loadScene(id, scene)} -> std::same_as<void>;
-    {platform.patchScene(id, scenePatch)} -> std::same_as<void>;
+    {platform.loadScene(id, std::move(scene))} -> std::same_as<void>;
+    {platform.patchScene(id, std::move(scenePatch))} -> std::same_as<void>;
 };
 
 } // namespace Istok::GUI
