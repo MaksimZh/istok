@@ -10,16 +10,103 @@
 
 namespace Istok::GUI::WinAPI {
 
-class MessageHandler {};
+
+HINSTANCE getHInstance() {
+    static HINSTANCE hInstance =
+        reinterpret_cast<HINSTANCE>(GetModuleHandle(NULL));
+    return hInstance;
+}
+
+
+class WindowClass {
+public:
+    WindowClass() = default;
+
+    WindowClass(WNDPROC lpfnWndProc, LPCWSTR className)
+        : name(className)
+    {
+        WNDCLASSEX wcex{};
+        wcex.cbSize = sizeof(WNDCLASSEX);
+        wcex.style = CS_OWNDC;
+        wcex.lpfnWndProc = lpfnWndProc;
+        wcex.cbClsExtra = 0;
+        wcex.cbWndExtra = 0;
+        wcex.hInstance = getHInstance();
+        wcex.hIcon = nullptr;
+        wcex.hCursor = LoadCursor(NULL, IDC_ARROW);
+        wcex.hbrBackground = nullptr;
+        wcex.lpszMenuName = nullptr;
+        wcex.lpszClassName = className;
+        wcex.hIconSm = nullptr;
+        if (!RegisterClassEx(&wcex)) {
+            throw std::runtime_error("Failed to register window class.");
+        }
+    }
+
+    ~WindowClass() noexcept {
+        UnregisterClass(name, getHInstance());
+    }
+
+    WindowClass(const WindowClass&) = delete;
+    WindowClass& operator=(const WindowClass&) = delete;
+    WindowClass(WindowClass&& other) = delete;
+    WindowClass& operator=(WindowClass&& other) = delete;
+
+    LPCWSTR get() const {
+        return name;
+    }
+
+private:
+    LPCWSTR name = nullptr;
+};
+
+
+std::wstring toUTF16(const std::string& source) {
+    int size = MultiByteToWideChar(CP_UTF8, 0, source.c_str(), -1, nullptr, 0);
+    if (size == 0) {
+        throw std::runtime_error("UTF-8 to UTF-16 conversion failed");
+    }
+    std::wstring result(size, L'\0');
+    MultiByteToWideChar(CP_UTF8, 0, source.c_str(), -1, &result[0], size);
+    return result;
+}
+
+
+class MessageHandler {
+public:
+    virtual LRESULT handleMessage(
+        HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) noexcept = 0;
+};
 
 
 template <typename ID>
 class Window {
 public:
-    Window(WindowParams params, MessageHandler& handler) {}
+    Window(WindowParams params, MessageHandler& handler) {
+        hWnd = CreateWindowEx(
+            params.title.has_value() ? NULL : WS_EX_TOOLWINDOW,
+            getWindowClass(),
+            toUTF16(params.title.value_or("")).c_str(),
+            WS_OVERLAPPEDWINDOW, //WS_POPUP,
+            params.location.left, params.location.top,
+            params.location.right - params.location.left,
+            params.location.bottom - params.location.top,
+            NULL, NULL, getHInstance(), nullptr);
+        if (!hWnd) {
+            throw std::runtime_error("Cannot create window");
+        }
+        SetWindowLongPtr(
+            hWnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(&handler));
+    }
+
+    ~Window() noexcept {
+        if (hWnd) {
+            DestroyWindow(hWnd);
+        }
+    }
     
-    HWND getHWnd() {
-        return 0;
+    HWND getHWnd() const noexcept {
+        return hWnd;
     }
 
     void loadScene(std::unique_ptr<Scene<ID>>&& scene) {
@@ -27,7 +114,24 @@ public:
     }
 
 private:
+    HWND hWnd = nullptr;
     Scene<ID> scene;
+
+    static LPCWSTR getWindowClass() {
+        static WindowClass wc(windowProc, L"Istok");
+        return wc.get();
+    }
+
+    static LRESULT CALLBACK windowProc(
+        HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
+    {
+        if (auto handler = reinterpret_cast<MessageHandler*>(
+                GetWindowLongPtr(hWnd, GWLP_USERDATA)))
+        {
+            return handler->handleMessage(hWnd, msg, wParam, lParam);
+        }
+        return DefWindowProc(hWnd, msg, wParam, lParam);
+    }
 };
 
 
@@ -58,13 +162,15 @@ public:
         HWND hWnd = window->getHWnd();
         windows[hWnd] = std::move(window);
         idHWndMap[id] = hWnd;
+        hWndIDMap[hWnd] = id;
         ShowWindow(hWnd, SW_SHOW);
     }
 
     void destroyWindow(ID id) {
         HWND hWnd = idHWndMap[id];
-        idHWndMap.erase(id);
         windows.erase(hWnd);
+        idHWndMap.erase(id);
+        hWndIDMap.erase(hWnd);
     }
 
     void loadScene(ID windowID, std::unique_ptr<Scene<ID>>&& scene) {
@@ -72,11 +178,25 @@ public:
         Window<ID>& window = *windows[hWnd];
         window.loadScene(std::move(scene));
     }
+
+    LRESULT handleMessage(
+        HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) noexcept override
+    {
+        if (!windows.contains(hWnd)) {
+            return DefWindowProc(hWnd, msg, wParam, lParam);
+        }
+        if (msg == WM_CLOSE) {
+            outQueue.push(Event::WindowClose(hWndIDMap[hWnd]));
+            return 0;
+        }
+        return DefWindowProc(hWnd, msg, wParam, lParam);
+    }
     
 private:
     Tools::SimpleQueue<PlatformEvent<ID>> outQueue;
     std::unordered_map<HWND, std::unique_ptr<Window<ID>>> windows;
     std::unordered_map<ID, HWND, Tools::hash<ID>> idHWndMap;
+    std::unordered_map<HWND, ID> hWndIDMap;
 };
 
 }
