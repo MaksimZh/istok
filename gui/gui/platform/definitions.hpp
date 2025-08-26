@@ -57,11 +57,12 @@ struct WindowParams {
 
 
 template <typename ID>
-struct Scene {};
-
-
-template <typename ID>
-struct ScenePatch {};
+struct Scene {
+    float r;
+    float g;
+    float b;
+    float a;
+};
 
 
 template <typename Platform>
@@ -72,17 +73,13 @@ concept GUIPlatform = requires {
     Platform platform,
     typename Platform::ID id,
     WindowParams windowParams,
-    Rect<int> location,
-    std::unique_ptr<Scene<typename Platform::ID>>&& scene,
-    std::unique_ptr<ScenePatch<typename Platform::ID>>&& scenePatch
+    std::unique_ptr<Scene<typename Platform::ID>>&& scene
 ) {
     {platform.getMessage()} noexcept ->
         std::same_as<PlatformEvent<typename Platform::ID>>;
     {platform.createWindow(id, windowParams)} -> std::same_as<void>;
     {platform.destroyWindow(id)} -> std::same_as<void>;
-    {platform.setWindowLocation(id, location)} -> std::same_as<void>;
     {platform.loadScene(id, std::move(scene))} -> std::same_as<void>;
-    {platform.patchScene(id, std::move(scenePatch))} -> std::same_as<void>;
 };
 
 } // namespace Istok::GUI
