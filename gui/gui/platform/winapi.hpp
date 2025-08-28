@@ -71,18 +71,22 @@ std::wstring toUTF16(const std::string& source) {
     return result;
 }
 
+template <typename ID>
+class Window;
 
-class MessageHandler {
+template <typename ID>
+class WindowMessageHandler {
 public:
-    virtual LRESULT handleMessage(
-        HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) noexcept = 0;
+    virtual void onClose(Window<ID>* sender) noexcept = 0;
 };
 
 
 template <typename ID>
 class Window {
 public:
-    Window(WindowParams params, MessageHandler& handler) {
+    Window(WindowParams params, WindowMessageHandler<ID>& handler)
+        : handler(handler)
+    {
         hWnd = CreateWindowEx(
             params.title.has_value() ? NULL : WS_EX_TOOLWINDOW,
             getWindowClass(),
@@ -96,7 +100,7 @@ public:
             throw std::runtime_error("Cannot create window");
         }
         SetWindowLongPtr(
-            hWnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(&handler));
+            hWnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(this));
     }
 
     ~Window() noexcept {
@@ -114,6 +118,7 @@ public:
     }
 
 private:
+    WindowMessageHandler<ID>& handler;
     HWND hWnd = nullptr;
     Scene<ID> scene;
 
@@ -125,10 +130,18 @@ private:
     static LRESULT CALLBACK windowProc(
         HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
     {
-        if (auto handler = reinterpret_cast<MessageHandler*>(
+        if (auto handler = reinterpret_cast<Window*>(
                 GetWindowLongPtr(hWnd, GWLP_USERDATA)))
         {
             return handler->handleMessage(hWnd, msg, wParam, lParam);
+        }
+        return DefWindowProc(hWnd, msg, wParam, lParam);
+    }
+
+    LRESULT handleMessage(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
+        if (msg == WM_CLOSE) {
+            handler.onClose(this);
+            return 0;
         }
         return DefWindowProc(hWnd, msg, wParam, lParam);
     }
@@ -136,7 +149,7 @@ private:
 
 
 template <typename ID_>
-class Platform: public MessageHandler {
+class Platform: public WindowMessageHandler<ID_> {
 public:
     using ID = ID_;
 
@@ -159,44 +172,33 @@ public:
 
     void createWindow(ID id, WindowParams params) {
         auto window = std::make_unique<Window<ID>>(params, *this);
-        HWND hWnd = window->getHWnd();
-        windows[hWnd] = std::move(window);
-        idHWndMap[id] = hWnd;
-        hWndIDMap[hWnd] = id;
-        ShowWindow(hWnd, SW_SHOW);
+        ShowWindow(window->getHWnd(), SW_SHOW);
+        identifiers[window.get()] = id;
+        windows[id] = std::move(window);
     }
 
     void destroyWindow(ID id) {
-        HWND hWnd = idHWndMap[id];
-        windows.erase(hWnd);
-        idHWndMap.erase(id);
-        hWndIDMap.erase(hWnd);
+        Window<ID>* window = windows[id].get();
+        windows.erase(id);
+        identifiers.erase(window);
     }
 
     void loadScene(ID windowID, std::unique_ptr<Scene<ID>>&& scene) {
-        HWND hWnd = idHWndMap[windowID];
-        Window<ID>& window = *windows[hWnd];
-        window.loadScene(std::move(scene));
+        windows[windowID]->loadScene(std::move(scene));
     }
 
-    LRESULT handleMessage(
-        HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) noexcept override
-    {
-        if (!windows.contains(hWnd)) {
-            return DefWindowProc(hWnd, msg, wParam, lParam);
+    void onClose(Window<ID>* sender) noexcept {
+        try {
+            outQueue.push(Event::WindowClose(identifiers.at(sender)));
+        } catch(...) {
+            outQueue.push(Event::PlatformException(std::current_exception()));
         }
-        if (msg == WM_CLOSE) {
-            outQueue.push(Event::WindowClose(hWndIDMap[hWnd]));
-            return 0;
-        }
-        return DefWindowProc(hWnd, msg, wParam, lParam);
     }
     
 private:
     Tools::SimpleQueue<PlatformEvent<ID>> outQueue;
-    std::unordered_map<HWND, std::unique_ptr<Window<ID>>> windows;
-    std::unordered_map<ID, HWND, Tools::hash<ID>> idHWndMap;
-    std::unordered_map<HWND, ID> hWndIDMap;
+    std::unordered_map<ID, std::unique_ptr<Window<ID>>, Tools::hash<ID>> windows;
+    std::unordered_map<Window<ID>*, ID> identifiers;
 };
 
 }
