@@ -71,20 +71,20 @@ std::wstring toUTF16(const std::string& source) {
     return result;
 }
 
-template <typename ID>
-class Window;
 
-template <typename ID>
+template <typename Window>
 class WindowMessageHandler {
 public:
-    virtual void onClose(Window<ID>* sender) noexcept = 0;
+    virtual void onClose(Window* sender) noexcept = 0;
 };
 
 
-template <typename ID>
+template <typename Renderer>
 class Window {
 public:
-    Window(WindowParams params, WindowMessageHandler<ID>& handler)
+    using Scene = Renderer::Scene;
+
+    Window(WindowParams params, WindowMessageHandler<Window>& handler)
         : handler(handler)
     {
         hWnd = CreateWindowEx(
@@ -113,14 +113,14 @@ public:
         return hWnd;
     }
 
-    void loadScene(std::unique_ptr<Scene<ID>>&& scene) {
-        this->scene = *scene;
+    void loadScene(std::unique_ptr<Scene>&& scene) {
+        this->scene = std::move(scene);
     }
 
 private:
-    WindowMessageHandler<ID>& handler;
+    WindowMessageHandler<Window>& handler;
     HWND hWnd = nullptr;
-    Scene<ID> scene;
+    std::unique_ptr<Scene> scene;
 
     static LPCWSTR getWindowClass() {
         static WindowClass wc(windowProc, L"Istok");
@@ -148,10 +148,12 @@ private:
 };
 
 
-template <typename ID_>
-class Platform: public WindowMessageHandler<ID_> {
+template <typename ID_, typename Renderer>
+class Platform: public WindowMessageHandler<Window<Renderer>> {
 public:
     using ID = ID_;
+    using Scene = Renderer::Scene;
+    using Window = Window<Renderer>;
 
     Platform() {}
 
@@ -171,23 +173,23 @@ public:
     }
 
     void createWindow(ID id, WindowParams params) {
-        auto window = std::make_unique<Window<ID>>(params, *this);
+        auto window = std::make_unique<Window>(params, *this);
         ShowWindow(window->getHWnd(), SW_SHOW);
         identifiers[window.get()] = id;
         windows[id] = std::move(window);
     }
 
     void destroyWindow(ID id) {
-        Window<ID>* window = windows[id].get();
+        Window* window = windows[id].get();
         windows.erase(id);
         identifiers.erase(window);
     }
 
-    void loadScene(ID windowID, std::unique_ptr<Scene<ID>>&& scene) {
+    void loadScene(ID windowID, std::unique_ptr<Scene>&& scene) {
         windows[windowID]->loadScene(std::move(scene));
     }
 
-    void onClose(Window<ID>* sender) noexcept {
+    void onClose(Window* sender) noexcept override {
         try {
             outQueue.push(Event::WindowClose(identifiers.at(sender)));
         } catch(...) {
@@ -197,8 +199,8 @@ public:
     
 private:
     Tools::SimpleQueue<PlatformEvent<ID>> outQueue;
-    std::unordered_map<ID, std::unique_ptr<Window<ID>>, Tools::hash<ID>> windows;
-    std::unordered_map<Window<ID>*, ID> identifiers;
+    std::unordered_map<ID, std::unique_ptr<Window>, Tools::hash<ID>> windows;
+    std::unordered_map<Window*, ID> identifiers;
 };
 
 }

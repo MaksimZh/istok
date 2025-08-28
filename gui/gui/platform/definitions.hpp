@@ -56,24 +56,16 @@ struct WindowParams {
 };
 
 
-template <typename ID>
-struct Scene {
-    float r;
-    float g;
-    float b;
-    float a;
-};
-
-
 template <typename Platform>
 concept GUIPlatform = requires {
     typename Platform::ID;
+    typename Platform::Scene;
     requires std::is_default_constructible_v<Platform>;
 } && requires(
     Platform platform,
     typename Platform::ID id,
     WindowParams windowParams,
-    std::unique_ptr<Scene<typename Platform::ID>>&& scene
+    std::unique_ptr<typename Platform::Scene>&& scene
 ) {
     {platform.getMessage()} noexcept ->
         std::same_as<PlatformEvent<typename Platform::ID>>;

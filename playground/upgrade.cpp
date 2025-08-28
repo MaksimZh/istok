@@ -8,9 +8,18 @@
 using namespace Istok::GUI;
 using namespace Istok::ECS;
 
+struct Renderer {
+    struct Scene {
+        float r;
+        float g;
+        float b;
+        float a;
+    };
+};
+
 int main() {
     EntityComponentManager ecs;
-    WinAPI::Platform<Entity> gui;
+    WinAPI::Platform<Entity, Renderer> gui;
     Entity window = ecs.createEntity();
     Entity menu = ecs.createEntity();
     gui.createWindow(window, WindowParams{{200, 100, 600, 400}, "Istok"});
