@@ -8,6 +8,7 @@
 using namespace Istok::GUI;
 using namespace Istok::ECS;
 
+
 struct Renderer {
     struct Scene {
         float r;
@@ -15,11 +16,21 @@ struct Renderer {
         float b;
         float a;
     };
+
+    struct WindowRenderer {
+        Scene scene;
+    };
+
+    WindowRenderer prepareWindow(WinAPI::HWndWindow& window) {
+        return WindowRenderer{};
+    }
 };
+
 
 int main() {
     EntityComponentManager ecs;
-    WinAPI::Platform<Entity, Renderer> gui;
+    WinAPI::Platform<Entity, WinAPI::HWndWindow, Renderer> gui(
+        std::make_shared<Renderer>());
     Entity window = ecs.createEntity();
     Entity menu = ecs.createEntity();
     gui.createWindow(window, WindowParams{{200, 100, 600, 400}, "Istok"});

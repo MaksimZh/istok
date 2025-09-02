@@ -61,30 +61,15 @@ private:
 };
 
 
-std::wstring toUTF16(const std::string& source) {
-    int size = MultiByteToWideChar(CP_UTF8, 0, source.c_str(), -1, nullptr, 0);
-    if (size == 0) {
-        throw std::runtime_error("UTF-8 to UTF-16 conversion failed");
-    }
-    std::wstring result(size, L'\0');
-    MultiByteToWideChar(CP_UTF8, 0, source.c_str(), -1, &result[0], size);
-    return result;
-}
-
-
-template <typename Window>
-class WindowMessageHandler {
+class MessageHandler {
 public:
-    virtual void onClose(Window* sender) noexcept = 0;
+    virtual void onClose() noexcept = 0;
 };
 
 
-template <typename Renderer>
-class Window {
+class HWndWindow {
 public:
-    using Scene = Renderer::Scene;
-
-    Window(WindowParams params, WindowMessageHandler<Window>& handler)
+    HWndWindow(WindowParams params, MessageHandler& handler)
         : handler(handler)
     {
         hWnd = CreateWindowEx(
@@ -103,24 +88,19 @@ public:
             hWnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(this));
     }
 
-    ~Window() noexcept {
+    ~HWndWindow() noexcept {
         if (hWnd) {
             DestroyWindow(hWnd);
         }
     }
-    
-    HWND getHWnd() const noexcept {
-        return hWnd;
-    }
 
-    void loadScene(std::unique_ptr<Scene>&& scene) {
-        this->scene = std::move(scene);
+    void show() {
+        ShowWindow(hWnd, SW_SHOW);
     }
 
 private:
-    WindowMessageHandler<Window>& handler;
+    MessageHandler& handler;
     HWND hWnd = nullptr;
-    std::unique_ptr<Scene> scene;
 
     static LPCWSTR getWindowClass() {
         static WindowClass wc(windowProc, L"Istok");
@@ -130,7 +110,7 @@ private:
     static LRESULT CALLBACK windowProc(
         HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
     {
-        if (auto handler = reinterpret_cast<Window*>(
+        if (auto handler = reinterpret_cast<HWndWindow*>(
                 GetWindowLongPtr(hWnd, GWLP_USERDATA)))
         {
             return handler->handleMessage(hWnd, msg, wParam, lParam);
@@ -140,22 +120,119 @@ private:
 
     LRESULT handleMessage(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
         if (msg == WM_CLOSE) {
-            handler.onClose(this);
+            handler.onClose();
             return 0;
         }
         return DefWindowProc(hWnd, msg, wParam, lParam);
     }
+
+    static std::wstring toUTF16(const std::string& source) {
+        int size = MultiByteToWideChar(CP_UTF8, 0, source.c_str(), -1, nullptr, 0);
+        if (size == 0) {
+            throw std::runtime_error("UTF-8 to UTF-16 conversion failed");
+        }
+        std::wstring result(size, L'\0');
+        MultiByteToWideChar(CP_UTF8, 0, source.c_str(), -1, &result[0], size);
+        return result;
+    }
 };
 
 
-template <typename ID_, typename Renderer>
-class Platform: public WindowMessageHandler<Window<Renderer>> {
+template <typename SysWindow, typename Renderer>
+class GraphicWindow {
+public:
+    GraphicWindow(
+        WindowParams params, MessageHandler& handler,
+        std::shared_ptr<Renderer> globalRenderer
+    ) :
+        window(params, handler),
+        renderer(globalRenderer->prepareWindow(window))
+    {}
+
+    void show() {
+        window.show();
+    }
+
+    void loadScene(std::unique_ptr<typename Renderer::Scene>&& scene) {
+        renderer.loadScene(std::move(scene));
+    }
+
+    void draw() {
+        renderer.draw();
+    }
+
+private:
+    SysWindow window;
+    Renderer::WindowRenderer renderer;
+};
+
+
+template <typename SysWindow, typename Renderer>
+class WindowCore {
+public:
+    WindowCore(
+        WindowParams params, MessageHandler& handler,
+        std::shared_ptr<Renderer> renderer
+    ) : window(params, handler, renderer) {}
+
+    void show() {
+        window.show();
+    }
+
+    void loadScene(std::unique_ptr<typename Renderer::Scene>&& scene) {
+        window.loadScene(std::move(scene));
+    }
+
+    void draw() {
+        window.draw();
+    }
+
+private:
+    GraphicWindow<SysWindow, Renderer> window;
+};
+
+
+template <typename Window>
+class EventHandler {
+public:
+    virtual void onClose(Window* sender) noexcept = 0;
+};
+
+
+template <typename SysWindow, typename Renderer>
+class Window: public MessageHandler {
+public:
+    Window(
+        WindowParams params, EventHandler<Window>& handler,
+        std::shared_ptr<Renderer> renderer
+    ) : core(params, *this, renderer), handler(handler) {}
+
+    void onClose() noexcept override {
+        handler.onClose(this);
+    }
+
+    void show() {
+        core.show();
+    }
+
+    void loadScene(std::unique_ptr<typename Renderer::Scene>&& scene) {
+        core.loadScene(std::move(scene));
+    }
+
+private:
+    WindowCore<SysWindow, Renderer> core;
+    EventHandler<Window>& handler;
+};
+
+
+template <typename ID_, typename SysWindow, typename Renderer>
+class Platform: public EventHandler<Window<SysWindow, Renderer>> {
 public:
     using ID = ID_;
-    using Scene = Renderer::Scene;
-    using Window = Window<Renderer>;
+    using Window = Window<SysWindow, Renderer>;
 
-    Platform() {}
+    Platform(std::shared_ptr<Renderer> renderer)
+        : renderer(renderer) {}
 
     PlatformEvent<ID> getMessage() noexcept {
         while (true) {
@@ -173,8 +250,8 @@ public:
     }
 
     void createWindow(ID id, WindowParams params) {
-        auto window = std::make_unique<Window>(params, *this);
-        ShowWindow(window->getHWnd(), SW_SHOW);
+        auto window = std::make_unique<Window>(params, *this, renderer);
+        window->show();
         identifiers[window.get()] = id;
         windows[id] = std::move(window);
     }
@@ -185,7 +262,7 @@ public:
         identifiers.erase(window);
     }
 
-    void loadScene(ID windowID, std::unique_ptr<Scene>&& scene) {
+    void loadScene(ID windowID, std::unique_ptr<typename Renderer::Scene>&& scene) {
         windows[windowID]->loadScene(std::move(scene));
     }
 
@@ -198,6 +275,7 @@ public:
     }
     
 private:
+    std::shared_ptr<Renderer> renderer;
     Tools::SimpleQueue<PlatformEvent<ID>> outQueue;
     std::unordered_map<ID, std::unique_ptr<Window>, Tools::hash<ID>> windows;
     std::unordered_map<Window*, ID> identifiers;
