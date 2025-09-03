@@ -225,6 +225,40 @@ private:
 };
 
 
+template <typename ID, typename Window>
+class WindowMap {
+public:
+    void insert(ID id, std::unique_ptr<Window> window) {
+        if (identifiers.contains(window.get()) || windows.contains(id)) {
+            throw std::runtime_error("Window overwrite");
+        }
+        identifiers[window.get()] = id;
+        windows[id] = std::move(window);
+    }
+
+    void erase(ID id) {
+        if (!windows.contains(id)) {
+            throw std::runtime_error("Window not found");
+        }
+        Window* window = windows[id].get();
+        windows.erase(id);
+        assert(identifiers.contains(window));
+        identifiers.erase(window);
+    }
+
+    ID getID(Window* window) {
+        if (!identifiers.contains(window)) {
+            throw std::runtime_error("Window not found");
+        }
+        return identifiers[window];
+    }
+
+private:
+    std::unordered_map<ID, std::unique_ptr<Window>, Tools::hash<ID>> windows;
+    std::unordered_map<Window*, ID> identifiers;
+};
+
+
 template <typename ID_, typename SysWindow, typename Renderer>
 class Platform: public EventHandler<Window<SysWindow, Renderer>> {
 public:
@@ -252,14 +286,11 @@ public:
     void createWindow(ID id, WindowParams params) {
         auto window = std::make_unique<Window>(params, *this, renderer);
         window->show();
-        identifiers[window.get()] = id;
-        windows[id] = std::move(window);
+        windows.insert(id, std::move(window));
     }
 
     void destroyWindow(ID id) {
-        Window* window = windows[id].get();
         windows.erase(id);
-        identifiers.erase(window);
     }
 
     void loadScene(ID windowID, std::unique_ptr<typename Renderer::Scene>&& scene) {
@@ -268,7 +299,7 @@ public:
 
     void onClose(Window* sender) noexcept override {
         try {
-            outQueue.push(Event::WindowClose(identifiers.at(sender)));
+            outQueue.push(Event::WindowClose(windows.getID(sender)));
         } catch(...) {
             outQueue.push(Event::PlatformException(std::current_exception()));
         }
@@ -277,8 +308,7 @@ public:
 private:
     std::shared_ptr<Renderer> renderer;
     Tools::SimpleQueue<PlatformEvent<ID>> outQueue;
-    std::unordered_map<ID, std::unique_ptr<Window>, Tools::hash<ID>> windows;
-    std::unordered_map<Window*, ID> identifiers;
+    WindowMap<ID, Window> windows;
 };
 
 }
