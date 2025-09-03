@@ -272,7 +272,7 @@ public:
         if (!windows.contains(id)) {
             throw std::runtime_error("Window not found");
         }
-        return windows[id];
+        return *windows[id];
     }
 
 private:

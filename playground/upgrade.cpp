@@ -18,7 +18,11 @@ struct Renderer {
     };
 
     struct WindowRenderer {
-        Scene scene;
+        std::unique_ptr<Scene> scene;
+
+        void loadScene(std::unique_ptr<Scene>&& scene) {
+            scene = std::move(scene);
+        }
 
         void draw() {}
     };
@@ -38,6 +42,8 @@ int main() {
     Entity menu = ecs.createEntity();
     gui.createWindow(window, WindowParams{{200, 100, 600, 400}, "Istok"});
     gui.createWindow(menu, WindowParams{{300, 200, 400, 500}, std::nullopt});
+    gui.loadScene(window, std::make_unique<Renderer::Scene>(0.f, 1.f, 0.f, 0.f));
+    gui.loadScene(menu, std::make_unique<Renderer::Scene>(0.f, 0.f, 1.f, 0.f));
     while (true) {
         PlatformEvent<Entity> msg = gui.getMessage();
         if (std::holds_alternative<Event::PlatformHeartbeatTimeout>(msg)) {
