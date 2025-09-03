@@ -28,6 +28,7 @@ struct Renderer {
 
 
 int main() {
+    std::cout << "main: start" << std::endl << std::flush;
     EntityComponentManager ecs;
     WinAPI::Platform<Entity, WinAPI::HWndWindow, Renderer> gui(
         std::make_shared<Renderer>());
@@ -35,7 +36,6 @@ int main() {
     Entity menu = ecs.createEntity();
     gui.createWindow(window, WindowParams{{200, 100, 600, 400}, "Istok"});
     gui.createWindow(menu, WindowParams{{300, 200, 400, 500}, std::nullopt});
-    std::cout << "main: start" << std::endl << std::flush;
     while (true) {
         PlatformEvent<Entity> msg = gui.getMessage();
         if (std::holds_alternative<Event::PlatformHeartbeatTimeout>(msg)) {

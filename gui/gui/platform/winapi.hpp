@@ -259,6 +259,51 @@ private:
 };
 
 
+template <typename Window, typename Renderer>
+class WindowFactory {
+public:
+    WindowFactory(
+        EventHandler<Window>& handler, std::shared_ptr<Renderer> renderer
+    ) : handler(handler), renderer(renderer) {}
+
+    std::unique_ptr<Window> create(WindowParams params) {
+        return std::make_unique<Window>(params, handler, renderer);
+    }
+
+private:
+    EventHandler<Window>& handler;
+    std::shared_ptr<Renderer> renderer;
+};
+
+
+template <typename ID, typename SysWindow, typename Renderer>
+class WindowManager {
+public:
+    using Window = Window<SysWindow, Renderer>;
+
+    WindowManager(WindowFactory<Window, Renderer> factory)
+        : factory(factory) {}
+
+    void create(ID id, WindowParams params) {
+        auto window = factory.create(params);
+        window->show();
+        windows.insert(id, std::move(window));
+    }
+
+    void destroy(ID id) {
+        windows.erase(id);
+    }
+
+    ID getID(Window* window) {
+        return windows.getID(window);
+    }
+
+private:
+    WindowFactory<Window, Renderer> factory;
+    WindowMap<ID, Window> windows;
+};
+
+
 template <typename ID_, typename SysWindow, typename Renderer>
 class Platform: public EventHandler<Window<SysWindow, Renderer>> {
 public:
@@ -266,7 +311,7 @@ public:
     using Window = Window<SysWindow, Renderer>;
 
     Platform(std::shared_ptr<Renderer> renderer)
-        : renderer(renderer) {}
+        : windows(WindowFactory<Window, Renderer>(*this, renderer)) {}
 
     PlatformEvent<ID> getMessage() noexcept {
         while (true) {
@@ -284,13 +329,11 @@ public:
     }
 
     void createWindow(ID id, WindowParams params) {
-        auto window = std::make_unique<Window>(params, *this, renderer);
-        window->show();
-        windows.insert(id, std::move(window));
+        windows.create(id, params);
     }
 
     void destroyWindow(ID id) {
-        windows.erase(id);
+        windows.destroy(id);
     }
 
     void loadScene(ID windowID, std::unique_ptr<typename Renderer::Scene>&& scene) {
@@ -306,9 +349,8 @@ public:
     }
     
 private:
-    std::shared_ptr<Renderer> renderer;
+    WindowManager<ID, SysWindow, Renderer> windows;
     Tools::SimpleQueue<PlatformEvent<ID>> outQueue;
-    WindowMap<ID, Window> windows;
 };
 
 }
