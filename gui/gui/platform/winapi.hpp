@@ -64,6 +64,7 @@ private:
 class MessageHandler {
 public:
     virtual void onClose() noexcept = 0;
+    virtual void onPaint() noexcept = 0;
 };
 
 
@@ -119,15 +120,20 @@ private:
     }
 
     LRESULT handleMessage(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
-        if (msg == WM_CLOSE) {
+        switch (msg) {
+        case WM_CLOSE:
             handler.onClose();
+            return 0;
+        case WM_PAINT:
+            handler.onPaint();
             return 0;
         }
         return DefWindowProc(hWnd, msg, wParam, lParam);
     }
 
     static std::wstring toUTF16(const std::string& source) {
-        int size = MultiByteToWideChar(CP_UTF8, 0, source.c_str(), -1, nullptr, 0);
+        int size = MultiByteToWideChar(
+            CP_UTF8, 0, source.c_str(), -1, nullptr, 0);
         if (size == 0) {
             throw std::runtime_error("UTF-8 to UTF-16 conversion failed");
         }
@@ -195,6 +201,7 @@ private:
 template <typename Window>
 class EventHandler {
 public:
+    virtual void onException(std::exception_ptr exception) noexcept = 0;
     virtual void onClose(Window* sender) noexcept = 0;
 };
 
@@ -209,6 +216,14 @@ public:
 
     void onClose() noexcept override {
         handler.onClose(this);
+    }
+
+    void onPaint() noexcept override {
+        try {
+            core.draw();
+        } catch(...) {
+            handler.onException(std::current_exception());
+        }
     }
 
     void show() {
@@ -251,6 +266,13 @@ public:
             throw std::runtime_error("Window not found");
         }
         return identifiers[window];
+    }
+
+    Window& getWindow(ID id) {
+        if (!windows.contains(id)) {
+            throw std::runtime_error("Window not found");
+        }
+        return windows[id];
     }
 
 private:
@@ -298,6 +320,10 @@ public:
         return windows.getID(window);
     }
 
+    Window& getWindow(ID id) {
+        return windows.getWindow(id);
+    }
+
 private:
     WindowFactory<Window, Renderer> factory;
     WindowMap<ID, Window> windows;
@@ -336,8 +362,14 @@ public:
         windows.destroy(id);
     }
 
-    void loadScene(ID windowID, std::unique_ptr<typename Renderer::Scene>&& scene) {
-        windows[windowID]->loadScene(std::move(scene));
+    void loadScene(
+        ID windowID, std::unique_ptr<typename Renderer::Scene>&& scene)
+    {
+        windows.getWindow(windowID).loadScene(std::move(scene));
+    }
+
+    void onException(std::exception_ptr exception) noexcept override {
+        outQueue.push(Event::PlatformException(exception));
     }
 
     void onClose(Window* sender) noexcept override {

@@ -19,6 +19,8 @@ struct Renderer {
 
     struct WindowRenderer {
         Scene scene;
+
+        void draw() {}
     };
 
     WindowRenderer prepareWindow(WinAPI::HWndWindow& window) {
