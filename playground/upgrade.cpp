@@ -9,7 +9,10 @@ using namespace Istok::GUI;
 using namespace Istok::ECS;
 
 
-struct Renderer {
+class Renderer {
+public:
+    Renderer() = default;
+    
     struct Scene {
         float r;
         float g;
@@ -17,27 +20,67 @@ struct Renderer {
         float a;
     };
 
-    struct WindowRenderer {
-        std::unique_ptr<Scene> scene;
 
-        void loadScene(std::unique_ptr<Scene>&& scene) {
-            scene = std::move(scene);
+    class WindowRendererCore {
+    public:
+        WindowRendererCore(
+            Renderer& renderer,
+            WinAPI::WGLWindow& window
+        ) : renderer(renderer), window(window) {
+            if (!renderer.gl) {
+                renderer.gl = std::move(window.makeGL());
+            }
         }
 
-        void draw() {}
+        class CurrentWindowGL {
+        public:
+            CurrentWindowGL(WindowRendererCore core)
+                : gl(core.renderer.gl, core.window) {}
+        private:
+            WinAPI::CurrentGL gl;
+        };
+
+    private:
+        Renderer& renderer;
+        WinAPI::WGLWindow& window;
     };
 
-    WindowRenderer prepareWindow(WinAPI::HWndWindow& window) {
-        return WindowRenderer{};
-    }
+
+    class WindowRenderer {
+    public:
+        WindowRenderer(
+            Renderer& renderer,
+            WinAPI::WGLWindow& window
+        ) : core(renderer, window) {}
+        
+        void loadScene(std::unique_ptr<Scene>&& scene) {
+            this->scene = std::move(scene);
+        }
+
+        void draw() {
+            if (scene == nullptr) {
+                return;
+            }
+            WindowRendererCore::CurrentWindowGL gl(core);
+            glClearColor(scene->r, scene->g, scene->b, scene->a);
+            glClear(GL_COLOR_BUFFER_BIT);
+        }
+    
+    private:
+        WindowRendererCore core;
+        std::unique_ptr<Scene> scene;
+    };
+
+private:
+    WinAPI::GLContext gl;
 };
 
 
 int main() {
     std::cout << "main: start" << std::endl << std::flush;
     EntityComponentManager ecs;
-    WinAPI::Platform<Entity, WinAPI::HWndWindow, Renderer> gui(
-        std::make_shared<Renderer>());
+    Renderer renderer;
+    WinAPI::Platform<Entity, WinAPI::WGLWindow, Renderer> gui(renderer);
     Entity window = ecs.createEntity();
     Entity menu = ecs.createEntity();
     gui.createWindow(window, WindowParams{{200, 100, 600, 400}, "Istok"});
