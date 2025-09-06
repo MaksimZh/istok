@@ -1,8 +1,6 @@
 // Copyright 2025 Maksim Sergeevich Zholudev. All rights reserved
 #pragma once
 
-#include "winapi.hpp"
-
 #include <windows.h>
 #include <GL/glew.h>
 #include <GL/wglew.h>
@@ -11,6 +9,61 @@
 #include <memory>
 
 namespace Istok::GUI::WinAPI {
+
+
+class DCHandle {
+public:
+    DCHandle(HDC hDC) : hDC(hDC) {}
+    
+    DCHandle(HWND hWnd) : hDC(GetDC(hWnd)) {
+        if (hDC == nullptr) {
+            throw std::runtime_error("Failed to get window DC");
+        }
+    }
+
+    DCHandle(const DCHandle&) = delete;
+    DCHandle& operator=(const DCHandle&) = delete;
+    
+    DCHandle(DCHandle&& other) {
+        hDC = other.hDC;
+        other.drop();
+    }
+
+    DCHandle& operator=(DCHandle&& other) {
+        if (this != &other) {
+            clean();
+            hDC = other.hDC;
+            other.drop();
+        }
+        return *this;
+    }
+
+    ~DCHandle() {
+        clean();
+    }
+
+    operator bool() const noexcept {
+        return hDC != nullptr;
+    }
+
+    HDC get() const noexcept {
+        return hDC;
+    }
+
+private:
+    HDC hDC;
+
+    void drop() {
+        hDC = nullptr;
+    }
+
+    void clean() {
+        if (hDC) {
+            ReleaseDC(WindowFromDC(hDC), hDC);
+        }
+    }
+};
+
 
 class GLHandle {
 public:
@@ -160,8 +213,8 @@ private:
 };
 
 
-void prepareForGL(HWndWindow& window) {
-    DCHandle dc(window.sysContext().hWnd);
+void prepareForGL(HWND hWnd) {
+    DCHandle dc(hWnd);
     PIXELFORMATDESCRIPTOR pfd = {};
     pfd.nSize = sizeof(PIXELFORMATDESCRIPTOR);
     pfd.nVersion = 1;
@@ -189,8 +242,8 @@ void prepareForGL(HWndWindow& window) {
 
 class CurrentGL {
 public:
-    CurrentGL(GLContext& gl, HWndWindow& window)
-    : gl(gl), dc(window.sysContext().hWnd) {
+    CurrentGL(GLContext& gl, HWND hWnd)
+    : gl(gl), dc(hWnd) {
         gl.makeCurrent(dc);
     }
 

@@ -60,60 +60,6 @@ private:
 };
 
 
-class DCHandle {
-public:
-    DCHandle(HDC hDC) : hDC(hDC) {}
-    
-    DCHandle(HWND hWnd) : hDC(GetDC(hWnd)) {
-        if (hDC == nullptr) {
-            throw std::runtime_error("Failed to get window DC");
-        }
-    }
-
-    DCHandle(const DCHandle&) = delete;
-    DCHandle& operator=(const DCHandle&) = delete;
-    
-    DCHandle(DCHandle&& other) {
-        hDC = other.hDC;
-        other.drop();
-    }
-
-    DCHandle& operator=(DCHandle&& other) {
-        if (this != &other) {
-            clean();
-            hDC = other.hDC;
-            other.drop();
-        }
-        return *this;
-    }
-
-    ~DCHandle() {
-        clean();
-    }
-
-    operator bool() const noexcept {
-        return hDC != nullptr;
-    }
-
-    HDC get() const noexcept {
-        return hDC;
-    }
-
-private:
-    HDC hDC;
-
-    void drop() {
-        hDC = nullptr;
-    }
-
-    void clean() {
-        if (hDC) {
-            ReleaseDC(WindowFromDC(hDC), hDC);
-        }
-    }
-};
-
-
 class HWndWindow {
 public:
     HWndWindow(const WindowParams& params, MessageHandler& handler)

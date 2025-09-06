@@ -17,7 +17,7 @@ public:
     std::unique_ptr<WindowRenderer> create();
 
     void prepare(WinAPI::HWndWindow& window) {
-        WinAPI::prepareForGL(window);
+        WinAPI::prepareForGL(window.sysContext().hWnd);
         if (!gl) {
             gl = WinAPI::GLContext(window.sysContext().hWnd);
         }
@@ -26,7 +26,7 @@ public:
     class ContextLock {
     public:
         ContextLock(Renderer& renderer, WinAPI::HWndWindow& window)
-        : context(renderer.gl, window) {}
+        : context(renderer.gl, window.sysContext().hWnd) {}
     private:
         WinAPI::CurrentGL context;
     };
