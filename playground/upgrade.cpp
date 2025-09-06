@@ -14,23 +14,23 @@ class Renderer {
 public:
     std::unique_ptr<WindowRenderer> create();
 
+    void prepare(WinAPI::HWndWindow& window) {
+        WinAPI::prepareForGL(window);
+        if (!gl) {
+            gl = WinAPI::GLContext(window.sysContext().hWnd);
+        }
+    }
+
     class ContextLock {
     public:
         ContextLock(Renderer& renderer, WinAPI::HWndWindow& window)
-            : context(renderer.getContext(window), window) {}
+            : context(renderer.gl, window) {}
     private:
         WinAPI::CurrentGL context;
     };
 
 private:
     WinAPI::GLContext gl;
-
-    WinAPI::GLContext& getContext(WinAPI::HWndWindow& window) {
-        if (!gl) {
-            gl = WinAPI::GLContext(window.sysContext().hWnd);
-        }
-        return gl;
-    }
 };
 
 
@@ -49,8 +49,8 @@ public:
         this->scene = std::move(scene);
     }
 
-    void prepareWindow(WinAPI::HWndWindow& window) {
-        WinAPI::prepareForGL(window);
+    void prepare(WinAPI::HWndWindow& window) {
+        master.prepare(window);
     }
 
     void draw(WinAPI::HWndWindow& window) {

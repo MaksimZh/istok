@@ -411,7 +411,7 @@ public:
     void setRenderer(std::unique_ptr<Renderer>&& renderer) {
         this->renderer = std::move(renderer);
         if (this->renderer) {
-            this->renderer->prepareWindow(window);
+            this->renderer->prepare(window);
         }
     }
 
