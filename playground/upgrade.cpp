@@ -20,72 +20,39 @@ public:
         float a;
     };
 
+    void loadScene(std::unique_ptr<Scene>&& scene) {
+        this->scene = std::move(scene);
+    }
 
-    class WindowRendererCore {
-    public:
-        WindowRendererCore(
-            Renderer& renderer,
-            WinAPI::SysWindow& window
-        ) : renderer(renderer), window(window) {
+    void draw(WinAPI::SysWindow& window) {
+        if (!gl) {
             WinAPI::prepareForGL(window);
-            if (!renderer.gl) {
-                renderer.gl = WinAPI::GLContext(window.sysContext().hWnd);
-            }
+            gl = WinAPI::GLContext(window.sysContext().hWnd);
         }
-
-        class CurrentWindowGL {
-        public:
-            CurrentWindowGL(WindowRendererCore core)
-                : gl(core.renderer.gl, core.window) {}
-        private:
-            WinAPI::CurrentGL gl;
-        };
-
-    private:
-        Renderer& renderer;
-        WinAPI::SysWindow& window;
-    };
-
-
-    class WindowRenderer {
-    public:
-        WindowRenderer(
-            Renderer& renderer,
-            WinAPI::SysWindow& window
-        ) : core(renderer, window) {}
-        
-        void loadScene(std::unique_ptr<Scene>&& scene) {
-            this->scene = std::move(scene);
+        if (scene == nullptr) {
+            return;
         }
-
-        void draw() {
-            if (scene == nullptr) {
-                return;
-            }
-            WindowRendererCore::CurrentWindowGL gl(core);
-            glClearColor(scene->r, scene->g, scene->b, scene->a);
-            glClear(GL_COLOR_BUFFER_BIT);
-        }
-    
-    private:
-        WindowRendererCore core;
-        std::unique_ptr<Scene> scene;
-    };
+        WinAPI::CurrentGL cgl(gl, window);
+        glClearColor(scene->r, scene->g, scene->b, scene->a);
+        glClear(GL_COLOR_BUFFER_BIT);
+    }
 
 private:
     WinAPI::GLContext gl;
+    std::unique_ptr<Scene> scene;
 };
 
 
 int main() {
     std::cout << "main: start" << std::endl << std::flush;
     EntityComponentManager ecs;
-    Renderer renderer;
-    WinAPI::Platform<Entity, WinAPI::SysWindow, Renderer> gui(renderer);
+    WinAPI::Platform<Entity, WinAPI::SysWindow, Renderer> gui;
     Entity window = ecs.createEntity();
     Entity menu = ecs.createEntity();
     gui.createWindow(window, WindowParams{{200, 100, 600, 400}, "Istok"});
     gui.createWindow(menu, WindowParams{{300, 200, 400, 500}, std::nullopt});
+    gui.setRenderer(window, std::make_unique<Renderer>());
+    gui.setRenderer(menu, std::make_unique<Renderer>());
     gui.loadScene(window, std::make_unique<Renderer::Scene>(0.f, 1.f, 0.f, 0.f));
     gui.loadScene(menu, std::make_unique<Renderer::Scene>(0.f, 0.f, 1.f, 0.f));
     while (true) {

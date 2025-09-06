@@ -403,48 +403,33 @@ private:
 
 
 template <typename SysWindow, typename Renderer>
-class GraphicWindow {
+class WindowCore {
 public:
-    GraphicWindow(
-        WindowParams params, MessageHandler& handler,
-        Renderer& globalRenderer
-    ) :
-        window(params, handler),
-        renderer(globalRenderer, window)
-    {}
+    WindowCore(WindowParams params, MessageHandler& handler)
+        : window(params, handler) {}
+
+    void setRenderer(std::unique_ptr<Renderer>&& renderer) {
+        this->renderer = std::move(renderer);
+    }
 
     void loadScene(std::unique_ptr<typename Renderer::Scene>&& scene) {
-        renderer.loadScene(std::move(scene));
+        getRenderer().loadScene(std::move(scene));
     }
 
     void draw() {
-        renderer.draw();
+        getRenderer().draw(window);
     }
 
 private:
     SysWindow window;
-    Renderer::WindowRenderer renderer;
-};
+    std::unique_ptr<Renderer> renderer;
 
-
-template <typename SysWindow, typename Renderer>
-class WindowCore {
-public:
-    WindowCore(
-        WindowParams params, MessageHandler& handler,
-        Renderer& renderer
-    ) : window(params, handler, renderer) {}
-
-    void loadScene(std::unique_ptr<typename Renderer::Scene>&& scene) {
-        window.loadScene(std::move(scene));
+    Renderer& getRenderer() {
+        if (renderer == nullptr) {
+            throw std::runtime_error("Renderer not attached");
+        }
+        return *renderer;
     }
-
-    void draw() {
-        window.draw();
-    }
-
-private:
-    GraphicWindow<SysWindow, Renderer> window;
 };
 
 
@@ -459,10 +444,8 @@ public:
 template <typename SysWindow, typename Renderer>
 class Window: public MessageHandler {
 public:
-    Window(
-        WindowParams params, EventHandler<Window>& handler,
-        Renderer& renderer
-    ) : core(params, *this, renderer), handler(handler) {}
+    Window(WindowParams params, EventHandler<Window>& handler)
+        : core(params, *this), handler(handler) {}
 
     void onClose() noexcept override {
         handler.onClose(this);
@@ -474,6 +457,10 @@ public:
         } catch(...) {
             handler.onException(std::current_exception());
         }
+    }
+
+    void setRenderer(std::unique_ptr<Renderer>&& renderer) {
+        core.setRenderer(std::move(renderer));
     }
 
     void loadScene(std::unique_ptr<typename Renderer::Scene>&& scene) {
@@ -527,34 +514,14 @@ private:
 };
 
 
-template <typename Window, typename Renderer>
-class WindowFactory {
-public:
-    WindowFactory(
-        EventHandler<Window>& handler, Renderer& renderer
-    ) : handler(handler), renderer(renderer) {}
-
-    std::unique_ptr<Window> create(WindowParams params) {
-        return std::make_unique<Window>(params, handler, renderer);
-    }
-
-private:
-    EventHandler<Window>& handler;
-    Renderer& renderer;
-};
-
-
-template <typename ID, typename SysWindow, typename Renderer>
+template <typename ID, typename Window>
 class WindowManager {
 public:
-    using Window = Window<SysWindow, Renderer>;
-
-    WindowManager(WindowFactory<Window, Renderer> factory)
-        : factory(factory) {}
+    WindowManager(EventHandler<Window>& handler)
+        : handler(handler) {}
 
     void create(ID id, WindowParams params) {
-        auto window = factory.create(params);
-        windows.insert(id, std::move(window));
+        windows.insert(id, std::make_unique<Window>(params, handler));
     }
 
     void destroy(ID id) {
@@ -570,7 +537,7 @@ public:
     }
 
 private:
-    WindowFactory<Window, Renderer> factory;
+    EventHandler<Window>& handler;
     WindowMap<ID, Window> windows;
 };
 
@@ -581,8 +548,8 @@ public:
     using ID = ID_;
     using Window = Window<SysWindow, Renderer>;
 
-    Platform(Renderer& renderer)
-        : windows(WindowFactory<Window, Renderer>(*this, renderer)) {}
+    Platform()
+        : windows(*this) {}
 
     PlatformEvent<ID> getMessage() noexcept {
         while (true) {
@@ -607,10 +574,12 @@ public:
         windows.destroy(id);
     }
 
-    void loadScene(
-        ID windowID, std::unique_ptr<typename Renderer::Scene>&& scene)
-    {
-        windows.getWindow(windowID).loadScene(std::move(scene));
+    void setRenderer(ID id, std::unique_ptr<Renderer>&& renderer) {
+        windows.getWindow(id).setRenderer(std::move(renderer));
+    }
+
+    void loadScene(ID id, std::unique_ptr<typename Renderer::Scene>&& scene) {
+        windows.getWindow(id).loadScene(std::move(scene));
     }
 
     void onException(std::exception_ptr exception) noexcept override {
@@ -626,7 +595,7 @@ public:
     }
     
 private:
-    WindowManager<ID, SysWindow, Renderer> windows;
+    WindowManager<ID, Window> windows;
     Tools::SimpleQueue<PlatformEvent<ID>> outQueue;
 };
 
