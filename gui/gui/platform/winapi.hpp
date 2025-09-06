@@ -547,10 +547,11 @@ private:
 };
 
 
-template <typename ID_, typename SysWindow, typename Renderer>
-class Platform: public EventHandler<Window<SysWindow, Renderer>> {
+template <typename ID_, typename SysWindow, typename Renderer_>
+class Platform: public EventHandler<Window<SysWindow, Renderer_>> {
 public:
     using ID = ID_;
+    using Renderer = Renderer_;
     using Window = Window<SysWindow, Renderer>;
 
     Platform() : windows(*this) {}
@@ -560,7 +561,7 @@ public:
             MSG msg;
             GetMessage(&msg, NULL, 0, 0);
             if (msg.message == WM_QUIT) {
-                outQueue.push(Event::PlatformShutdown{});
+                outQueue.push(PlatformEvents::Shutdown{});
                 break;
             }
             TranslateMessage(&msg);
@@ -604,12 +605,12 @@ public:
     }
 
     void onException(std::exception_ptr exception) noexcept override {
-        outQueue.push(Event::PlatformException(exception));
+        outQueue.push(PlatformEvents::Exception(exception));
     }
 
     void onClose(Window* sender) noexcept override {
         try {
-            outQueue.push(Event::WindowClose(windows.getID(sender)));
+            outQueue.push(PlatformEvents::WindowClose(windows.getID(sender)));
         } catch(...) {
             onException(std::current_exception());
         }

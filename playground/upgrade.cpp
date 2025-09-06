@@ -92,21 +92,17 @@ int main() {
     gui.loadScene(menu, std::make_unique<WindowRenderer::Scene>(0.f, 0.f, 1.f, 0.f));
     while (true) {
         PlatformEvent<Entity> msg = gui.getMessage();
-        if (std::holds_alternative<Event::PlatformHeartbeatTimeout>(msg)) {
-            std::cout << "main: gui timeout" << std::endl << std::flush;
-            break;
-        }
-        if (std::holds_alternative<Event::PlatformException>(msg)) {
+        if (std::holds_alternative<PlatformEvents::Exception>(msg)) {
             std::cout << "main: gui exception" << std::endl << std::flush;
             break;
         }
-        if (std::holds_alternative<Event::PlatformShutdown>(msg)) {
+        if (std::holds_alternative<PlatformEvents::Shutdown>(msg)) {
             std::cout << "main: gui shutdown" << std::endl << std::flush;
             break;
         }
-        if (std::holds_alternative<Event::WindowClose<Entity>>(msg)) {
+        if (std::holds_alternative<PlatformEvents::WindowClose<Entity>>(msg)) {
             std::cout << "main: closed" << std::endl << std::flush;
-            auto ent = std::get<Event::WindowClose<Entity>>(msg).id;
+            auto ent = std::get<PlatformEvents::WindowClose<Entity>>(msg).id;
             gui.destroyWindow(ent);
             if (ent == window) {
                 break;

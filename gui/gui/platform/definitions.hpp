@@ -9,22 +9,22 @@
 
 namespace Istok::GUI {
 
-namespace Event {
+namespace PlatformCommands {
+    /// @brief Heartbeat request, checking if platform is alive
+    struct HeartbeatRequest {};
+}
+
+namespace PlatformEvents {
     /// @brief Response to a heartbeat request, confirming platform is alive
-    /// @note Sent automatically by the platform thread upon receiving HeartbeatRequest
-    struct PlatformHeartbeatResponse {};
-    
-    /// @brief Heartbeat response was not received within the expected time
-    /// @note Indicates the platform may have crashed or become unresponsive
-    struct PlatformHeartbeatTimeout {};
+    struct HeartbeatResponse {};
 
     /// @brief Exception encountered in the platform
-    struct PlatformException {
+    struct Exception {
         std::exception_ptr exception; ///< Exception stored for later handling
     };
 
     /// @brief Platform has shut down
-    struct PlatformShutdown {};
+    struct Shutdown {};
     
     /// @brief Request to close a window
     /// @tparam ID Window identifier type
@@ -34,11 +34,9 @@ namespace Event {
 
 template <typename ID>
 using PlatformEvent = std::variant<
-    Event::PlatformHeartbeatResponse,
-    Event::PlatformHeartbeatTimeout,
-    Event::PlatformException,
-    Event::PlatformShutdown,
-    Event::WindowClose<ID>
+    PlatformEvents::Exception,
+    PlatformEvents::Shutdown,
+    PlatformEvents::WindowClose<ID>
 >;
 
 
@@ -59,19 +57,22 @@ struct WindowParams {
 template <typename Platform>
 concept GUIPlatform = requires {
     typename Platform::ID;
-    typename Platform::Scene;
+    typename Platform::Renderer;
     requires std::is_default_constructible_v<Platform>;
 } && requires(
     Platform platform,
     typename Platform::ID id,
     WindowParams windowParams,
-    std::unique_ptr<typename Platform::Scene>&& scene
+    std::unique_ptr<typename Platform::Renderer>&& renderer,
+    std::unique_ptr<typename Platform::Renderer::Scene>&& scene
 ) {
     {platform.getMessage()} noexcept ->
         std::same_as<PlatformEvent<typename Platform::ID>>;
-    {platform.createWindow(id, windowParams)} -> std::same_as<void>;
-    {platform.destroyWindow(id)} -> std::same_as<void>;
-    {platform.loadScene(id, std::move(scene))} -> std::same_as<void>;
+    {platform.createWindow(id, windowParams)} noexcept -> std::same_as<void>;
+    {platform.destroyWindow(id)} noexcept -> std::same_as<void>;
+    {platform.setRenderer(id, std::move(renderer))} noexcept ->
+        std::same_as<void>;
+    {platform.loadScene(id, std::move(scene))} noexcept -> std::same_as<void>;
 };
 
 } // namespace Istok::GUI
