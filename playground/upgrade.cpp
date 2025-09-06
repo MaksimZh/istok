@@ -8,10 +8,35 @@
 using namespace Istok::GUI;
 using namespace Istok::ECS;
 
+class WindowRenderer;
 
 class Renderer {
 public:
-    Renderer() = default;
+    std::unique_ptr<WindowRenderer> create();
+
+    class ContextLock {
+    public:
+        ContextLock(Renderer& renderer, WinAPI::HWndWindow& window)
+            : context(renderer.getContext(window), window) {}
+    private:
+        WinAPI::CurrentGL context;
+    };
+
+private:
+    WinAPI::GLContext gl;
+
+    WinAPI::GLContext& getContext(WinAPI::HWndWindow& window) {
+        if (!gl) {
+            gl = WinAPI::GLContext(window.sysContext().hWnd);
+        }
+        return gl;
+    }
+};
+
+
+class WindowRenderer {
+public:
+    WindowRenderer() = default;
     
     struct Scene {
         float r;
@@ -24,37 +49,47 @@ public:
         this->scene = std::move(scene);
     }
 
+    void prepareWindow(WinAPI::HWndWindow& window) {
+        WinAPI::prepareForGL(window);
+    }
+
     void draw(WinAPI::HWndWindow& window) {
-        if (!gl) {
-            WinAPI::prepareForGL(window);
-            gl = WinAPI::GLContext(window.sysContext().hWnd);
-        }
         if (scene == nullptr) {
             return;
         }
-        WinAPI::CurrentGL cgl(gl, window);
+        Renderer::ContextLock cl(master, window);
         glClearColor(scene->r, scene->g, scene->b, scene->a);
         glClear(GL_COLOR_BUFFER_BIT);
     }
 
 private:
-    WinAPI::GLContext gl;
+    Renderer& master;
     std::unique_ptr<Scene> scene;
+
+    friend Renderer;
+
+    WindowRenderer(Renderer& master) : master(master) {}
 };
+
+
+std::unique_ptr<WindowRenderer> Renderer::create() {
+    return std::unique_ptr<WindowRenderer>(new WindowRenderer(*this));
+}
 
 
 int main() {
     std::cout << "main: start" << std::endl << std::flush;
     EntityComponentManager ecs;
-    WinAPI::Platform<Entity, WinAPI::HWndWindow, Renderer> gui;
+    Renderer renderer;
+    WinAPI::Platform<Entity, WinAPI::HWndWindow, WindowRenderer> gui;
     Entity window = ecs.createEntity();
     Entity menu = ecs.createEntity();
     gui.createWindow(window, WindowParams{{200, 100, 600, 400}, "Istok"});
     gui.createWindow(menu, WindowParams{{300, 200, 400, 500}, std::nullopt});
-    gui.setRenderer(window, std::make_unique<Renderer>());
-    gui.setRenderer(menu, std::make_unique<Renderer>());
-    gui.loadScene(window, std::make_unique<Renderer::Scene>(0.f, 1.f, 0.f, 0.f));
-    gui.loadScene(menu, std::make_unique<Renderer::Scene>(0.f, 0.f, 1.f, 0.f));
+    gui.setRenderer(window, renderer.create());
+    gui.setRenderer(menu, renderer.create());
+    gui.loadScene(window, std::make_unique<WindowRenderer::Scene>(0.f, 1.f, 0.f, 0.f));
+    gui.loadScene(menu, std::make_unique<WindowRenderer::Scene>(0.f, 0.f, 1.f, 0.f));
     while (true) {
         PlatformEvent<Entity> msg = gui.getMessage();
         if (std::holds_alternative<Event::PlatformHeartbeatTimeout>(msg)) {
