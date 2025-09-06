@@ -24,7 +24,7 @@ public:
     class ContextLock {
     public:
         ContextLock(Renderer& renderer, WinAPI::HWndWindow& window)
-            : context(renderer.gl, window) {}
+        : context(renderer.gl, window) {}
     private:
         WinAPI::CurrentGL context;
     };

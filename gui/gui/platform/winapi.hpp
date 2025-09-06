@@ -27,8 +27,7 @@ public:
     WindowClass() = default;
 
     WindowClass(WNDPROC lpfnWndProc, LPCWSTR className)
-        : name(className)
-    {
+    : name(className) {
         WNDCLASSEX wcex{};
         wcex.cbSize = sizeof(WNDCLASSEX);
         wcex.style = CS_OWNDC;
@@ -192,7 +191,8 @@ private:
 
 class CompatibilityGLContext {
 public:
-    CompatibilityGLContext(const DCHandle& dc) : gl(wglCreateContext(dc.get())) {
+    CompatibilityGLContext(const DCHandle& dc)
+    : gl(wglCreateContext(dc.get())) {
         if (!gl) {
             throw std::runtime_error("Failed to create compatibility OpenGL context");
         }
@@ -276,8 +276,7 @@ private:
 class HWndWindow {
 public:
     HWndWindow(WindowParams params, MessageHandler& handler)
-        : handler(handler)
-    {
+    : handler(handler) {
         hWnd = CreateWindowEx(
             params.title.has_value() ? NULL : WS_EX_TOOLWINDOW,
             getWindowClass(),
@@ -319,7 +318,7 @@ private:
     }
 
     static LRESULT CALLBACK windowProc(
-        HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
+        HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) noexcept
     {
         if (auto handler = reinterpret_cast<HWndWindow*>(
                 GetWindowLongPtr(hWnd, GWLP_USERDATA)))
@@ -329,7 +328,9 @@ private:
         return DefWindowProc(hWnd, msg, wParam, lParam);
     }
 
-    LRESULT handleMessage(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
+    LRESULT handleMessage(
+        HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) noexcept
+    {
         switch (msg) {
         case WM_CLOSE:
             handler.onClose();
@@ -387,7 +388,8 @@ void prepareForGL(HWndWindow& window) {
 
 class CurrentGL {
 public:
-    CurrentGL(GLContext& gl, HWndWindow& window) : gl(gl), dc(window.sysContext().hWnd) {
+    CurrentGL(GLContext& gl, HWndWindow& window)
+    : gl(gl), dc(window.sysContext().hWnd) {
         gl.makeCurrent(dc);
     }
 
@@ -406,7 +408,7 @@ template <typename SysWindow, typename Renderer>
 class WindowCore {
 public:
     WindowCore(WindowParams params, MessageHandler& handler)
-        : window(params, handler) {}
+    : window(params, handler) {}
 
     void setRenderer(std::unique_ptr<Renderer>&& renderer) {
         this->renderer = std::move(renderer);
@@ -448,7 +450,7 @@ template <typename SysWindow, typename Renderer>
 class Window: public MessageHandler {
 public:
     Window(WindowParams params, EventHandler<Window>& handler)
-        : core(params, *this), handler(handler) {}
+    : core(params, *this), handler(handler) {}
 
     void onClose() noexcept override {
         handler.onClose(this);
@@ -521,7 +523,7 @@ template <typename ID, typename Window>
 class WindowManager {
 public:
     WindowManager(EventHandler<Window>& handler)
-        : handler(handler) {}
+    : handler(handler) {}
 
     void create(ID id, WindowParams params) {
         windows.insert(id, std::make_unique<Window>(params, handler));
@@ -551,38 +553,54 @@ public:
     using ID = ID_;
     using Window = Window<SysWindow, Renderer>;
 
-    Platform()
-        : windows(*this) {}
+    Platform() : windows(*this) {}
 
     PlatformEvent<ID> getMessage() noexcept {
-        while (true) {
-            if (!outQueue.empty()) {
-                return outQueue.take();
-            }
+        while (outQueue.empty()) {
             MSG msg;
             GetMessage(&msg, NULL, 0, 0);
             if (msg.message == WM_QUIT) {
-                return Event::PlatformShutdown{};
+                outQueue.push(Event::PlatformShutdown{});
+                break;
             }
             TranslateMessage(&msg);
             DispatchMessage(&msg);
         }
+        return outQueue.take();
     }
 
-    void createWindow(ID id, WindowParams params) {
-        windows.create(id, params);
+    void createWindow(ID id, WindowParams params) noexcept {
+        try {
+            windows.create(id, params);
+        } catch(...) {
+            onException(std::current_exception());
+        }
     }
 
-    void destroyWindow(ID id) {
-        windows.destroy(id);
+    void destroyWindow(ID id) noexcept {
+        try {
+            windows.destroy(id);
+        } catch(...) {
+            onException(std::current_exception());
+        }
     }
 
-    void setRenderer(ID id, std::unique_ptr<Renderer>&& renderer) {
-        windows.getWindow(id).setRenderer(std::move(renderer));
+    void setRenderer(ID id, std::unique_ptr<Renderer>&& renderer) noexcept {
+        try {
+            windows.getWindow(id).setRenderer(std::move(renderer));
+        } catch(...) {
+            onException(std::current_exception());
+        }
     }
 
-    void loadScene(ID id, std::unique_ptr<typename Renderer::Scene>&& scene) {
-        windows.getWindow(id).loadScene(std::move(scene));
+    void loadScene(
+        ID id, std::unique_ptr<typename Renderer::Scene>&& scene) noexcept
+    {
+        try {
+            windows.getWindow(id).loadScene(std::move(scene));
+        } catch(...) {
+            onException(std::current_exception());
+        }
     }
 
     void onException(std::exception_ptr exception) noexcept override {
@@ -593,7 +611,7 @@ public:
         try {
             outQueue.push(Event::WindowClose(windows.getID(sender)));
         } catch(...) {
-            outQueue.push(Event::PlatformException(std::current_exception()));
+            onException(std::current_exception());
         }
     }
     
