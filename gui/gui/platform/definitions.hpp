@@ -41,6 +41,12 @@ using PlatformEvent = std::variant<
 
 
 template <typename T>
+struct Position {
+    T x;
+    T y;
+};
+
+template <typename T>
 struct Rect {
     T left;
     T top;
@@ -51,6 +57,25 @@ struct Rect {
 struct WindowParams {
     Rect<int> location;
     std::optional<std::string> title;
+};
+
+enum class WindowArea {
+    hole,
+    client,
+    moving,
+    sizingTL,
+    sizingT,
+    sizingTR,
+    sizingR,
+    sizingBR,
+    sizingB,
+    sizingBL,
+    sizingL
+};
+
+class WindowAreaTester {
+public:
+    virtual WindowArea test(Position<int> position) const noexcept = 0;
 };
 
 
