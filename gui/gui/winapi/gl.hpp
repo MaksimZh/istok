@@ -1,7 +1,7 @@
 // Copyright 2025 Maksim Sergeevich Zholudev. All rights reserved
 #pragma once
 
-#include "window.hpp"
+#include "winapi.hpp"
 
 #include <windows.h>
 #include <GL/glew.h>
