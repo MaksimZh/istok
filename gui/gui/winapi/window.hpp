@@ -30,6 +30,20 @@ concept GUIRenderer = requires {
     {renderer.draw(handle)} -> std::same_as<void>;
 };
 
+template <typename SysWindow>
+concept GUISysWindow = requires(
+    const WindowParams& params,
+    MessageHandler& handler
+) {
+    typename SysWindow::NativeHandle;
+    {SysWindow(params, handler)};
+} && requires(
+    SysWindow window
+) {
+    {window.getNativeHandle()} ->
+        std::same_as<typename SysWindow::NativeHandle>;
+};
+
 
 template <GUIRenderer Renderer>
 class WindowData {
@@ -66,7 +80,10 @@ private:
 };
 
 
-template <typename SysWindow, GUIRenderer Renderer>
+template <GUISysWindow SysWindow, GUIRenderer Renderer>
+requires std::same_as<
+    typename SysWindow::NativeHandle,
+    typename Renderer::NativeHandle>
 class WindowCore {
 public:
     WindowCore(const WindowParams& params, MessageHandler& handler)
@@ -103,7 +120,10 @@ private:
 };
 
 
-template <typename SysWindow, GUIRenderer Renderer_>
+template <GUISysWindow SysWindow, GUIRenderer Renderer_>
+requires std::same_as<
+    typename SysWindow::NativeHandle,
+    typename Renderer::NativeHandle>
 class Window: public MessageHandler {
 public:
     using Renderer = Renderer_;
