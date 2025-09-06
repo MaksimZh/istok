@@ -1,183 +1,19 @@
-// window.hpp
 // Copyright 2025 Maksim Sergeevich Zholudev. All rights reserved
 #pragma once
 
-#include "platform.hpp"
+#include <gui/common/platform.hpp>
+#include <tools/queue.hpp>
+#include <tools/helpers.hpp>
 
 #include <windows.h>
 #include <windowsx.h>
-#include <dwmapi.h>
+#include <GL/glew.h>
+#include <GL/wglew.h>
 
 #include <memory>
 #include <unordered_map>
 
-
 namespace Istok::GUI::WinAPI {
-
-class WindowClass {
-public:
-    WindowClass() = default;
-
-    WindowClass(
-        UINT style,
-        WNDPROC lpfnWndProc,
-        HINSTANCE hInstance,
-        LPCWSTR className,
-        int cbClsExtra = 0,
-        int cbWndExtra = 0,
-        HICON hIcon = nullptr,
-        HCURSOR hCursor = nullptr,
-        HBRUSH hbrBackground = nullptr,
-        LPCWSTR lpszMenuName = nullptr,
-        HICON hIconSm = nullptr
-    ) : hInstance(hInstance), name(className) {
-        WNDCLASSEX wcex{};
-        wcex.cbSize = sizeof(WNDCLASSEX);
-        wcex.style = style;
-        wcex.lpfnWndProc = lpfnWndProc;
-        wcex.cbClsExtra = cbClsExtra;
-        wcex.cbWndExtra = cbWndExtra;
-        wcex.hInstance = hInstance;
-        wcex.hIcon = hIcon;
-        wcex.hCursor = hCursor;
-        wcex.hbrBackground = hbrBackground;
-        wcex.lpszMenuName = lpszMenuName;
-        wcex.lpszClassName = className;
-        wcex.hIconSm = hIconSm;
-        if (!RegisterClassEx(&wcex)) {
-            throw std::runtime_error("Failed to register window class.");
-        }
-    }
-
-    WindowClass(const WindowClass&) = delete;
-    WindowClass& operator=(const WindowClass&) = delete;
-
-    WindowClass(WindowClass&& other) noexcept
-        : hInstance(other.hInstance), name(other.name) {
-        other.drop();
-    }
-
-    WindowClass& operator=(WindowClass&& other) noexcept {
-        if (this != &other) {
-            clean();
-            hInstance = other.hInstance;
-            name = other.name;
-            other.drop();
-        }
-        return *this;
-    }
-
-    ~WindowClass() {
-        clean();
-    }
-
-    operator bool() const {
-        return name != nullptr;
-    }
-
-    LPCWSTR get() const {
-        return name;
-    }
-
-    operator LPCWSTR() const {
-        return name;
-    }
-
-
-private:
-    HINSTANCE hInstance = nullptr;
-    LPCWSTR name = nullptr;
-
-    void drop() {
-        hInstance = nullptr;
-        name = nullptr;
-    }
-
-    void clean() {
-        if (!*this) return;
-        UnregisterClass(name, hInstance);
-        drop();
-    }
-};
-
-
-std::wstring toUTF16(const std::string& source) {
-    int size = MultiByteToWideChar(CP_UTF8, 0, source.c_str(), -1, nullptr, 0);
-    if (size == 0) {
-        throw std::runtime_error("UTF-8 to UTF-16 conversion failed");
-    }
-    std::wstring result(size, L'\0');
-    MultiByteToWideChar(CP_UTF8, 0, source.c_str(), -1, &result[0], size);
-    return result;
-}
-
-
-std::string toUTF8(LPCWSTR source) {
-    if (!source) {
-        return std::string();
-    }
-
-    int size = WideCharToMultiByte(CP_UTF8, 0, source, -1, nullptr, 0, nullptr, nullptr);
-    if (size == 0) {
-        throw std::runtime_error("UTF-16 to UTF-8 conversion failed");
-    }
-    std::string result(size, '\0');
-    WideCharToMultiByte(CP_UTF8, 0, source, -1, &result[0], size, nullptr, nullptr);
-    result.resize(size - 1);
-    return result;
-}
-
-
-class WndHandle {
-public:
-    WndHandle() = default;
-
-    WndHandle(HWND hWnd) : hWnd(hWnd) {}
-
-    ~WndHandle() {
-        clean();
-    }
-
-    WndHandle(const WndHandle&) = delete;
-    WndHandle& operator=(const WndHandle&) = delete;
-
-    WndHandle(WndHandle&& other) noexcept
-        : hWnd(other.hWnd) {
-        other.drop();
-    }
-
-    WndHandle& operator=(WndHandle&& other) noexcept {
-        if (this != &other) {
-            clean();
-            hWnd = other.hWnd;
-            other.drop();
-        }
-        return *this;
-    }
-
-    operator bool() const {
-        return hWnd != nullptr;
-    }
-
-    HWND get() const {
-        return hWnd;
-    }
-
-private:
-    HWND hWnd = nullptr;
-
-    void clean() {
-        if (hWnd != nullptr) {
-            DestroyWindow(hWnd);
-        }
-        drop();
-    }
-
-    void drop() {
-        hWnd = nullptr;
-    }
-};
-
 
 
 HINSTANCE getHInstance() {
@@ -186,438 +22,678 @@ HINSTANCE getHInstance() {
     return hInstance;
 }
 
-LRESULT CALLBACK windowProc(
-        HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
-    if (auto handler = reinterpret_cast<MessageProxy*>(
-            GetWindowLongPtr(hWnd, GWLP_USERDATA)))
-    {
-        return handler->handleMessage(
-            SysMessage(hWnd, msg, wParam, lParam));
-    }
-    return DefWindowProc(hWnd, msg, wParam, lParam);
-}
 
-WindowClass& getWndClass() {
-    static WindowClass wc(
-        CS_OWNDC,
-        windowProc,
-        getHInstance(),
-        L"Istok",
-        0, 0, nullptr,
-        LoadCursor(NULL, IDC_ARROW));
-    return wc;
-}
-
-
-class WinAPINotifierWindow {
+class WindowClass {
 public:
-    WinAPINotifierWindow(MessageProxy& proxy)
-        :wnd(makeWindow())
-    {
-        SetWindowLongPtr(
-            wnd.get(), GWLP_USERDATA, reinterpret_cast<LONG_PTR>(&proxy));
+    WindowClass() = default;
+
+    WindowClass(WNDPROC lpfnWndProc, LPCWSTR className)
+    : name(className) {
+        WNDCLASSEX wcex{};
+        wcex.cbSize = sizeof(WNDCLASSEX);
+        wcex.style = CS_OWNDC;
+        wcex.lpfnWndProc = lpfnWndProc;
+        wcex.cbClsExtra = 0;
+        wcex.cbWndExtra = 0;
+        wcex.hInstance = getHInstance();
+        wcex.hIcon = nullptr;
+        wcex.hCursor = LoadCursor(NULL, IDC_ARROW);
+        wcex.hbrBackground = nullptr;
+        wcex.lpszMenuName = nullptr;
+        wcex.lpszClassName = className;
+        wcex.hIconSm = nullptr;
+        if (!RegisterClassEx(&wcex)) {
+            throw std::runtime_error("Failed to register window class.");
+        }
     }
 
-    void postQueueNotification() noexcept {
-        PostMessage(wnd.get(), WM_APP_QUEUE, NULL, NULL);
+    ~WindowClass() noexcept {
+        UnregisterClass(name, getHInstance());
+    }
+
+    WindowClass(const WindowClass&) = delete;
+    WindowClass& operator=(const WindowClass&) = delete;
+    WindowClass(WindowClass&& other) = delete;
+    WindowClass& operator=(WindowClass&& other) = delete;
+
+    LPCWSTR get() const {
+        return name;
     }
 
 private:
-    WndHandle wnd;
+    LPCWSTR name = nullptr;
+};
 
-    static WndHandle makeWindow() {
-        WndHandle wnd(CreateWindowEx(
-            WS_EX_TOOLWINDOW,
-            getWndClass(),
-            L"",
-            WS_POPUP,
-            0, 0, 0, 0,
-            NULL, NULL, getHInstance(), nullptr));
-        if (!wnd) {
-            throw std::runtime_error("Cannot create window");
+
+class MessageHandler {
+public:
+    virtual void onClose() noexcept = 0;
+    virtual void onPaint() noexcept = 0;
+    virtual WindowArea onAreaTest(Position<int> position) noexcept = 0;
+};
+
+
+class DCHandle {
+public:
+    DCHandle(HDC hDC) : hDC(hDC) {}
+    
+    DCHandle(HWND hWnd) : hDC(GetDC(hWnd)) {
+        if (hDC == nullptr) {
+            throw std::runtime_error("Failed to get window DC");
         }
-        return wnd;
+    }
+
+    DCHandle(const DCHandle&) = delete;
+    DCHandle& operator=(const DCHandle&) = delete;
+    
+    DCHandle(DCHandle&& other) {
+        hDC = other.hDC;
+        other.drop();
+    }
+
+    DCHandle& operator=(DCHandle&& other) {
+        if (this != &other) {
+            clean();
+            hDC = other.hDC;
+            other.drop();
+        }
+        return *this;
+    }
+
+    ~DCHandle() {
+        clean();
+    }
+
+    operator bool() const noexcept {
+        return hDC != nullptr;
+    }
+
+    HDC get() const noexcept {
+        return hDC;
+    }
+
+private:
+    HDC hDC;
+
+    void drop() {
+        hDC = nullptr;
+    }
+
+    void clean() {
+        if (hDC) {
+            ReleaseDC(WindowFromDC(hDC), hDC);
+        }
     }
 };
 
 
-class GLWindow {
+class GLHandle {
 public:
-    GLWindow(WindowParams params, MessageProxy& proxy)
-        :wnd(makeWindow(params, proxy))
-    {
-        SetWindowLongPtr(
-            wnd.get(), GWLP_USERDATA, reinterpret_cast<LONG_PTR>(&proxy));
-    }
+    GLHandle() : hGL(nullptr) {}
+    GLHandle(HGLRC hGL) : hGL(hGL) {}
 
-    void setTranslator(std::unique_ptr<WindowTranslator>&& value) {
-        translator = std::move(value);
-    }
+    GLHandle(const GLHandle&) = delete;
+    GLHandle& operator=(const GLHandle&) = delete;
     
-    void removeTranslator() {
-        translator.reset();
+    GLHandle(GLHandle&& other) {
+        hGL = other.hGL;
+        other.drop();
     }
 
-    HWND getHWnd() const noexcept {
-        return wnd.get();
-    }
-
-    void onClose() noexcept {
-        if (!translator) {
-            return;
+    GLHandle& operator=(GLHandle&& other) {
+        if (this != &other) {
+            clean();
+            hGL = other.hGL;
+            other.drop();
         }
-        translator->onClose();
+        return *this;
+    }
+
+    ~GLHandle() {
+        clean();
+    }
+
+    operator bool() const noexcept {
+        return hGL != nullptr;
+    }
+
+    void makeCurrent(const DCHandle& dc) {
+        if (!*this) {
+            throw std::runtime_error("Operating empty GLHandle");
+        }
+        if (!wglMakeCurrent(dc.get(), hGL)) {
+            throw std::runtime_error("Failed to make OpenGL context current!");
+        }
+    }
+
+    void release() {
+        if (!*this) {
+            throw std::runtime_error("Operating empty GLHandle");
+        }
+        if (wglGetCurrentContext() == hGL) {
+            wglMakeCurrent(nullptr, nullptr);
+        }
     }
 
 private:
-    WndHandle wnd;
-    std::unique_ptr<WindowTranslator> translator;
+    HGLRC hGL;
 
-    static WndHandle makeWindow(WindowParams params, MessageProxy& proxy) {
-        WndHandle wnd(CreateWindowEx(
+    void drop() {
+        hGL = nullptr;
+    }
+
+    void clean() {
+        if (hGL) {
+            release();
+            wglDeleteContext(hGL);
+        }
+    }
+};
+
+
+class CompatibilityGLContext {
+public:
+    CompatibilityGLContext(const DCHandle& dc)
+    : gl(wglCreateContext(dc.get())) {
+        if (!gl) {
+            throw std::runtime_error("Failed to create compatibility OpenGL context");
+        }
+    }
+
+    CompatibilityGLContext(const CompatibilityGLContext&) = delete;
+    CompatibilityGLContext& operator=(const CompatibilityGLContext&) = delete;
+    CompatibilityGLContext(CompatibilityGLContext&& other) = delete;
+    CompatibilityGLContext& operator=(CompatibilityGLContext&& other) = delete;
+
+    void makeCurrent(const DCHandle& dc) {
+        gl.makeCurrent(dc.get());
+    }
+
+private:
+    GLHandle gl;
+};
+
+
+class GLContext {
+public:
+    GLContext() = default;
+    GLContext(HWND hWnd) : gl(makeGL(hWnd)) {}
+
+    GLContext(const GLContext&) = delete;
+    GLContext& operator=(const GLContext&) = delete;
+    
+    GLContext(GLContext&& other) = default;
+    GLContext& operator=(GLContext&& other) = default;
+
+    operator bool() const noexcept {
+        return gl;
+    }
+
+    void makeCurrent(const DCHandle& dc) {
+        gl.makeCurrent(dc);
+    }
+
+    void release() {
+        gl.release();
+    }
+
+private:
+    GLHandle gl;
+
+    static HGLRC makeGL(HWND hWnd) {
+        DCHandle dc(hWnd);
+        initGLEW(dc);
+        
+        int attribs[] = {
+            WGL_CONTEXT_MAJOR_VERSION_ARB, 3,
+            WGL_CONTEXT_MINOR_VERSION_ARB, 3,
+            WGL_CONTEXT_FLAGS_ARB, 0,
+            0
+        };
+        HGLRC hGL = wglCreateContextAttribsARB(dc.get(), NULL, attribs);
+        if (!hGL) {
+            throw std::runtime_error("Failed to create OpenGL context");
+        }
+        return hGL;
+    }
+
+    static void initGLEW(const DCHandle& dc) {
+        static bool initialized = false;
+        if (initialized) {
+            return;
+        }
+        
+        CompatibilityGLContext gl(dc);
+        gl.makeCurrent(dc);
+        if (glewInit() != GLEW_OK) {
+            throw std::runtime_error("glewInit failed");
+        }
+        if (wglewIsSupported("WGL_ARB_create_context") != GL_TRUE) {
+            throw std::runtime_error("Modern OpenGL not supported");
+        }
+    }
+};
+
+
+class HWndWindow {
+public:
+    HWndWindow(const WindowParams& params, MessageHandler& handler)
+    : handler(handler) {
+        hWnd = CreateWindowEx(
             params.title.has_value() ? NULL : WS_EX_TOOLWINDOW,
-            getWndClass(),
+            getWindowClass(),
             toUTF16(params.title.value_or("")).c_str(),
-            WS_OVERLAPPEDWINDOW, //WS_POPUP,
+            WS_POPUP,
             params.location.left, params.location.top,
             params.location.right - params.location.left,
             params.location.bottom - params.location.top,
-            NULL, NULL, getHInstance(), nullptr));
-        if (!wnd) {
+            NULL, NULL, getHInstance(), nullptr);
+        if (!hWnd) {
             throw std::runtime_error("Cannot create window");
         }
-        enableTransparency(wnd);
         SetWindowLongPtr(
-            wnd.get(), GWLP_USERDATA, reinterpret_cast<LONG_PTR>(&proxy));
-        return wnd;
+            hWnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(this));
+        ShowWindow(hWnd, SW_SHOW);
     }
 
-    static void enableTransparency(WndHandle& wnd) {
-        DWM_BLURBEHIND bb = { 0 };
-        HRGN hRgn = CreateRectRgn(0, 0, -1, -1);
-        bb.dwFlags = DWM_BB_ENABLE | DWM_BB_BLURREGION;
-        bb.hRgnBlur = hRgn;
-        bb.fEnable = TRUE;
-        DwmEnableBlurBehindWindow(wnd.get(), &bb);
+    ~HWndWindow() noexcept {
+        if (hWnd) {
+            DestroyWindow(hWnd);
+        }
+    }
+
+    struct SysContext {
+        HWND hWnd;
+    };
+
+    SysContext sysContext() const noexcept {
+        return SysContext(hWnd);
+    }
+
+private:
+    MessageHandler& handler;
+    HWND hWnd = nullptr;
+
+    static LPCWSTR getWindowClass() {
+        static WindowClass wc(windowProc, L"Istok");
+        return wc.get();
+    }
+
+    static LRESULT CALLBACK windowProc(
+        HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) noexcept
+    {
+        if (auto handler = reinterpret_cast<HWndWindow*>(
+                GetWindowLongPtr(hWnd, GWLP_USERDATA)))
+        {
+            return handler->handleMessage(hWnd, msg, wParam, lParam);
+        }
+        return DefWindowProc(hWnd, msg, wParam, lParam);
+    }
+
+    LRESULT handleMessage(
+        HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) noexcept
+    {
+        switch (msg) {
+        case WM_CLOSE:
+            handler.onClose();
+            return 0;
+        case WM_PAINT: {
+            handler.onPaint();
+            PAINTSTRUCT ps;
+            BeginPaint(hWnd, &ps);
+            EndPaint(hWnd, &ps);
+            return 0;
+        }
+        case WM_NCHITTEST: {
+            RECT rect;
+            GetWindowRect(hWnd, &rect);
+            Position<int> position(
+                GET_X_LPARAM(lParam) - rect.left,
+                GET_Y_LPARAM(lParam) - rect.top);
+            switch (handler.onAreaTest(position)) {
+            case WindowArea::hole: return HTTRANSPARENT;
+            case WindowArea::client: return HTCLIENT;
+            case WindowArea::moving: return HTCAPTION;
+            case WindowArea::sizingTL: return HTTOPLEFT;
+            case WindowArea::sizingT: return HTTOP;
+            case WindowArea::sizingTR: return HTTOPRIGHT;
+            case WindowArea::sizingR: return HTRIGHT;
+            case WindowArea::sizingBR: return HTBOTTOMRIGHT;
+            case WindowArea::sizingB: return HTBOTTOM;
+            case WindowArea::sizingBL: return HTBOTTOMLEFT;
+            case WindowArea::sizingL: return HTLEFT;
+            default: return HTCLIENT;
+            }
+        }
+        }
+        return DefWindowProc(hWnd, msg, wParam, lParam);
+    }
+
+    static std::wstring toUTF16(const std::string& source) {
+        int size = MultiByteToWideChar(
+            CP_UTF8, 0, source.c_str(), -1, nullptr, 0);
+        if (size == 0) {
+            throw std::runtime_error("UTF-8 to UTF-16 conversion failed");
+        }
+        std::wstring result(size, L'\0');
+        MultiByteToWideChar(CP_UTF8, 0, source.c_str(), -1, &result[0], size);
+        return result;
     }
 };
 
 
-class WinAPIWindowManager: public MessageProxy {
-public:
-    using Window = GLWindow;
+void prepareForGL(HWndWindow& window) {
+    DCHandle dc(window.sysContext().hWnd);
+    PIXELFORMATDESCRIPTOR pfd = {};
+    pfd.nSize = sizeof(PIXELFORMATDESCRIPTOR);
+    pfd.nVersion = 1;
+    pfd.dwFlags =
+        PFD_DRAW_TO_WINDOW |
+        PFD_SUPPORT_OPENGL |
+        PFD_DOUBLEBUFFER |
+        PFD_SUPPORT_COMPOSITION;
+    pfd.iPixelType = PFD_TYPE_RGBA;
+    pfd.cColorBits = 32;
+    pfd.cAlphaBits = 8;
+    pfd.cDepthBits = 24;
+    pfd.cStencilBits = 8;
+    pfd.iLayerType = PFD_MAIN_PLANE;
 
-    std::shared_ptr<Window> create(WindowParams params) {
-        auto window = std::make_shared<Window>(params, *this);
-        windows[window->getHWnd()] = window;
-        ShowWindow(window->getHWnd(), SW_SHOW);
-        return window;
+    int pfi = ChoosePixelFormat(dc.get(), &pfd);
+    if (!pfi) {
+        throw std::runtime_error("Failed to choose pixel format");
+    }
+    if (!SetPixelFormat(dc.get(), pfi, &pfd)) {
+        throw std::runtime_error("Failed to set pixel format");
+    }
+}
+
+
+class CurrentGL {
+public:
+    CurrentGL(GLContext& gl, HWndWindow& window)
+    : gl(gl), dc(window.sysContext().hWnd) {
+        gl.makeCurrent(dc);
     }
 
-    void remove(std::shared_ptr<Window> window) {
-        windows.erase(window->getHWnd());
+    ~CurrentGL() {
+        SwapBuffers(dc.get());
+        gl.release();
+    }
+
+private:
+    GLContext& gl;
+    DCHandle dc;
+};
+
+
+template <typename Renderer>
+class WindowData {
+public:
+    void setRenderer(std::unique_ptr<Renderer>&& renderer) {
+        this->renderer = std::move(renderer);
     }
     
-    void runMessageLoop() {
-        while (true) {
+    Renderer& getRenderer() {
+        if (renderer == nullptr) {
+            throw std::runtime_error("Renderer not attached");
+        }
+        return *renderer;
+    }
+
+    void setAreaTester(std::unique_ptr<WindowAreaTester>&& tester) {
+        this->areaTester = std::move(tester);
+    }
+
+    WindowArea testArea(Position<int> position) const noexcept {
+        if (!areaTester) {
+            return WindowArea::client;
+        }
+        return areaTester->testWindowArea(position);
+    }
+
+private:
+    std::unique_ptr<Renderer> renderer;
+    std::unique_ptr<WindowAreaTester> areaTester;
+};
+
+
+template <typename SysWindow, typename Renderer>
+class WindowCore {
+public:
+    WindowCore(const WindowParams& params, MessageHandler& handler)
+    : window(params, handler) {}
+
+    void setRenderer(std::unique_ptr<Renderer>&& renderer) {
+        if (!renderer) {
+            throw std::runtime_error("No renderer provided");
+        }
+        renderer->prepare(window);
+        data.setRenderer(std::move(renderer));
+    }
+
+    void loadScene(std::unique_ptr<typename Renderer::Scene>&& scene) {
+        data.getRenderer().loadScene(std::move(scene));
+    }
+    
+    void draw() {
+        data.getRenderer().draw(window);
+    }
+
+
+    void setAreaTester(std::unique_ptr<WindowAreaTester>&& tester) {
+        data.setAreaTester(std::move(tester));
+    }
+
+    WindowArea testArea(Position<int> position) const noexcept {
+        return data.testArea(position);
+    }
+
+private:
+    SysWindow window;
+    WindowData<Renderer> data;
+};
+
+
+template <typename Window>
+class EventHandler {
+public:
+    virtual void onException(std::exception_ptr exception) noexcept = 0;
+    virtual void onClose(Window* sender) noexcept = 0;
+};
+
+
+template <typename SysWindow, typename Renderer>
+class Window: public MessageHandler {
+public:
+    Window(const WindowParams& params, EventHandler<Window>& handler)
+    : core(params, *this), handler(handler) {}
+
+    void onClose() noexcept override {
+        handler.onClose(this);
+    }
+
+    void onPaint() noexcept override {
+        try {
+            core.draw();
+        } catch(...) {
+            handler.onException(std::current_exception());
+        }
+    }
+
+    void setRenderer(std::unique_ptr<Renderer>&& renderer) {
+        core.setRenderer(std::move(renderer));
+    }
+
+    void loadScene(std::unique_ptr<typename Renderer::Scene>&& scene) {
+        core.loadScene(std::move(scene));
+    }
+
+    void setAreaTester(std::unique_ptr<WindowAreaTester>&& tester) {
+        core.setAreaTester(std::move(tester));
+    }
+
+    WindowArea onAreaTest(Position<int> position) noexcept override {
+        return core.testArea(position);
+    }
+
+private:
+    WindowCore<SysWindow, Renderer> core;
+    EventHandler<Window>& handler;
+};
+
+
+template <typename ID, typename Window>
+class WindowMap {
+public:
+    void insert(ID id, std::unique_ptr<Window> window) {
+        if (identifiers.contains(window.get()) || windows.contains(id)) {
+            throw std::runtime_error("Window overwrite");
+        }
+        identifiers[window.get()] = id;
+        windows[id] = std::move(window);
+    }
+
+    void erase(ID id) {
+        if (!windows.contains(id)) {
+            throw std::runtime_error("Window not found");
+        }
+        Window* window = windows[id].get();
+        windows.erase(id);
+        assert(identifiers.contains(window));
+        identifiers.erase(window);
+    }
+
+    ID getID(Window* window) {
+        if (!identifiers.contains(window)) {
+            throw std::runtime_error("Window not found");
+        }
+        return identifiers[window];
+    }
+
+    Window& getWindow(ID id) {
+        if (!windows.contains(id)) {
+            throw std::runtime_error("Window not found");
+        }
+        return *windows[id];
+    }
+
+private:
+    std::unordered_map<ID, std::unique_ptr<Window>, Tools::hash<ID>> windows;
+    std::unordered_map<Window*, ID> identifiers;
+};
+
+
+template <typename ID, typename Window>
+class WindowManager {
+public:
+    WindowManager(EventHandler<Window>& handler)
+    : handler(handler) {}
+
+    void create(ID id, const WindowParams& params) {
+        windows.insert(id, std::make_unique<Window>(params, handler));
+    }
+
+    void destroy(ID id) {
+        windows.erase(id);
+    }
+
+    ID getID(Window* window) {
+        return windows.getID(window);
+    }
+
+    Window& getWindow(ID id) {
+        return windows.getWindow(id);
+    }
+
+private:
+    EventHandler<Window>& handler;
+    WindowMap<ID, Window> windows;
+};
+
+
+template <typename ID_, typename SysWindow, typename Renderer_>
+class Platform: public EventHandler<Window<SysWindow, Renderer_>> {
+public:
+    using ID = ID_;
+    using Renderer = Renderer_;
+    using Window = Window<SysWindow, Renderer>;
+
+    Platform() : windows(*this) {}
+
+    PlatformEvent<ID> getMessage() noexcept {
+        while (outQueue.empty()) {
             MSG msg;
             GetMessage(&msg, NULL, 0, 0);
             if (msg.message == WM_QUIT) {
+                outQueue.push(PlatformEvents::Shutdown{});
                 break;
             }
             TranslateMessage(&msg);
             DispatchMessage(&msg);
         }
+        return outQueue.take();
+    }
+
+    void createWindow(ID id, const WindowParams& params) noexcept {
+        try {
+            windows.create(id, params);
+        } catch(...) {
+            onException(std::current_exception());
+        }
+    }
+
+    void destroyWindow(ID id) noexcept {
+        try {
+            windows.destroy(id);
+        } catch(...) {
+            onException(std::current_exception());
+        }
+    }
+
+    void setRenderer(ID id, std::unique_ptr<Renderer>&& renderer) noexcept {
+        try {
+            windows.getWindow(id).setRenderer(std::move(renderer));
+        } catch(...) {
+            onException(std::current_exception());
+        }
+    }
+
+    void setAreaTester(
+        ID id, std::unique_ptr<WindowAreaTester>&& tester) noexcept
+    {
+        try {
+            windows.getWindow(id).setAreaTester(std::move(tester));
+        } catch(...) {
+            onException(std::current_exception());
+        }
+    }
+
+    void loadScene(
+        ID id, std::unique_ptr<typename Renderer::Scene>&& scene) noexcept
+    {
+        try {
+            windows.getWindow(id).loadScene(std::move(scene));
+        } catch(...) {
+            onException(std::current_exception());
+        }
+    }
+
+    void onException(std::exception_ptr exception) noexcept override {
+        outQueue.push(PlatformEvents::Exception(exception));
+    }
+
+    void onClose(Window* sender) noexcept override {
+        try {
+            outQueue.push(PlatformEvents::WindowClose(windows.getID(sender)));
+        } catch(...) {
+            onException(std::current_exception());
+        }
     }
     
-    void stopMessageLoop() noexcept {
-        PostQuitMessage(0);
-    }
-
-    SysResult handleMessage(SysMessage message) noexcept override {
-        if (!windows.contains(message.hWnd)) {
-            return handleByDefault(message);
-        }
-        auto window = windows[message.hWnd];
-        switch (message.msg) {
-        case WM_CLOSE:
-            window->onClose();
-            return 0;
-        case WM_DESTROY:
-            return 0;
-        default:
-            return handleByDefault(message);
-        }
-    }
-
 private:
-    std::unordered_map<HWND, std::shared_ptr<Window>> windows;
+    WindowManager<ID, Window> windows;
+    Tools::SimpleQueue<PlatformEvent<ID>> outQueue;
 };
 
-} // namespace Istok::GUI::WinAPI
-
-/*
-class SysWindow;
-
-class SysMessageHandler {
-public:
-    virtual void onQueue() = 0;
-    virtual void onClose(SysWindow& window) = 0;
-};
-
-
-struct WindowParams {
-    Rect<int> location;
-    std::optional<std::string> title;
-};
-
-
-class GLWindow {
-public:
-    GLWindow(WinAPIMessageHandler* messageHandler)
-        : wnd(makeWindow(WindowParams{}, messageHandler)), gl(wnd) {}
-
-    GLWindow(
-        const GLWindow& other,
-        WindowParams params, WinAPIMessageHandler* messageHandler
-    ) : wnd(makeWindow(params, messageHandler)), gl(wnd, other.gl) {}
-
-    ~GLWindow() {
-        std::cout << "-window" << std::endl << std::flush;
-        setMessageHandler(wnd, nullptr);
-    }
-    
-    GLWindow(const GLWindow&) = delete;
-    GLWindow& operator=(const GLWindow&) = delete;
-    GLWindow(GLWindow&&) = delete;
-    GLWindow& operator=(GLWindow&& other) = delete;
-
-    HWND getHWND() {
-        return wnd.get();
-    }
-
-    void activateGL() {
-        gl.activate();
-    }
-
-    void swapBuffers() {
-        gl.swapBuffers();
-    }
-
-private:
-    WndHandle wnd;
-    GLManager gl;
-
-    static WndHandle makeWindow(
-        WindowParams params,
-        WinAPIMessageHandler* messageHandler
-    ) {
-        std::cout << "+window" << std::endl << std::flush;
-        WndHandle wnd(CreateWindowEx(
-            params.title.has_value() ? NULL : WS_EX_TOOLWINDOW,
-            getWndClass(),
-            toUTF16(params.title.value_or("")).c_str(),
-            WS_POPUP,
-            params.location.left, params.location.top,
-            params.location.right - params.location.left,
-            params.location.bottom - params.location.top,
-            NULL, NULL, getHInstance(), nullptr));
-        if (!wnd) {
-            throw std::runtime_error("Cannot create window");
-        }
-        enableTransparency(wnd);
-        setMessageHandler(wnd, messageHandler);
-        return wnd;
-    }
-
-    static HINSTANCE getHInstance() {
-        static HINSTANCE hInstance =
-            reinterpret_cast<HINSTANCE>(GetModuleHandle(NULL));
-        return hInstance;
-    }
-    
-    static WindowClass& getWndClass() {
-        static WindowClass wc(
-            CS_OWNDC,
-            windowProc,
-            getHInstance(),
-            L"Istok",
-            0, 0, nullptr,
-            LoadCursor(NULL, IDC_ARROW));
-        return wc;
-    }
-
-    static void enableTransparency(WndHandle& wnd) {
-        DWM_BLURBEHIND bb = { 0 };
-        HRGN hRgn = CreateRectRgn(0, 0, -1, -1);
-        bb.dwFlags = DWM_BB_ENABLE | DWM_BB_BLURREGION;
-        bb.hRgnBlur = hRgn;
-        bb.fEnable = TRUE;
-        DwmEnableBlurBehindWindow(wnd.get(), &bb);
-    }
-
-    static void setMessageHandler(WndHandle& wnd, WinAPIMessageHandler* value) {
-        SetWindowLongPtr(
-            wnd.get(), GWLP_USERDATA, reinterpret_cast<LONG_PTR>(value));
-    }
-
-    static LRESULT CALLBACK windowProc(
-            HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
-        if (WinAPIMessageHandler* handler =
-            reinterpret_cast<WinAPIMessageHandler*>(
-                GetWindowLongPtr(hWnd, GWLP_USERDATA)))
-        {
-            return handler->handleMessage(
-                WinAPIMessage(hWnd, msg, wParam, lParam));
-        }
-        return DefWindowProc(hWnd, msg, wParam, lParam);
-    }
-};
-
-
-struct Color {
-    u_char r;
-    u_char g;
-    u_char b;
-    u_char a;
-};
-
-
-class SmartWindow {
-public:
-    SmartWindow(WinAPIMessageHandler* messageHandler)
-        : core(messageHandler) {}
-
-    SmartWindow(
-        const SmartWindow& other,
-        WindowParams params, WinAPIMessageHandler* messageHandler
-    ) : core(other.core, params, messageHandler) {}
-
-    SmartWindow(const SmartWindow&) = delete;
-    SmartWindow& operator=(const SmartWindow&) = delete;
-    SmartWindow(SmartWindow&&) = delete;
-    SmartWindow& operator=(SmartWindow&& other) = delete;
-
-    void postQueueNotification() {
-        PostMessage(core.getHWND(), WM_APP_QUEUE, NULL, NULL);
-    }
-
-    void show() {
-        ShowWindow(core.getHWND(), SW_SHOW);
-    }
-
-    void hide() {
-        ShowWindow(core.getHWND(), SW_HIDE);
-    }
-
-    void paint() {
-        std::cout << "gui: WM_PAINT" << std::endl << std::flush;
-        core.activateGL();
-        constexpr float factor = 1.0 / 255.0;
-        glClearColor(
-            color.r * factor,
-            color.g * factor,
-            color.b * factor,
-            color.a * factor);
-        glClear(GL_COLOR_BUFFER_BIT);
-        core.swapBuffers();
-        finishPaint();
-    }
-
-
-    SysResult hitTest(WinAPIMessage message) {
-        POINT point = {
-            GET_X_LPARAM(message.lParam),
-            GET_Y_LPARAM(message.lParam)};
-        RECT rect;
-        GetWindowRect(core.getHWND(), &rect);
-        bool lb = point.x - rect.left < 4;
-        bool rb = rect.right - point.x < 4;
-        bool tb = point.y - rect.top < 4;
-        bool bb = rect.bottom - point.y < 4;
-        if (lb && tb) return HTTOPLEFT;
-        if (rb && tb) return HTTOPRIGHT;
-        if (lb && bb) return HTBOTTOMLEFT;
-        if (rb && bb) return HTBOTTOMRIGHT;
-        if (lb) return HTLEFT;
-        if (rb) return HTRIGHT;
-        if (tb) return HTTOP;
-        if (bb) return HTBOTTOM;
-        if (point.y - rect.top < 32) return HTCAPTION;
-        return HTCLIENT;
-    }
-
-
-    void setColor(Color color) {
-        this->color = color;
-    }
-
-
-private:
-    GLWindow core;
-    Color color;
-
-    void finishPaint() {
-        PAINTSTRUCT ps;
-        BeginPaint(core.getHWND(), &ps);
-        EndPaint(core.getHWND(), &ps);
-    }
-};
-
-
-class SysWindow : public WinAPIMessageHandler {
-public:
-    // Create window with default parameters
-    SysWindow(SysMessageHandler& messageHandler)
-        : core(this), messageHandler(&messageHandler) {}
-
-    // Create duplicate with different parameters
-    SysWindow(const SysWindow& sample, WindowParams params)
-        : core(sample.core, params, this), messageHandler(sample.messageHandler) {}
-    
-    SysWindow(const SysWindow&) = delete;
-    SysWindow& operator=(const SysWindow&) = delete;
-    SysWindow(SysWindow&& other) = delete;
-    SysWindow& operator=(SysWindow&& other) = delete;
-
-    SysResult handleMessage(WinAPIMessage message) override {
-        switch (message.msg) {
-        case WM_CLOSE:
-            messageHandler->onClose(*this);
-            return 0;
-        case WM_DESTROY:
-            return 0;
-        case WM_APP_QUEUE:
-            messageHandler->onQueue();
-            return 0;
-        case WM_PAINT:
-            core.paint();
-            return 0;
-        case WM_NCHITTEST:
-            return core.hitTest(message);
-        default:
-            return defaultWinAPIHandler(message);
-        }
-    }
-
-    void postQueueNotification() {
-        core.postQueueNotification();
-    }
-
-    void show() {
-        core.show();
-    }
-
-    void hide() {
-        core.hide();
-    }
-    
-    void setColor(Color color) {
-        core.setColor(color);
-    }
-
-private:
-    SmartWindow core;
-    SysMessageHandler* messageHandler;
-};
-*/
+}
