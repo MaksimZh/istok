@@ -3,9 +3,11 @@
 
 #include "window.hpp"
 
+#include <windows.h>
 #include <GL/glew.h>
 #include <GL/wglew.h>
 
+#include <stdexcept>
 #include <memory>
 
 namespace Istok::GUI::WinAPI {
@@ -202,4 +204,4 @@ private:
     DCHandle dc;
 };
 
-}
+} // namespace Istok::GUI::WinAPI

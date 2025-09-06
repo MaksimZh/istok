@@ -1,5 +1,5 @@
 #include <ecs.hpp>
-#include <gui/winapi/window.hpp>
+#include <gui/winapi/platform.hpp>
 #include <gui/winapi/gl.hpp>
 #include <tools/queue.hpp>
 
