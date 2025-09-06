@@ -325,6 +325,7 @@ public:
         core.loadScene(std::move(scene));
     }
 
+
     void setAreaTester(std::unique_ptr<WindowAreaTester>&& tester) {
         core.setAreaTester(std::move(tester));
     }

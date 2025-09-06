@@ -13,12 +13,30 @@
 
 namespace Istok::GUI::WinAPI {
 
-
 template <typename Window>
 class EventHandler {
 public:
     virtual void onException(std::exception_ptr exception) noexcept = 0;
     virtual void onClose(Window* sender) noexcept = 0;
+};
+
+
+template <typename Window>
+concept GUIWindow = requires (
+    const WindowParams& params,
+    EventHandler<Window>& handler
+) {
+    typename Window::Renderer;
+    {Window(params, handler)};
+} && requires(
+    Window window,
+    std::unique_ptr<typename Window::Renderer>&& renderer,
+    std::unique_ptr<typename Window::Renderer::Scene>&& scene,
+    std::unique_ptr<WindowAreaTester>&& areaTester
+) {
+    {window.setRenderer(std::move(renderer))} -> std::same_as<void>;
+    {window.loadScene(std::move(scene))} -> std::same_as<void>;
+    {window.setAreaTester(std::move(areaTester))} -> std::same_as<void>;
 };
 
 
@@ -63,7 +81,7 @@ private:
 };
 
 
-template <typename ID, typename Window>
+template <typename ID, GUIWindow Window>
 class WindowManager {
 public:
     WindowManager(EventHandler<Window>& handler)
@@ -91,7 +109,7 @@ private:
 };
 
 
-template <typename ID_, typename Window>
+template <typename ID_, GUIWindow Window>
 class Platform: public EventHandler<Window> {
 public:
     using ID = ID_;
