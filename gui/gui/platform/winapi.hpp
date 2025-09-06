@@ -6,6 +6,7 @@
 #include <tools/helpers.hpp>
 
 #include <windows.h>
+#include <windowsx.h>
 #include <GL/glew.h>
 #include <GL/wglew.h>
 
@@ -68,6 +69,7 @@ class MessageHandler {
 public:
     virtual void onClose() noexcept = 0;
     virtual void onPaint() noexcept = 0;
+    virtual WindowArea onAreaTest(Position<int> position) noexcept = 0;
 };
 
 
@@ -275,7 +277,7 @@ private:
 
 class HWndWindow {
 public:
-    HWndWindow(WindowParams params, MessageHandler& handler)
+    HWndWindow(const WindowParams& params, MessageHandler& handler)
     : handler(handler) {
         hWnd = CreateWindowEx(
             params.title.has_value() ? NULL : WS_EX_TOOLWINDOW,
@@ -342,6 +344,27 @@ private:
             EndPaint(hWnd, &ps);
             return 0;
         }
+        case WM_NCHITTEST: {
+            RECT rect;
+            GetWindowRect(hWnd, &rect);
+            Position<int> position(
+                GET_X_LPARAM(lParam) - rect.left,
+                GET_Y_LPARAM(lParam) - rect.top);
+            switch (handler.onAreaTest(position)) {
+            case WindowArea::hole: return HTTRANSPARENT;
+            case WindowArea::client: return HTCLIENT;
+            case WindowArea::moving: return HTCAPTION;
+            case WindowArea::sizingTL: return HTTOPLEFT;
+            case WindowArea::sizingT: return HTTOP;
+            case WindowArea::sizingTR: return HTTOPRIGHT;
+            case WindowArea::sizingR: return HTRIGHT;
+            case WindowArea::sizingBR: return HTBOTTOMRIGHT;
+            case WindowArea::sizingB: return HTBOTTOM;
+            case WindowArea::sizingBL: return HTBOTTOMLEFT;
+            case WindowArea::sizingL: return HTLEFT;
+            default: return HTCLIENT;
+            }
+        }
         }
         return DefWindowProc(hWnd, msg, wParam, lParam);
     }
@@ -407,7 +430,7 @@ private:
 template <typename SysWindow, typename Renderer>
 class WindowCore {
 public:
-    WindowCore(WindowParams params, MessageHandler& handler)
+    WindowCore(const WindowParams& params, MessageHandler& handler)
     : window(params, handler) {}
 
     void setRenderer(std::unique_ptr<Renderer>&& renderer) {
@@ -420,14 +443,27 @@ public:
     void loadScene(std::unique_ptr<typename Renderer::Scene>&& scene) {
         getRenderer().loadScene(std::move(scene));
     }
-
+    
     void draw() {
         getRenderer().draw(window);
+    }
+
+
+    void setAreaTester(std::unique_ptr<WindowAreaTester>&& tester) {
+        this->areaTester = std::move(tester);
+    }
+
+    WindowArea testArea(Position<int> position) const noexcept {
+        if (!areaTester) {
+            return WindowArea::client;
+        }
+        return areaTester->testWindowArea(position);
     }
 
 private:
     SysWindow window;
     std::unique_ptr<Renderer> renderer;
+    std::unique_ptr<WindowAreaTester> areaTester;
 
     Renderer& getRenderer() {
         if (renderer == nullptr) {
@@ -449,7 +485,7 @@ public:
 template <typename SysWindow, typename Renderer>
 class Window: public MessageHandler {
 public:
-    Window(WindowParams params, EventHandler<Window>& handler)
+    Window(const WindowParams& params, EventHandler<Window>& handler)
     : core(params, *this), handler(handler) {}
 
     void onClose() noexcept override {
@@ -470,6 +506,14 @@ public:
 
     void loadScene(std::unique_ptr<typename Renderer::Scene>&& scene) {
         core.loadScene(std::move(scene));
+    }
+
+    void setAreaTester(std::unique_ptr<WindowAreaTester>&& tester) {
+        core.setAreaTester(std::move(tester));
+    }
+
+    WindowArea onAreaTest(Position<int> position) noexcept override {
+        return core.testArea(position);
     }
 
 private:
@@ -525,7 +569,7 @@ public:
     WindowManager(EventHandler<Window>& handler)
     : handler(handler) {}
 
-    void create(ID id, WindowParams params) {
+    void create(ID id, const WindowParams& params) {
         windows.insert(id, std::make_unique<Window>(params, handler));
     }
 
@@ -570,7 +614,7 @@ public:
         return outQueue.take();
     }
 
-    void createWindow(ID id, WindowParams params) noexcept {
+    void createWindow(ID id, const WindowParams& params) noexcept {
         try {
             windows.create(id, params);
         } catch(...) {
@@ -589,6 +633,16 @@ public:
     void setRenderer(ID id, std::unique_ptr<Renderer>&& renderer) noexcept {
         try {
             windows.getWindow(id).setRenderer(std::move(renderer));
+        } catch(...) {
+            onException(std::current_exception());
+        }
+    }
+
+    void setAreaTester(
+        ID id, std::unique_ptr<WindowAreaTester>&& tester) noexcept
+    {
+        try {
+            windows.getWindow(id).setAreaTester(std::move(tester));
         } catch(...) {
             onException(std::current_exception());
         }

@@ -77,11 +77,27 @@ std::unique_ptr<WindowRenderer> Renderer::create() {
 }
 
 
+struct Caption: public WindowAreaTester {
+    int height;
+
+    Caption(int height) : height(height) {}
+    
+    WindowArea testWindowArea(Position<int> position) const noexcept override {
+        return (position.y < height)
+            ? WindowArea::moving
+            : WindowArea::client;
+    }
+};
+
+
+using Platform = WinAPI::Platform<Entity, WinAPI::HWndWindow, WindowRenderer>;
+static_assert(GUIPlatform<Platform>);
+
 int main() {
     std::cout << "main: start" << std::endl << std::flush;
     EntityComponentManager ecs;
     Renderer renderer;
-    WinAPI::Platform<Entity, WinAPI::HWndWindow, WindowRenderer> gui;
+    Platform gui;
     Entity window = ecs.createEntity();
     Entity menu = ecs.createEntity();
     gui.createWindow(window, WindowParams{{200, 100, 600, 400}, "Istok"});
@@ -90,6 +106,7 @@ int main() {
     gui.setRenderer(menu, renderer.create());
     gui.loadScene(window, std::make_unique<WindowRenderer::Scene>(0.f, 1.f, 0.f, 0.f));
     gui.loadScene(menu, std::make_unique<WindowRenderer::Scene>(0.f, 0.f, 1.f, 0.f));
+    gui.setAreaTester(window, std::make_unique<Caption>(32));
     while (true) {
         PlatformEvent<Entity> msg = gui.getMessage();
         if (std::holds_alternative<PlatformEvents::Exception>(msg)) {
