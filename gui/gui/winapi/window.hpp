@@ -30,6 +30,10 @@ public:
         return *renderer;
     }
 
+    void loadScene(std::unique_ptr<typename Renderer::Scene>&& scene) {
+        getRenderer().loadScene(std::move(scene));
+    }
+
     void setAreaTester(std::unique_ptr<WindowAreaTester>&& tester) {
         this->areaTester = std::move(tester);
     }
@@ -62,7 +66,7 @@ public:
     }
 
     void loadScene(std::unique_ptr<typename Renderer::Scene>&& scene) {
-        data.getRenderer().loadScene(std::move(scene));
+        data.loadScene(std::move(scene));
     }
     
     void draw() {
