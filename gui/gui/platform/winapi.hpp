@@ -427,27 +427,19 @@ private:
 };
 
 
-template <typename SysWindow, typename Renderer>
-class WindowCore {
+template <typename Renderer>
+class WindowData {
 public:
-    WindowCore(const WindowParams& params, MessageHandler& handler)
-    : window(params, handler) {}
-
     void setRenderer(std::unique_ptr<Renderer>&& renderer) {
         this->renderer = std::move(renderer);
-        if (this->renderer) {
-            this->renderer->prepare(window);
-        }
-    }
-
-    void loadScene(std::unique_ptr<typename Renderer::Scene>&& scene) {
-        getRenderer().loadScene(std::move(scene));
     }
     
-    void draw() {
-        getRenderer().draw(window);
+    Renderer& getRenderer() {
+        if (renderer == nullptr) {
+            throw std::runtime_error("Renderer not attached");
+        }
+        return *renderer;
     }
-
 
     void setAreaTester(std::unique_ptr<WindowAreaTester>&& tester) {
         this->areaTester = std::move(tester);
@@ -461,16 +453,45 @@ public:
     }
 
 private:
-    SysWindow window;
     std::unique_ptr<Renderer> renderer;
     std::unique_ptr<WindowAreaTester> areaTester;
+};
 
-    Renderer& getRenderer() {
-        if (renderer == nullptr) {
-            throw std::runtime_error("Renderer not attached");
+
+template <typename SysWindow, typename Renderer>
+class WindowCore {
+public:
+    WindowCore(const WindowParams& params, MessageHandler& handler)
+    : window(params, handler) {}
+
+    void setRenderer(std::unique_ptr<Renderer>&& renderer) {
+        if (!renderer) {
+            throw std::runtime_error("No renderer provided");
         }
-        return *renderer;
+        renderer->prepare(window);
+        data.setRenderer(std::move(renderer));
     }
+
+    void loadScene(std::unique_ptr<typename Renderer::Scene>&& scene) {
+        data.getRenderer().loadScene(std::move(scene));
+    }
+    
+    void draw() {
+        data.getRenderer().draw(window);
+    }
+
+
+    void setAreaTester(std::unique_ptr<WindowAreaTester>&& tester) {
+        data.setAreaTester(std::move(tester));
+    }
+
+    WindowArea testArea(Position<int> position) const noexcept {
+        return data.testArea(position);
+    }
+
+private:
+    SysWindow window;
+    WindowData<Renderer> data;
 };
 
 
