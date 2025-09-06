@@ -91,11 +91,11 @@ private:
 };
 
 
-template <typename ID_, typename Window, typename Renderer_>
+template <typename ID_, typename Window>
 class Platform: public EventHandler<Window> {
 public:
     using ID = ID_;
-    using Renderer = Renderer_;
+    using Renderer = Window::Renderer;
 
     Platform() : windows(*this) {}
 

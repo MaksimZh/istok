@@ -297,9 +297,11 @@ private:
 };
 
 
-template <typename SysWindow, typename Renderer>
+template <typename SysWindow, typename Renderer_>
 class Window: public MessageHandler {
 public:
+    using Renderer = Renderer_;
+    
     Window(const WindowParams& params, EventHandler<Window>& handler)
     : core(params, *this), handler(handler) {}
 

@@ -92,7 +92,7 @@ struct Caption: public WindowAreaTester {
 };
 
 using Window = WinAPI::Window<WinAPI::HWndWindow, WindowRenderer>;
-using Platform = WinAPI::Platform<Entity, Window, WindowRenderer>;
+using Platform = WinAPI::Platform<Entity, Window>;
 static_assert(GUIPlatform<Platform>);
 
 int main() {
