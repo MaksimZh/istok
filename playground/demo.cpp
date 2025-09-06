@@ -1,6 +1,7 @@
 #include <ecs.hpp>
 #include <gui/winapi/platform.hpp>
 #include <gui/winapi/gl.hpp>
+#include <gui/winapi/window.hpp>
 #include <tools/queue.hpp>
 
 #include <iostream>
@@ -90,8 +91,8 @@ struct Caption: public WindowAreaTester {
     }
 };
 
-
-using Platform = WinAPI::Platform<Entity, WinAPI::HWndWindow, WindowRenderer>;
+using Window = WinAPI::Window<WinAPI::HWndWindow, WindowRenderer>;
+using Platform = WinAPI::Platform<Entity, Window, WindowRenderer>;
 static_assert(GUIPlatform<Platform>);
 
 int main() {

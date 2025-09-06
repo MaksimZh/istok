@@ -1,16 +1,25 @@
 // Copyright 2025 Maksim Sergeevich Zholudev. All rights reserved
 #pragma once
 
-#include "window.hpp"
-
+#include <gui/common/platform.hpp>
 #include <tools/queue.hpp>
 #include <tools/helpers.hpp>
+
+#include <windows.h>
 
 #include <stdexcept>
 #include <memory>
 #include <unordered_map>
 
 namespace Istok::GUI::WinAPI {
+
+
+template <typename Window>
+class EventHandler {
+public:
+    virtual void onException(std::exception_ptr exception) noexcept = 0;
+    virtual void onClose(Window* sender) noexcept = 0;
+};
 
 
 template <typename ID, typename Window>
@@ -82,12 +91,11 @@ private:
 };
 
 
-template <typename ID_, typename SysWindow, typename Renderer_>
-class Platform: public EventHandler<Window<SysWindow, Renderer_>> {
+template <typename ID_, typename Window, typename Renderer_>
+class Platform: public EventHandler<Window> {
 public:
     using ID = ID_;
     using Renderer = Renderer_;
-    using Window = Window<SysWindow, Renderer>;
 
     Platform() : windows(*this) {}
 

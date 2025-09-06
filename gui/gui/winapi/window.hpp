@@ -1,7 +1,7 @@
 // Copyright 2025 Maksim Sergeevich Zholudev. All rights reserved
 #pragma once
 
-#include <gui/common/platform.hpp>
+#include "platform.hpp"
 
 #include <windows.h>
 #include <windowsx.h>
@@ -294,14 +294,6 @@ public:
 private:
     SysWindow window;
     WindowData<Renderer> data;
-};
-
-
-template <typename Window>
-class EventHandler {
-public:
-    virtual void onException(std::exception_ptr exception) noexcept = 0;
-    virtual void onClose(Window* sender) noexcept = 0;
 };
 
 
