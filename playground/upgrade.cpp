@@ -25,10 +25,11 @@ public:
     public:
         WindowRendererCore(
             Renderer& renderer,
-            WinAPI::WGLWindow& window
+            WinAPI::SysWindow& window
         ) : renderer(renderer), window(window) {
+            WinAPI::prepareForGL(window);
             if (!renderer.gl) {
-                renderer.gl = std::move(window.makeGL());
+                renderer.gl = WinAPI::GLContext(window.sysContext().hWnd);
             }
         }
 
@@ -42,7 +43,7 @@ public:
 
     private:
         Renderer& renderer;
-        WinAPI::WGLWindow& window;
+        WinAPI::SysWindow& window;
     };
 
 
@@ -50,7 +51,7 @@ public:
     public:
         WindowRenderer(
             Renderer& renderer,
-            WinAPI::WGLWindow& window
+            WinAPI::SysWindow& window
         ) : core(renderer, window) {}
         
         void loadScene(std::unique_ptr<Scene>&& scene) {
@@ -80,7 +81,7 @@ int main() {
     std::cout << "main: start" << std::endl << std::flush;
     EntityComponentManager ecs;
     Renderer renderer;
-    WinAPI::Platform<Entity, WinAPI::WGLWindow, Renderer> gui(renderer);
+    WinAPI::Platform<Entity, WinAPI::SysWindow, Renderer> gui(renderer);
     Entity window = ecs.createEntity();
     Entity menu = ecs.createEntity();
     gui.createWindow(window, WindowParams{{200, 100, 600, 400}, "Istok"});

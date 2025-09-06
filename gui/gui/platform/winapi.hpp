@@ -273,9 +273,9 @@ private:
 };
 
 
-class WGLWindow {
+class SysWindow {
 public:
-    WGLWindow(WindowParams params, MessageHandler& handler)
+    SysWindow(WindowParams params, MessageHandler& handler)
         : handler(handler)
     {
         hWnd = CreateWindowEx(
@@ -290,30 +290,28 @@ public:
         if (!hWnd) {
             throw std::runtime_error("Cannot create window");
         }
-        setPixelFormat();
         SetWindowLongPtr(
             hWnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(this));
+        ShowWindow(hWnd, SW_SHOW);
     }
 
-    ~WGLWindow() noexcept {
+    ~SysWindow() noexcept {
         if (hWnd) {
             DestroyWindow(hWnd);
         }
     }
 
-    void show() {
-        ShowWindow(hWnd, SW_SHOW);
-    }
+    struct SysContext {
+        HWND hWnd;
+    };
 
-    GLContext makeGL() {
-        return GLContext(hWnd);
+    SysContext sysContext() const noexcept {
+        return SysContext(hWnd);
     }
 
 private:
     MessageHandler& handler;
     HWND hWnd = nullptr;
-
-    friend class CurrentGL;
 
     static LPCWSTR getWindowClass() {
         static WindowClass wc(windowProc, L"Istok");
@@ -323,7 +321,7 @@ private:
     static LRESULT CALLBACK windowProc(
         HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
     {
-        if (auto handler = reinterpret_cast<WGLWindow*>(
+        if (auto handler = reinterpret_cast<SysWindow*>(
                 GetWindowLongPtr(hWnd, GWLP_USERDATA)))
         {
             return handler->handleMessage(hWnd, msg, wParam, lParam);
@@ -357,38 +355,39 @@ private:
         MultiByteToWideChar(CP_UTF8, 0, source.c_str(), -1, &result[0], size);
         return result;
     }
-
-    void setPixelFormat() {
-        DCHandle dc(hWnd);
-        PIXELFORMATDESCRIPTOR pfd = {};
-        pfd.nSize = sizeof(PIXELFORMATDESCRIPTOR);
-        pfd.nVersion = 1;
-        pfd.dwFlags =
-            PFD_DRAW_TO_WINDOW |
-            PFD_SUPPORT_OPENGL |
-            PFD_DOUBLEBUFFER |
-            PFD_SUPPORT_COMPOSITION;
-        pfd.iPixelType = PFD_TYPE_RGBA;
-        pfd.cColorBits = 32;
-        pfd.cAlphaBits = 8;
-        pfd.cDepthBits = 24;
-        pfd.cStencilBits = 8;
-        pfd.iLayerType = PFD_MAIN_PLANE;
-
-        int pfi = ChoosePixelFormat(dc.get(), &pfd);
-        if (!pfi) {
-            throw std::runtime_error("Failed to choose pixel format");
-        }
-        if (!SetPixelFormat(dc.get(), pfi, &pfd)) {
-            throw std::runtime_error("Failed to set pixel format");
-        }
-    }
 };
+
+
+void prepareForGL(SysWindow& window) {
+    DCHandle dc(window.sysContext().hWnd);
+    PIXELFORMATDESCRIPTOR pfd = {};
+    pfd.nSize = sizeof(PIXELFORMATDESCRIPTOR);
+    pfd.nVersion = 1;
+    pfd.dwFlags =
+        PFD_DRAW_TO_WINDOW |
+        PFD_SUPPORT_OPENGL |
+        PFD_DOUBLEBUFFER |
+        PFD_SUPPORT_COMPOSITION;
+    pfd.iPixelType = PFD_TYPE_RGBA;
+    pfd.cColorBits = 32;
+    pfd.cAlphaBits = 8;
+    pfd.cDepthBits = 24;
+    pfd.cStencilBits = 8;
+    pfd.iLayerType = PFD_MAIN_PLANE;
+
+    int pfi = ChoosePixelFormat(dc.get(), &pfd);
+    if (!pfi) {
+        throw std::runtime_error("Failed to choose pixel format");
+    }
+    if (!SetPixelFormat(dc.get(), pfi, &pfd)) {
+        throw std::runtime_error("Failed to set pixel format");
+    }
+}
 
 
 class CurrentGL {
 public:
-    CurrentGL(GLContext& gl, WGLWindow& window) : gl(gl), dc(window.hWnd) {
+    CurrentGL(GLContext& gl, SysWindow& window) : gl(gl), dc(window.sysContext().hWnd) {
         gl.makeCurrent(dc);
     }
 
@@ -414,10 +413,6 @@ public:
         renderer(globalRenderer, window)
     {}
 
-    void show() {
-        window.show();
-    }
-
     void loadScene(std::unique_ptr<typename Renderer::Scene>&& scene) {
         renderer.loadScene(std::move(scene));
     }
@@ -439,10 +434,6 @@ public:
         WindowParams params, MessageHandler& handler,
         Renderer& renderer
     ) : window(params, handler, renderer) {}
-
-    void show() {
-        window.show();
-    }
 
     void loadScene(std::unique_ptr<typename Renderer::Scene>&& scene) {
         window.loadScene(std::move(scene));
@@ -483,10 +474,6 @@ public:
         } catch(...) {
             handler.onException(std::current_exception());
         }
-    }
-
-    void show() {
-        core.show();
     }
 
     void loadScene(std::unique_ptr<typename Renderer::Scene>&& scene) {
@@ -567,7 +554,6 @@ public:
 
     void create(ID id, WindowParams params) {
         auto window = factory.create(params);
-        window->show();
         windows.insert(id, std::move(window));
     }
 
