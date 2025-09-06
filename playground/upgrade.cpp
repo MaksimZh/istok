@@ -24,7 +24,7 @@ public:
         this->scene = std::move(scene);
     }
 
-    void draw(WinAPI::SysWindow& window) {
+    void draw(WinAPI::HWndWindow& window) {
         if (!gl) {
             WinAPI::prepareForGL(window);
             gl = WinAPI::GLContext(window.sysContext().hWnd);
@@ -46,7 +46,7 @@ private:
 int main() {
     std::cout << "main: start" << std::endl << std::flush;
     EntityComponentManager ecs;
-    WinAPI::Platform<Entity, WinAPI::SysWindow, Renderer> gui;
+    WinAPI::Platform<Entity, WinAPI::HWndWindow, Renderer> gui;
     Entity window = ecs.createEntity();
     Entity menu = ecs.createEntity();
     gui.createWindow(window, WindowParams{{200, 100, 600, 400}, "Istok"});

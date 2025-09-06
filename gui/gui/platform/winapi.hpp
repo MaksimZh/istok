@@ -273,9 +273,9 @@ private:
 };
 
 
-class SysWindow {
+class HWndWindow {
 public:
-    SysWindow(WindowParams params, MessageHandler& handler)
+    HWndWindow(WindowParams params, MessageHandler& handler)
         : handler(handler)
     {
         hWnd = CreateWindowEx(
@@ -295,7 +295,7 @@ public:
         ShowWindow(hWnd, SW_SHOW);
     }
 
-    ~SysWindow() noexcept {
+    ~HWndWindow() noexcept {
         if (hWnd) {
             DestroyWindow(hWnd);
         }
@@ -321,7 +321,7 @@ private:
     static LRESULT CALLBACK windowProc(
         HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
     {
-        if (auto handler = reinterpret_cast<SysWindow*>(
+        if (auto handler = reinterpret_cast<HWndWindow*>(
                 GetWindowLongPtr(hWnd, GWLP_USERDATA)))
         {
             return handler->handleMessage(hWnd, msg, wParam, lParam);
@@ -358,7 +358,7 @@ private:
 };
 
 
-void prepareForGL(SysWindow& window) {
+void prepareForGL(HWndWindow& window) {
     DCHandle dc(window.sysContext().hWnd);
     PIXELFORMATDESCRIPTOR pfd = {};
     pfd.nSize = sizeof(PIXELFORMATDESCRIPTOR);
@@ -387,7 +387,7 @@ void prepareForGL(SysWindow& window) {
 
 class CurrentGL {
 public:
-    CurrentGL(GLContext& gl, SysWindow& window) : gl(gl), dc(window.sysContext().hWnd) {
+    CurrentGL(GLContext& gl, HWndWindow& window) : gl(gl), dc(window.sysContext().hWnd) {
         gl.makeCurrent(dc);
     }
 
