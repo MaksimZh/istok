@@ -87,12 +87,12 @@ public:
         }
     }
 
-    struct SysContext {
+    struct NativeHandle {
         HWND hWnd;
     };
 
-    SysContext sysContext() const noexcept {
-        return SysContext(hWnd);
+    NativeHandle getNativeHandle() const noexcept {
+        return NativeHandle(hWnd);
     }
 
 private:

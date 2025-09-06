@@ -17,6 +17,21 @@ public:
 
 
 template <typename Renderer>
+concept GUIRenderer = requires {
+    typename Renderer::NativeHandle;
+    typename Renderer::Scene;
+} && requires(
+    Renderer renderer,
+    Renderer::NativeHandle handle,
+    std::unique_ptr<typename Renderer::Scene>&& scene
+) {
+    {renderer.loadScene(std::move(scene))} -> std::same_as<void>;
+    {renderer.prepare(handle)} -> std::same_as<void>;
+    {renderer.draw(handle)} -> std::same_as<void>;
+};
+
+
+template <GUIRenderer Renderer>
 class WindowData {
 public:
     void setRenderer(std::unique_ptr<Renderer>&& renderer) {
@@ -51,7 +66,7 @@ private:
 };
 
 
-template <typename SysWindow, typename Renderer>
+template <typename SysWindow, GUIRenderer Renderer>
 class WindowCore {
 public:
     WindowCore(const WindowParams& params, MessageHandler& handler)
@@ -61,7 +76,7 @@ public:
         if (!renderer) {
             throw std::runtime_error("No renderer provided");
         }
-        renderer->prepare(window);
+        renderer->prepare(window.getNativeHandle());
         data.setRenderer(std::move(renderer));
     }
 
@@ -70,7 +85,7 @@ public:
     }
     
     void draw() {
-        data.getRenderer().draw(window);
+        data.getRenderer().draw(window.getNativeHandle());
     }
 
 
@@ -88,7 +103,7 @@ private:
 };
 
 
-template <typename SysWindow, typename Renderer_>
+template <typename SysWindow, GUIRenderer Renderer_>
 class Window: public MessageHandler {
 public:
     using Renderer = Renderer_;

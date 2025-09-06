@@ -14,19 +14,21 @@ class WindowRenderer;
 
 class Renderer {
 public:
+    using NativeHandle = WinAPI::HWndWindow::NativeHandle;
+    
     std::unique_ptr<WindowRenderer> create();
 
-    void prepare(WinAPI::HWndWindow& window) {
-        WinAPI::prepareForGL(window.sysContext().hWnd);
+    void prepare(NativeHandle handle) {
+        WinAPI::prepareForGL(handle.hWnd);
         if (!gl) {
-            gl = WinAPI::GLContext(window.sysContext().hWnd);
+            gl = WinAPI::GLContext(handle.hWnd);
         }
     }
 
     class ContextLock {
     public:
-        ContextLock(Renderer& renderer, WinAPI::HWndWindow& window)
-        : context(renderer.gl, window.sysContext().hWnd) {}
+        ContextLock(Renderer& renderer, NativeHandle handle)
+        : context(renderer.gl, handle.hWnd) {}
     private:
         WinAPI::CurrentGL context;
     };
@@ -39,6 +41,8 @@ private:
 class WindowRenderer {
 public:
     WindowRenderer() = default;
+
+    using NativeHandle = WinAPI::HWndWindow::NativeHandle;
     
     struct Scene {
         float r;
@@ -51,15 +55,15 @@ public:
         this->scene = std::move(scene);
     }
 
-    void prepare(WinAPI::HWndWindow& window) {
-        master.prepare(window);
+    void prepare(NativeHandle handle) {
+        master.prepare(handle);
     }
 
-    void draw(WinAPI::HWndWindow& window) {
+    void draw(NativeHandle handle) {
         if (scene == nullptr) {
             return;
         }
-        Renderer::ContextLock cl(master, window);
+        Renderer::ContextLock cl(master, handle);
         glClearColor(scene->r, scene->g, scene->b, scene->a);
         glClear(GL_COLOR_BUFFER_BIT);
     }
