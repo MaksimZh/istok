@@ -328,3 +328,10 @@ TEST_CASE("WinAPI - WindowManager", "[unit][gui]") {
         REQUIRE_THROWS(manager.destroy(2));
     }
 }
+
+
+TEST_CASE("WinAPI - Platform", "[unit][gui]") {
+    using Win = Window<MockSysWindow, MockRenderer>;
+    MockEventHandler<Win> handler;
+    Platform<int, Win> platform;
+}
