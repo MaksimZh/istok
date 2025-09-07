@@ -40,7 +40,7 @@ concept GUISysWindow = requires(
 } && requires(
     SysWindow window
 ) {
-    {window.getNativeHandle()} ->
+    {window.getNativeHandle()} noexcept ->
         std::same_as<typename SysWindow::NativeHandle>;
 };
 
