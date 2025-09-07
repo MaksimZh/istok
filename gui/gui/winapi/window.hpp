@@ -123,7 +123,7 @@ private:
 template <GUISysWindow SysWindow, GUIRenderer Renderer_>
 requires std::same_as<
     typename SysWindow::NativeHandle,
-    typename Renderer::NativeHandle>
+    typename Renderer_::NativeHandle>
 class Window: public MessageHandler {
 public:
     using Renderer = Renderer_;

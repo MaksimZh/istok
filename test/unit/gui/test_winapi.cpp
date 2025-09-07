@@ -67,36 +67,60 @@ struct MockMessageHandler: public MessageHandler {
     }
 };
 
+
+std::string str(void* x) {
+    return std::format("onClose {:#x}", reinterpret_cast<std::uintptr_t>(x));
+}
+
+
+template <typename Window>
+struct MockEventHandler: public EventHandler<Window> {
+    void onException(std::exception_ptr exception) noexcept override {
+        log.push("onException");
+    }
+
+    void onClose(Window* sender) noexcept override {
+        log.push(std::format("onClose {}", str(sender)));
+    }
+
+    SimpleQueue<std::string> log;
+};
+
 }
 
 
 static_assert(GUIRenderer<MockRenderer>);
 static_assert(GUISysWindow<MockSysWindow>);
+static_assert(GUIWindow<Window<MockSysWindow, MockRenderer>>);
 
 
 TEST_CASE("WinAPI - WindowData", "[unit][gui]") {
     WindowData<MockRenderer> data;
 
-    REQUIRE_THROWS(data.getRenderer());
-    REQUIRE_THROWS(data.loadScene(std::make_unique<MockRenderer::Scene>()));
-    REQUIRE(data.testArea(Position<int>(0, 0)) == WindowArea::client);
-    
-    auto tmpRenderer = std::make_unique<MockRenderer>();
-    auto renderer = tmpRenderer.get();
-    data.setRenderer(std::move(tmpRenderer));
+    SECTION("Rendering") {
+        REQUIRE_THROWS(data.getRenderer());
+        REQUIRE_THROWS(data.loadScene(std::make_unique<MockRenderer::Scene>()));
+        REQUIRE(data.testArea(Position<int>(0, 0)) == WindowArea::client);
+        
+        auto tmpRenderer = std::make_unique<MockRenderer>();
+        auto renderer = tmpRenderer.get();
+        data.setRenderer(std::move(tmpRenderer));
 
-    REQUIRE(&data.getRenderer() == renderer);
-    
-    data.loadScene(std::make_unique<MockRenderer::Scene>("foo"));
+        REQUIRE(&data.getRenderer() == renderer);
+        
+        data.loadScene(std::make_unique<MockRenderer::Scene>("foo"));
 
-    REQUIRE(*renderer->scene == "foo");
+        REQUIRE(*renderer->scene == "foo");
+    }
 
-    auto tmpTester = std::make_unique<MockAreaTester>();
-    data.setAreaTester(std::move(tmpTester));
+    SECTION("Area test") {
+        auto tmpTester = std::make_unique<MockAreaTester>();
+        data.setAreaTester(std::move(tmpTester));
  
-    REQUIRE(data.testArea(Position<int>(0, 0)) == WindowArea::hole);
-    REQUIRE(data.testArea(Position<int>(1, 0)) == WindowArea::moving);
-    REQUIRE(data.testArea(Position<int>(1, 1)) == WindowArea::client);
+        REQUIRE(data.testArea(Position<int>(0, 0)) == WindowArea::hole);
+        REQUIRE(data.testArea(Position<int>(1, 0)) == WindowArea::moving);
+        REQUIRE(data.testArea(Position<int>(1, 1)) == WindowArea::client);
+    }
 }
 
 
@@ -105,30 +129,88 @@ TEST_CASE("WinAPI - WindowCore", "[unit][gui]") {
 
     WindowCore<MockSysWindow, MockRenderer> core(
         WindowParams({}, "win"), handler);
+
+    SECTION("Rendering") {
+        REQUIRE_THROWS(core.loadScene(std::make_unique<MockRenderer::Scene>()));
+        REQUIRE_THROWS(core.draw());
+
+        auto tmpRenderer = std::make_unique<MockRenderer>();
+        auto renderer = tmpRenderer.get();
+        core.setRenderer(std::move(tmpRenderer));
+
+        REQUIRE(renderer->log.take() == "prepare win");
+        REQUIRE(renderer->log.empty());
+
+        core.loadScene(std::make_unique<MockRenderer::Scene>("foo"));
+
+        REQUIRE(*renderer->scene == "foo");
+
+        core.draw();
+
+        REQUIRE(renderer->log.take() == "draw win");
+        REQUIRE(renderer->log.empty());
+    }
+
+    SECTION("Area test") {
+        REQUIRE(core.testArea(Position<int>(0, 0)) == WindowArea::client);
+
+        auto tmpTester = std::make_unique<MockAreaTester>();
+        core.setAreaTester(std::move(tmpTester));
     
-    REQUIRE_THROWS(core.loadScene(std::make_unique<MockRenderer::Scene>()));
-    REQUIRE_THROWS(core.draw());
+        REQUIRE(core.testArea(Position<int>(0, 0)) == WindowArea::hole);
+        REQUIRE(core.testArea(Position<int>(1, 0)) == WindowArea::moving);
+        REQUIRE(core.testArea(Position<int>(1, 1)) == WindowArea::client);
+    }
+}
 
-    auto tmpRenderer = std::make_unique<MockRenderer>();
-    auto renderer = tmpRenderer.get();
-    core.setRenderer(std::move(tmpRenderer));
 
-    REQUIRE(renderer->log.take() == "prepare win");
-    REQUIRE(renderer->log.empty());
+TEST_CASE("WinAPI - Window", "[unit][gui]") {
+    using Win = Window<MockSysWindow, MockRenderer>;
+    
+    MockEventHandler<Win> handler;
+    
+    Win window(WindowParams({}, "win"), handler);
 
-    core.loadScene(std::make_unique<MockRenderer::Scene>("foo"));
+    SECTION("Close") {
+        window.onClose();
+        
+        REQUIRE(handler.log.take() == std::format("onClose {}", str(&window)));
+        REQUIRE(handler.log.empty());
+    }
 
-    REQUIRE(*renderer->scene == "foo");
+    SECTION("Rendering") {
+        REQUIRE_THROWS(window.loadScene(std::make_unique<MockRenderer::Scene>()));
+    
+        window.onPaint();
+    
+        REQUIRE(handler.log.take() == "onException");
+        REQUIRE(handler.log.empty());
 
-    core.draw();
+        auto tmpRenderer = std::make_unique<MockRenderer>();
+        auto renderer = tmpRenderer.get();
+        window.setRenderer(std::move(tmpRenderer));
 
-    REQUIRE(renderer->log.take() == "draw win");
-    REQUIRE(renderer->log.empty());
+        REQUIRE(renderer->log.take() == "prepare win");
+        REQUIRE(renderer->log.empty());
 
-    auto tmpTester = std::make_unique<MockAreaTester>();
-    core.setAreaTester(std::move(tmpTester));
- 
-    REQUIRE(core.testArea(Position<int>(0, 0)) == WindowArea::hole);
-    REQUIRE(core.testArea(Position<int>(1, 0)) == WindowArea::moving);
-    REQUIRE(core.testArea(Position<int>(1, 1)) == WindowArea::client);
+        window.loadScene(std::make_unique<MockRenderer::Scene>("foo"));
+
+        REQUIRE(*renderer->scene == "foo");
+
+        window.onPaint();
+
+        REQUIRE(renderer->log.take() == "draw win");
+        REQUIRE(renderer->log.empty());
+    }
+
+    SECTION("Area test") {
+        REQUIRE(window.onAreaTest(Position<int>(0, 0)) == WindowArea::client);
+
+        auto tmpTester = std::make_unique<MockAreaTester>();
+        window.setAreaTester(std::move(tmpTester));
+    
+        REQUIRE(window.onAreaTest(Position<int>(0, 0)) == WindowArea::hole);
+        REQUIRE(window.onAreaTest(Position<int>(1, 0)) == WindowArea::moving);
+        REQUIRE(window.onAreaTest(Position<int>(1, 1)) == WindowArea::client);
+    }
 }
