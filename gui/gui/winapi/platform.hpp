@@ -43,7 +43,7 @@ concept GUIWindow = requires (
 template <typename ID, typename Window>
 class WindowMap {
 public:
-    void insert(ID id, std::unique_ptr<Window> window) {
+    void insert(ID id, std::unique_ptr<Window>&& window) {
         if (identifiers.contains(window.get()) || windows.contains(id)) {
             throw std::runtime_error("Window overwrite");
         }

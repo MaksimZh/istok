@@ -2,6 +2,7 @@
 #include <catch.hpp>
 
 #include <gui/winapi/window.hpp>
+#include <gui/winapi/platform.hpp>
 
 #include <tools/queue.hpp>
 #include <string>
@@ -212,5 +213,67 @@ TEST_CASE("WinAPI - Window", "[unit][gui]") {
         REQUIRE(window.onAreaTest(Position<int>(0, 0)) == WindowArea::hole);
         REQUIRE(window.onAreaTest(Position<int>(1, 0)) == WindowArea::moving);
         REQUIRE(window.onAreaTest(Position<int>(1, 1)) == WindowArea::client);
+    }
+}
+
+
+TEST_CASE("WinAPI - WindowMap", "[unit][gui]") {
+    WindowMap<int, int> map;
+
+    SECTION("Empty") {
+        auto a = new int(1);
+        REQUIRE_THROWS(map.getID(a));
+        REQUIRE_THROWS(map.getWindow(1));
+        REQUIRE_THROWS(map.erase(1));
+    }
+
+    SECTION("Single") {
+        auto pa = std::make_unique<int>(1);
+        auto pb = std::make_unique<int>(2);
+        auto a = pa.get();
+        auto b = pb.get();
+
+        map.insert(1, std::move(pa));
+
+        REQUIRE(map.getID(a) == 1);
+        REQUIRE(&map.getWindow(1) == a);
+        REQUIRE_THROWS(map.insert(1, std::move(pb)));
+        REQUIRE_THROWS(map.getID(b));
+        REQUIRE_THROWS(map.getWindow(2));
+        REQUIRE_THROWS(map.erase(2));
+
+        map.erase(1);
+
+        REQUIRE_THROWS(map.getID(a));
+        REQUIRE_THROWS(map.getWindow(1));
+        REQUIRE_THROWS(map.erase(1));
+    }
+
+    SECTION("Many") {
+        auto pa = std::make_unique<int>(1);
+        auto pb = std::make_unique<int>(2);
+        auto pc = std::make_unique<int>(3);
+        auto a = pa.get();
+        auto b = pb.get();
+        auto c = pc.get();
+
+        map.insert(1, std::move(pa));
+        map.insert(2, std::move(pb));
+        map.insert(3, std::move(pc));
+
+        REQUIRE(map.getID(a) == 1);
+        REQUIRE(map.getID(b) == 2);
+        REQUIRE(map.getID(c) == 3);
+        REQUIRE(&map.getWindow(1) == a);
+        REQUIRE(&map.getWindow(2) == b);
+        REQUIRE(&map.getWindow(3) == c);
+
+        map.erase(2);
+        REQUIRE(map.getID(a) == 1);
+        REQUIRE_THROWS(map.getID(b));
+        REQUIRE(map.getID(c) == 3);
+        REQUIRE(&map.getWindow(1) == a);
+        REQUIRE_THROWS(map.getWindow(2));
+        REQUIRE(&map.getWindow(3) == c);
     }
 }
