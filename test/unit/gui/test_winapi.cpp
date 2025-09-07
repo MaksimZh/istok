@@ -127,7 +127,6 @@ TEST_CASE("WinAPI - WindowData", "[unit][gui]") {
 
 TEST_CASE("WinAPI - WindowCore", "[unit][gui]") {
     MockMessageHandler handler;
-
     WindowCore<MockSysWindow, MockRenderer> core(
         WindowParams({}, "win"), handler);
 
@@ -137,17 +136,17 @@ TEST_CASE("WinAPI - WindowCore", "[unit][gui]") {
 
         auto tmpRenderer = std::make_unique<MockRenderer>();
         auto renderer = tmpRenderer.get();
-        core.setRenderer(std::move(tmpRenderer));
 
+        REQUIRE(renderer->log.empty());
+        core.setRenderer(std::move(tmpRenderer));
         REQUIRE(renderer->log.take() == "prepare win");
         REQUIRE(renderer->log.empty());
 
         core.loadScene(std::make_unique<MockRenderer::Scene>("foo"));
-
         REQUIRE(*renderer->scene == "foo");
 
+        REQUIRE(renderer->log.empty());
         core.draw();
-
         REQUIRE(renderer->log.take() == "draw win");
         REQUIRE(renderer->log.empty());
     }
@@ -167,14 +166,12 @@ TEST_CASE("WinAPI - WindowCore", "[unit][gui]") {
 
 TEST_CASE("WinAPI - Window", "[unit][gui]") {
     using Win = Window<MockSysWindow, MockRenderer>;
-    
     MockEventHandler<Win> handler;
-    
     Win window(WindowParams({}, "win"), handler);
 
     SECTION("Close") {
+        REQUIRE(handler.log.empty());
         window.onClose();
-        
         REQUIRE(handler.log.take() == std::format("onClose {}", str(&window)));
         REQUIRE(handler.log.empty());
     }
@@ -182,24 +179,24 @@ TEST_CASE("WinAPI - Window", "[unit][gui]") {
     SECTION("Rendering") {
         REQUIRE_THROWS(window.loadScene(std::make_unique<MockRenderer::Scene>()));
     
+        REQUIRE(handler.log.empty());
         window.onPaint();
-    
         REQUIRE(handler.log.take() == "onException");
         REQUIRE(handler.log.empty());
 
         auto tmpRenderer = std::make_unique<MockRenderer>();
         auto renderer = tmpRenderer.get();
-        window.setRenderer(std::move(tmpRenderer));
 
+        REQUIRE(renderer->log.empty());
+        window.setRenderer(std::move(tmpRenderer));
         REQUIRE(renderer->log.take() == "prepare win");
         REQUIRE(renderer->log.empty());
 
         window.loadScene(std::make_unique<MockRenderer::Scene>("foo"));
-
         REQUIRE(*renderer->scene == "foo");
 
+        REQUIRE(renderer->log.empty());
         window.onPaint();
-
         REQUIRE(renderer->log.take() == "draw win");
         REQUIRE(renderer->log.empty());
     }
@@ -275,5 +272,59 @@ TEST_CASE("WinAPI - WindowMap", "[unit][gui]") {
         REQUIRE(&map.getWindow(1) == a);
         REQUIRE_THROWS(map.getWindow(2));
         REQUIRE(&map.getWindow(3) == c);
+    }
+}
+
+
+TEST_CASE("WinAPI - WindowManager", "[unit][gui]") {
+    using Win = Window<MockSysWindow, MockRenderer>;
+    MockEventHandler<Win> handler;
+    WindowManager<int, Win> manager(handler);
+
+    SECTION("Empty") {
+        Win foo(WindowParams({}, "foo"), handler);
+        REQUIRE_THROWS(manager.getID(&foo));
+        REQUIRE_THROWS(manager.getWindow(42));
+        REQUIRE_THROWS(manager.destroy(42));
+    }
+
+    SECTION("Single window") {
+        Win foo(WindowParams({}, "foo"), handler);
+        manager.create(1, WindowParams({}, "win"));
+
+        REQUIRE_THROWS(manager.getID(&foo));
+        REQUIRE_THROWS(manager.getWindow(42));
+        REQUIRE_THROWS(manager.destroy(42));
+
+        Win* window = &manager.getWindow(1);
+        REQUIRE(manager.getID(window) == 1);
+
+        manager.destroy(1);
+        REQUIRE_THROWS(manager.getID(window));
+        REQUIRE_THROWS(manager.getWindow(1));
+        REQUIRE_THROWS(manager.destroy(1));
+    }
+
+    SECTION("Multiply window") {
+        Win foo(WindowParams({}, "foo"), handler);
+        manager.create(1, WindowParams({}, "a"));
+        manager.create(2, WindowParams({}, "b"));
+        manager.create(3, WindowParams({}, "c"));
+
+        REQUIRE_THROWS(manager.getID(&foo));
+        REQUIRE_THROWS(manager.getWindow(42));
+        REQUIRE_THROWS(manager.destroy(42));
+
+        REQUIRE(manager.getID(&manager.getWindow(1)) == 1);
+        REQUIRE(manager.getID(&manager.getWindow(2)) == 2);
+        REQUIRE(manager.getID(&manager.getWindow(3)) == 3);
+
+        Win* window = &manager.getWindow(2);
+        manager.destroy(2);
+        REQUIRE(manager.getID(&manager.getWindow(1)) == 1);
+        REQUIRE(manager.getID(&manager.getWindow(3)) == 3);
+        REQUIRE_THROWS(manager.getID(window));
+        REQUIRE_THROWS(manager.getWindow(2));
+        REQUIRE_THROWS(manager.destroy(2));
     }
 }
