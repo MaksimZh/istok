@@ -5,6 +5,7 @@
 
 #include <windows.h>
 #include <windowsx.h>
+#include <dwmapi.h>
 
 #include <memory>
 
@@ -78,6 +79,7 @@ public:
         }
         SetWindowLongPtr(
             hWnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(this));
+        enableTransparency();
         ShowWindow(hWnd, SW_SHOW);
     }
 
@@ -163,6 +165,15 @@ private:
         std::wstring result(size, L'\0');
         MultiByteToWideChar(CP_UTF8, 0, source.c_str(), -1, &result[0], size);
         return result;
+    }
+
+    void enableTransparency() {
+        DWM_BLURBEHIND bb = { 0 };
+        HRGN hRgn = CreateRectRgn(0, 0, -1, -1);
+        bb.dwFlags = DWM_BB_ENABLE | DWM_BB_BLURREGION;
+        bb.hRgnBlur = hRgn;
+        bb.fEnable = TRUE;
+        DwmEnableBlurBehindWindow(hWnd, &bb);
     }
 };
 

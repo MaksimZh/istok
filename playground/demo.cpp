@@ -326,9 +326,9 @@ public:
     VertexArray() {
         vao.bind();
         vbo.bind();
-        glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), (GLvoid*)0);
+        glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), (GLvoid*)0);
         glEnableVertexAttribArray(0);
-        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), (GLvoid*)(2 * sizeof(GLfloat)));
+        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), (GLvoid*)(2 * sizeof(GLfloat)));
         glEnableVertexAttribArray(1);
     }
     
@@ -513,7 +513,7 @@ public:
         master.prepare(handle);
         Renderer::ContextLock cl(master, handle);
         triangles = std::make_unique<TriangleArray>();
-        float cell = 16 / 256;
+        float cell = 16.f / 256;
         triangles->append(RectSprite::create(
             {-1, 1, 1, -1},
             {cell, 1 - cell, 9 * cell, 6 * cell}));
@@ -524,7 +524,10 @@ public:
             return;
         }
         Renderer::ContextLock cl(master, handle);
-        glClearColor(scene->r, scene->g, scene->b, scene->a);
+        RECT rect;
+        GetClientRect(handle.hWnd, &rect);
+        glViewport(0, 0, rect.right, rect.bottom);
+        glClearColor(0, 0, 0, 0);
         glClear(GL_COLOR_BUFFER_BIT);
         triangles->bind();
         glDrawArrays(GL_TRIANGLES, 0, triangles->size() * 3);
