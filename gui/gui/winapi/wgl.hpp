@@ -1,6 +1,8 @@
 // Copyright 2025 Maksim Sergeevich Zholudev. All rights reserved
 #pragma once
 
+#include <gui/gl/base.hpp>
+
 #include <windows.h>
 #include <GL/glew.h>
 #include <GL/wglew.h>
@@ -240,14 +242,14 @@ void prepareForGL(HWND hWnd) {
 }
 
 
-class CurrentGL {
+class CurrentWGL: public GL::CurrentGL {
 public:
-    CurrentGL(GLContext& gl, HWND hWnd)
+    CurrentWGL(GLContext& gl, HWND hWnd)
     : gl(gl), dc(hWnd) {
         gl.makeCurrent(dc);
     }
 
-    ~CurrentGL() {
+    ~CurrentWGL() {
         SwapBuffers(dc.get());
         gl.release();
     }

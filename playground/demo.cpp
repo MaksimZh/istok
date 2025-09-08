@@ -2,10 +2,9 @@
 #include <gui/winapi/window.hpp>
 #include <gui/winapi/wgl.hpp>
 #include <gui/winapi/winapi.hpp>
+#include <gui/gl/texture.hpp>
 #include <tools/queue.hpp>
 
-#define STB_IMAGE_IMPLEMENTATION
-#include <stb_image.h>
 #include <glm/glm.hpp>
 
 #include <iostream>
@@ -18,126 +17,6 @@ using namespace Istok::ECS;
 
 template <typename T>
 using RefVector = std::vector<std::reference_wrapper<T>>;
-
-class Texture2DBase {
-public:
-    Texture2DBase() {
-        glGenTextures(1, &id);
-        if (id == 0) {
-            throw std::runtime_error("Failed to generate OpenGL texture");
-        }
-    }
-
-    ~Texture2DBase() {
-        glDeleteTextures(1, &id);
-    }
-
-    Texture2DBase(const Texture2DBase&) = delete;
-    Texture2DBase& operator=(const Texture2DBase&) = delete;
-
-    void bind() {
-        glBindTexture(GL_TEXTURE_2D, id);
-    }
-
-    GLuint getId() {
-        return id;
-    }
-
-private:
-    GLuint id;
-};
-
-
-class Image {
-public:
-    Image(const std::string& fileName) {
-        stbi_set_flip_vertically_on_load(true);
-        data = stbi_load(fileName.c_str(), &width, &height, &channels, 0);
-        if (!data) {
-            throw std::runtime_error("Failed to load: " + fileName);
-        }
-    }
-
-    ~Image() {
-        stbi_image_free(data);
-    }
-
-    Image(const Image&) = delete;
-    Image& operator=(const Image&) = delete;
-
-    unsigned char* getData() {
-        return data;
-    }
-
-    int getWidth() {
-        return width;
-    }
-
-    int getHeight() {
-        return height;
-    }
-
-    int getChannels() {
-        return channels;
-    }
-
-private:
-    unsigned char* data;
-    int width;
-    int height;
-    int channels;
-};
-
-
-class ImageTexture : public Texture2DBase {
-public:
-    ImageTexture(int width, int height) {
-        this->width = width;
-        this->height = height;
-        setup();
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
-    }
-
-    ImageTexture(const std::string& fileName) {
-        Image img(fileName);
-        if (img.getChannels() != 4) {
-            throw std::runtime_error("Need 4 channels: " + fileName);
-        }
-        this->width = img.getWidth();
-        this->height = img.getHeight();
-        setup();
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, img.getData());
-    }
-
-    int getWidth() {
-        return width;
-    }
-
-    int getHeight() {
-        return height;
-    }
-
-    Rect<float> px2uv(Rect<int> src) {
-        return {
-            (float)src.left / width,
-            (float)src.bottom / height,
-            (float)src.right / width,
-            (float)src.top / height,
-        };
-    }
-
-private:
-    int width;
-    int height;
-
-    void setup() {
-        bind();
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    }
-};
 
 
 class ShaderHandler {
@@ -474,18 +353,19 @@ public:
         ContextLock(Renderer& renderer, NativeHandle handle)
         : context(renderer.gl, handle.hWnd) {}
     private:
-        WinAPI::CurrentGL context;
+        WinAPI::CurrentWGL context;
     };
 
 private:
     WinAPI::GLContext gl;
-    std::unique_ptr<ImageTexture> texture;
+    std::unique_ptr<GL::ImageTexture> texture;
     std::unique_ptr<Program> program;
 
     void init(HWND hWnd) {
         gl = WinAPI::GLContext(hWnd);
-        WinAPI::CurrentGL context(gl, hWnd);
-        texture = std::make_unique<ImageTexture>(
+        WinAPI::CurrentWGL context(gl, hWnd);
+        texture = std::make_unique<GL::ImageTexture>(
+            context,
             "C:/Users/zholu/Documents/Programming/istok/playground/gui.png");
         program = std::make_unique<Program>();
     }
