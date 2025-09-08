@@ -1,6 +1,6 @@
 #include <ecs.hpp>
 #include <gui/winapi/window.hpp>
-#include <gui/winapi/gl.hpp>
+#include <gui/winapi/wgl.hpp>
 #include <gui/winapi/winapi.hpp>
 #include <tools/queue.hpp>
 
