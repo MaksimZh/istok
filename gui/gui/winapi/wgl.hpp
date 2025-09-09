@@ -259,4 +259,24 @@ private:
     DCHandle dc;
 };
 
+
+class WGL {
+public:
+    using Scope = CurrentWGL;
+    
+    class Owner {
+    public:
+        Owner() = default;
+        
+        Owner(CurrentWGL& context) : handle(wglGetCurrentContext()) {}
+
+        bool isCurrent() const noexcept {
+            return wglGetCurrentContext() == handle;
+        }
+    private:
+        HGLRC handle;
+    };
+};
+
+
 } // namespace Istok::GUI::WinAPI

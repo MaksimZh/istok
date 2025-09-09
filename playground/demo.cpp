@@ -358,13 +358,13 @@ public:
 
 private:
     WinAPI::GLContext gl;
-    std::unique_ptr<GL::ImageTexture> texture;
+    std::unique_ptr<OpenGL::ImageTexture<WinAPI::WGL>> texture;
     std::unique_ptr<Program> program;
 
     void init(HWND hWnd) {
         gl = WinAPI::GLContext(hWnd);
         WinAPI::CurrentWGL context(gl, hWnd);
-        texture = std::make_unique<GL::ImageTexture>(
+        texture = std::make_unique<OpenGL::ImageTexture<WinAPI::WGL>>(
             context,
             "C:/Users/zholu/Documents/Programming/istok/playground/gui.png");
         program = std::make_unique<Program>();

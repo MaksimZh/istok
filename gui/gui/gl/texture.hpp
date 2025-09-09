@@ -10,33 +10,80 @@
 
 #include <stdexcept>
 
-namespace Istok::GUI::GL {
+namespace Istok::GUI::OpenGL {
 
+template <typename GL>
 class Texture2DHandle {
 public:
-    Texture2DHandle(CurrentGL& currentGL) {
+    Texture2DHandle() = default;
+
+    Texture2DHandle(GL::Scope& context) : owner(context) {
         glGenTextures(1, &handle);
         if (handle == 0) {
             throw std::runtime_error("Failed to generate OpenGL texture");
         }
     }
 
+    operator bool() const noexcept {
+        return handle != 0;
+    }
+
+    void destroy(GL::Scope& context) {
+        ensureContext();
+        safeDestroy();
+    }
+
     ~Texture2DHandle() {
-        glDeleteTextures(1, &handle);
+        safeDestroy();
     }
 
     Texture2DHandle(const Texture2DHandle&) = delete;
     Texture2DHandle& operator=(const Texture2DHandle&) = delete;
+    
+    Texture2DHandle(Texture2DHandle&& other)
+    : handle(other.handle), owner(std::move(other.owner)) {
+        other.drop();
+    }
+    
+    Texture2DHandle& operator=(Texture2DHandle&& other) {
+        if (&other == this) {
+            return *this;
+        }
+        if (*this) {
+            ensureContext();
+            safeDestroy();
+        }
+        handle = other.handle;
+        owner = std::move(other.owner);
+        other.drop;
+        return *this;
+    }
 
-    Texture2DHandle(Texture2DHandle&&) = delete;
-    Texture2DHandle& operator=(Texture2DHandle&&) = delete;
-
-    void bind() {
+    void bind(GL::Scope& context) {
+        ensureContext();
         glBindTexture(GL_TEXTURE_2D, handle);
     }
 
 private:
-    GLuint handle;
+    GLuint handle = 0;
+    GL::Owner owner;
+
+    void safeDestroy() noexcept {
+        if (*this && owner.isCurrent()) {
+            glDeleteTextures(1, &handle);
+            handle = 0;
+        }
+    }
+
+    void ensureContext() {
+        if (!owner.isCurrent()) {
+            throw std::runtime_error("Out of owning context");
+        }
+    }
+
+    void drop() {
+        handle = 0;
+    }
 };
 
 
@@ -81,23 +128,37 @@ private:
 };
 
 
+template <typename GL>
 class ImageTexture {
 public:
-    ImageTexture(CurrentGL& currentGL, const std::string& fileName)
-    : texture(currentGL) {
+    ImageTexture(GL::Scope& context, const std::string& fileName)
+    : texture(context) {
         Image img(fileName);
         if (img.getChannels() != 4) {
             throw std::runtime_error("Need 4 channels: " + fileName);
         }
         this->width = img.getWidth();
         this->height = img.getHeight();
-        setup();
+        texture.bind(context);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         glTexImage2D(
             GL_TEXTURE_2D,
             0, GL_RGBA,
             width, height,
             0, GL_RGBA, GL_UNSIGNED_BYTE,
             img.getData());
+    }
+
+    ImageTexture(const ImageTexture&) = delete;
+    ImageTexture& operator=(const ImageTexture&) = delete;
+    ImageTexture(ImageTexture&&) = default;
+    ImageTexture& operator=(ImageTexture&&) = default;
+
+    void destroy(GL::Scope& context) {
+        texture.destroy(context);
     }
 
     int getWidth() {
@@ -108,28 +169,11 @@ public:
         return height;
     }
 
-    Rect<float> px2uv(Rect<int> src) {
-        return {
-            (float)src.left / width,
-            (float)src.bottom / height,
-            (float)src.right / width,
-            (float)src.top / height,
-        };
-    }
-
 private:
-    Texture2DHandle texture;
+    Texture2DHandle<GL> texture;
     int width;
     int height;
-
-    void setup() {
-        texture.bind();
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    }
 };
 
 
-} // namespace Istok::GUI::GL
+} // namespace Istok::GUI::OpenGL
