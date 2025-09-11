@@ -29,7 +29,7 @@ public:
     VertexBuffer& operator=(VertexBuffer&& other) = default;
 
     void bind(GL::Scope& scope) {
-        glBindBuffer(GL_ARRAY_BUFFER, handle.get());
+        glBindBuffer(GL_ARRAY_BUFFER, handle.get(scope));
     }
 
 private:
@@ -68,7 +68,7 @@ public:
     VertexArray& operator=(VertexArray&& other) = default;
 
     void bind(GL::Scope& scope) {
-        glBindVertexArray(GL_ARRAY_Array, handle.get());
+        glBindVertexArray(handle.get(scope));
     }
 
 private:

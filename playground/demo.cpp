@@ -4,6 +4,7 @@
 #include <gui/winapi/winapi.hpp>
 #include <gui/gl/texture.hpp>
 #include <gui/gl/shader.hpp>
+#include <gui/gl/vertex2d.hpp>
 #include <tools/queue.hpp>
 
 #include <glm/glm.hpp>
@@ -15,178 +16,6 @@
 
 using namespace Istok::GUI;
 using namespace Istok::ECS;
-
-template <typename T>
-using RefVector = std::vector<std::reference_wrapper<T>>;
-
-
-struct Vertex {
-    glm::fvec2 pos;
-    glm::fvec2 tex;
-};
-
-using Triangle = std::array<Vertex, 3>;
-
-struct RectSprite {
-    Triangle lb;
-    Triangle rt;
-    
-    static RectSprite create(Rect<float> world, Rect<float> tex) {
-        return {
-            { {
-                {{world.left, world.bottom}, {tex.left, tex.bottom}},
-                {{world.right, world.bottom}, {tex.right, tex.bottom}},
-                {{world.left, world.top}, {tex.left, tex.top}},
-            } },
-            { {
-                {{world.right, world.top}, {tex.right, tex.top}},
-                {{world.left, world.top}, {tex.left, tex.top}},
-                {{world.right, world.bottom}, {tex.right, tex.bottom}},
-            } }
-        };
-    }
-};
-
-
-class VertexArrayObject {
-public:
-    VertexArrayObject() {
-        glGenVertexArrays(1, &id);
-    }
-
-    ~VertexArrayObject() {
-        glDeleteVertexArrays(1, &id);
-    }
-
-    VertexArrayObject(const VertexArrayObject&) = delete;
-    VertexArrayObject& operator=(const VertexArrayObject&) = delete;
-
-    void bind() {
-        glBindVertexArray(id);
-    }
-
-private:
-    GLuint id;
-};
-
-
-class VertexBuffer {
-public:
-    VertexBuffer() {
-        glGenBuffers(1, &id);
-    }
-
-    ~VertexBuffer() {
-        glDeleteBuffers(1, &id);
-    }
-
-    VertexBuffer(const VertexBuffer&) = delete;
-    VertexBuffer& operator=(const VertexBuffer&) = delete;
-
-    void bind() {
-        glBindBuffer(GL_ARRAY_BUFFER, id);
-    }
-
-private:
-    GLuint id;
-};
-
-
-class VertexArray {
-public:
-    VertexArray() {
-        vao.bind();
-        vbo.bind();
-        glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), (GLvoid*)0);
-        glEnableVertexAttribArray(0);
-        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), (GLvoid*)(2 * sizeof(GLfloat)));
-        glEnableVertexAttribArray(1);
-    }
-    
-    VertexArray(const VertexArray&) = delete;
-    VertexArray& operator=(const VertexArray&) = delete;
-
-    int size() const { return data.size(); }
-
-    void bind() {
-        vao.bind();
-        vbo.bind();
-    }
-
-    void clear() {
-        data.clear();
-    }
-
-    void append(const Vertex& source) {
-        data.push_back(source);
-    }
-
-    void append(const Triangle& source) {
-        appendStruct(source);
-    }
-
-    void append(const RectSprite& source) {
-        appendStruct(source);
-    }
-
-    void sync() {
-        bind();
-        glBufferData(GL_ARRAY_BUFFER, sizeof(Vertex) * data.size(), data.data(), GL_STATIC_DRAW);
-    }
-
-private:
-    VertexArrayObject vao;
-    VertexBuffer vbo;
-    std::vector<Vertex> data;
-
-    template <typename T>
-    void appendStruct(const T& source) {
-        static_assert(sizeof(T) % sizeof(Vertex) == 0);
-        constexpr int scale = sizeof(T) / sizeof(Vertex);
-        int oldSize = data.size();
-        data.resize(oldSize + scale);
-        std::memcpy(
-            data.data() + oldSize,
-            &source,
-            sizeof(T));
-    }
-};
-
-
-class TriangleArray {
-public:
-    TriangleArray() {}
-    TriangleArray(const TriangleArray&) = delete;
-    TriangleArray& operator=(const TriangleArray&) = delete;
-
-    int size() {
-        return vertices.size() / 3;
-    }
-
-    void clear() {
-        vertices.clear();
-    }
-    
-    void append(const Triangle& source) {
-        vertices.append(source);
-    }
-
-    void append(const RectSprite& source) {
-        vertices.append(source);
-    }
-    
-    void bind() {
-        vertices.bind();
-        if (outOfSync) {
-            vertices.sync();
-            outOfSync = false;
-        }
-    }
-
-private:
-    VertexArray vertices;
-    bool outOfSync = true;
-};
 
 
 class WindowRenderer;
@@ -211,6 +40,10 @@ public:
 
         void swapBuffers() {
             scope.swapBuffers();
+        }
+
+        operator WinAPI::WGL::Scope&() {
+            return scope;
         }
     
     private:
@@ -281,10 +114,10 @@ public:
 
     void prepare(NativeHandle handle) {
         master.prepare(handle);
-        Renderer::Scope cl(master, handle);
-        triangles = std::make_unique<TriangleArray>();
+        Renderer::Scope scope(master, handle);
+        triangles = std::make_unique<OpenGL::Triangle2DArray<WinAPI::WGL>>(scope);
         float cell = 16.f / 256;
-        triangles->append(RectSprite::create(
+        triangles->append(OpenGL::RectSprite(
             {-1, 1, 1, -1},
             {cell, 1 - cell, 9 * cell, 6 * cell}));
     }
@@ -299,15 +132,14 @@ public:
         glViewport(0, 0, rect.right, rect.bottom);
         glClearColor(0, 0, 0, 0);
         glClear(GL_COLOR_BUFFER_BIT);
-        triangles->bind();
-        glDrawArrays(GL_TRIANGLES, 0, triangles->size() * 3);
+        triangles->draw(scope);
         scope.swapBuffers();
     }
 
 private:
     Renderer& master;
     std::unique_ptr<Scene> scene;
-    std::unique_ptr<TriangleArray> triangles;
+    std::unique_ptr<OpenGL::Triangle2DArray<WinAPI::WGL>> triangles;
 
     friend Renderer;
 
