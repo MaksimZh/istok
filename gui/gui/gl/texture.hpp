@@ -17,73 +17,37 @@ class Texture2DHandle {
 public:
     Texture2DHandle() = default;
 
-    Texture2DHandle(GL::Scope& scope) : owner(scope) {
-        glGenTextures(1, &handle);
-        if (handle == 0) {
+    Texture2DHandle(GL::Scope& scope) {
+        GLuint value;
+        glGenTextures(1, &value);
+        if (!value) {
             throw std::runtime_error("Failed to generate OpenGL texture");
         }
-    }
-
-    operator bool() const noexcept {
-        return handle != 0;
+        handle = Handle(scope, value);
     }
 
     void destroy(GL::Scope& scope) {
-        ensureContext();
-        safeDestroy();
-    }
-
-    ~Texture2DHandle() {
-        safeDestroy();
+        handle.destroy(scope);
     }
 
     Texture2DHandle(const Texture2DHandle&) = delete;
     Texture2DHandle& operator=(const Texture2DHandle&) = delete;
-    
-    Texture2DHandle(Texture2DHandle&& other)
-    : handle(other.handle), owner(std::move(other.owner)) {
-        other.drop();
-    }
-    
-    Texture2DHandle& operator=(Texture2DHandle&& other) {
-        if (&other == this) {
-            return *this;
-        }
-        if (*this) {
-            ensureContext();
-            safeDestroy();
-        }
-        handle = other.handle;
-        owner = std::move(other.owner);
-        other.drop;
-        return *this;
-    }
+    Texture2DHandle(Texture2DHandle&& other) = default;
+    Texture2DHandle& operator=(Texture2DHandle&& other) = default;
 
     void bind(GL::Scope& scope) {
-        ensureContext();
-        glBindTexture(GL_TEXTURE_2D, handle);
+        glBindTexture(GL_TEXTURE_2D, handle.get());
     }
 
 private:
-    GLuint handle = 0;
-    GL::Owner owner;
-
-    void safeDestroy() noexcept {
-        if (*this && owner.isCurrent()) {
+    struct Deleter {
+        static void destroy(GLuint handle) {
             glDeleteTextures(1, &handle);
-            handle = 0;
         }
-    }
+    };
 
-    void ensureContext() {
-        if (!owner.isCurrent()) {
-            throw std::runtime_error("Out of owning scope");
-        }
-    }
-
-    void drop() {
-        handle = 0;
-    }
+    using Handle = ResourceHandle<GL, Deleter>;
+    Handle handle;
 };
 
 
