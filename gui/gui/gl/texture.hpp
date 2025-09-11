@@ -17,7 +17,7 @@ class Texture2DHandle {
 public:
     Texture2DHandle() = default;
 
-    Texture2DHandle(GL::Scope& context) : owner(context) {
+    Texture2DHandle(GL::Scope& scope) : owner(scope) {
         glGenTextures(1, &handle);
         if (handle == 0) {
             throw std::runtime_error("Failed to generate OpenGL texture");
@@ -28,7 +28,7 @@ public:
         return handle != 0;
     }
 
-    void destroy(GL::Scope& context) {
+    void destroy(GL::Scope& scope) {
         ensureContext();
         safeDestroy();
     }
@@ -59,7 +59,7 @@ public:
         return *this;
     }
 
-    void bind(GL::Scope& context) {
+    void bind(GL::Scope& scope) {
         ensureContext();
         glBindTexture(GL_TEXTURE_2D, handle);
     }
@@ -77,7 +77,7 @@ private:
 
     void ensureContext() {
         if (!owner.isCurrent()) {
-            throw std::runtime_error("Out of owning context");
+            throw std::runtime_error("Out of owning scope");
         }
     }
 
@@ -131,15 +131,15 @@ private:
 template <OpenGLContext GL>
 class ImageTexture {
 public:
-    ImageTexture(GL::Scope& context, const std::string& fileName)
-    : texture(context) {
+    ImageTexture(GL::Scope& scope, const std::string& fileName)
+    : texture(scope) {
         Image img(fileName);
         if (img.getChannels() != 4) {
             throw std::runtime_error("Need 4 channels: " + fileName);
         }
         this->width = img.getWidth();
         this->height = img.getHeight();
-        texture.bind(context);
+        texture.bind(scope);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -157,8 +157,8 @@ public:
     ImageTexture(ImageTexture&&) = default;
     ImageTexture& operator=(ImageTexture&&) = default;
 
-    void destroy(GL::Scope& context) {
-        texture.destroy(context);
+    void destroy(GL::Scope& scope) {
+        texture.destroy(scope);
     }
 
     int getWidth() {
