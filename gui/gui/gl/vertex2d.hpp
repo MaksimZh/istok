@@ -15,7 +15,7 @@ namespace Istok::GUI::OpenGL {
 struct Vertex2D {
     glm::fvec2 pos;
     glm::fvec2 tex;
-    float ind;
+    float pal;
 };
 
 
@@ -68,16 +68,16 @@ struct RectSprite {
     Triangle2D lb;
     Triangle2D rt;
     
-    RectSprite(Rect<float> world, Rect<float> tex)
+    RectSprite(Rect<float> world, Rect<float> tex, float pal)
     :   lb({
-            {{world.left, world.bottom}, {tex.left, tex.bottom}, 0},
-            {{world.right, world.bottom}, {tex.right, tex.bottom}, 0},
-            {{world.left, world.top}, {tex.left, tex.top}, 0}
+            {{world.left, world.bottom}, {tex.left, tex.bottom}, pal},
+            {{world.right, world.bottom}, {tex.right, tex.bottom}, pal},
+            {{world.left, world.top}, {tex.left, tex.top}, pal}
         }),
         rt({
-            {{world.right, world.top}, {tex.right, tex.top}, 0},
-            {{world.left, world.top}, {tex.left, tex.top}, 0},
-            {{world.right, world.bottom}, {tex.right, tex.bottom}, 0},
+            {{world.right, world.top}, {tex.right, tex.top}, pal},
+            {{world.left, world.top}, {tex.left, tex.top}, pal},
+            {{world.right, world.bottom}, {tex.right, tex.bottom}, pal},
         }) {}
 };
 

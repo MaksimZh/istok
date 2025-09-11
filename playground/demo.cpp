@@ -140,7 +140,8 @@ public:
         float cell = 16.f / 256;
         triangles.append(OpenGL::RectSprite(
             {-1, 1, 1, -1},
-            {cell, 1 - cell, 9 * cell, 1 - 6 * cell}));
+            {cell, 1 - cell, 9 * cell, 1 - 6 * cell},
+            5));
     }
 
     void draw(NativeHandle handle) {
