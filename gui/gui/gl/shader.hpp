@@ -99,7 +99,7 @@ public:
     }
 
     GLuint getUniformLocation(GL::Scope& scope, std::string name) {
-        return glGetUniformLocation(handle.get(), name.c_str());
+        return glGetUniformLocation(handle.get(scope), name.c_str());
     }
 
 private:

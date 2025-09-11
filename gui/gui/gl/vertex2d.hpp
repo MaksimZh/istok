@@ -13,9 +13,9 @@
 namespace Istok::GUI::OpenGL {
 
 struct Vertex2D {
-    glm::fvec2 xy;
-    glm::fvec2 uv;
-    //glm::fvec4 rgba;
+    glm::fvec2 pos;
+    glm::fvec2 tex;
+    float ind;
 };
 
 
@@ -31,13 +31,18 @@ public:
         
         glVertexAttribPointer(
             0, 2, GL_FLOAT, GL_FALSE,
-            4 * sizeof(GLfloat), (GLvoid*)0);
+            5 * sizeof(GLfloat), (GLvoid*)0);
         glEnableVertexAttribArray(0);
         
         glVertexAttribPointer(
             1, 2, GL_FLOAT, GL_FALSE,
-            4 * sizeof(GLfloat), (GLvoid*)(2 * sizeof(GLfloat)));
+            5 * sizeof(GLfloat), (GLvoid*)(2 * sizeof(GLfloat)));
         glEnableVertexAttribArray(1);
+
+        glVertexAttribPointer(
+            2, 1, GL_FLOAT, GL_FALSE,
+            5 * sizeof(GLfloat), (GLvoid*)(4 * sizeof(GLfloat)));
+        glEnableVertexAttribArray(2);
     }
     
     Vertex2DArray(const Vertex2DArray&) = delete;
@@ -65,14 +70,14 @@ struct RectSprite {
     
     RectSprite(Rect<float> world, Rect<float> tex)
     :   lb({
-            {{world.left, world.bottom}, {tex.left, tex.bottom}},
-            {{world.right, world.bottom}, {tex.right, tex.bottom}},
-            {{world.left, world.top}, {tex.left, tex.top}}
+            {{world.left, world.bottom}, {tex.left, tex.bottom}, 0},
+            {{world.right, world.bottom}, {tex.right, tex.bottom}, 0},
+            {{world.left, world.top}, {tex.left, tex.top}, 0}
         }),
         rt({
-            {{world.right, world.top}, {tex.right, tex.top}},
-            {{world.left, world.top}, {tex.left, tex.top}},
-            {{world.right, world.bottom}, {tex.right, tex.bottom}},
+            {{world.right, world.top}, {tex.right, tex.top}, 0},
+            {{world.left, world.top}, {tex.left, tex.top}, 0},
+            {{world.right, world.bottom}, {tex.right, tex.bottom}, 0},
         }) {}
 };
 
