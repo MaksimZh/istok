@@ -95,6 +95,8 @@ private:
 template <OpenGLContext GL>
 class ImageTexture {
 public:
+    ImageTexture() = default;
+    
     ImageTexture(GL::Scope& scope, const std::string& fileName)
     : texture(scope) {
         Image img(fileName);

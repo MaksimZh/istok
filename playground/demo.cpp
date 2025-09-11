@@ -52,13 +52,13 @@ public:
 
 private:
     WinAPI::GLContext gl;
-    std::unique_ptr<OpenGL::ImageTexture<WinAPI::WGL>> texture;
+    OpenGL::ImageTexture<WinAPI::WGL> texture;
     OpenGL::ShaderProgram<WinAPI::WGL> program;
 
     void init(HWND hWnd) {
         gl = WinAPI::GLContext(hWnd);
         WinAPI::WGL::Scope scope(gl, hWnd);
-        texture = std::make_unique<OpenGL::ImageTexture<WinAPI::WGL>>(
+        texture = OpenGL::ImageTexture<WinAPI::WGL>(
             scope,
             "C:/Users/zholu/Documents/Programming/istok/playground/gui.png");
         OpenGL::Shader<WinAPI::WGL> vertex(scope, GL_VERTEX_SHADER, R"(
