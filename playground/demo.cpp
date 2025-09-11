@@ -3,6 +3,7 @@
 #include <gui/winapi/wgl.hpp>
 #include <gui/winapi/winapi.hpp>
 #include <gui/gl/texture.hpp>
+#include <gui/gl/shader.hpp>
 #include <tools/queue.hpp>
 
 #include <glm/glm.hpp>
@@ -17,115 +18,6 @@ using namespace Istok::ECS;
 
 template <typename T>
 using RefVector = std::vector<std::reference_wrapper<T>>;
-
-
-class ShaderHandler {
-public:
-    ShaderHandler(GLuint value = 0) {
-        id = value;
-    }
-
-    ~ShaderHandler() {
-        if (id) {
-            glDeleteShader(id);
-        }
-    }
-
-    ShaderHandler(const ShaderHandler&) = delete;
-    ShaderHandler& operator=(const ShaderHandler&) = delete;
-
-    ShaderHandler& operator=(GLuint value) {
-        if (id) {
-            throw std::runtime_error("Handler rewrite is forbidden");
-        }
-        id = value;
-        return *this;
-    }
-
-    operator GLuint() const { return id; }
-    explicit operator bool() const { return id != 0; }
-
-private:
-    GLuint id;
-};
-
-
-class Shader {
-public:
-    Shader(GLenum type, const std::string& source) {
-        id = glCreateShader(type);
-        if (!id) {
-            throw std::runtime_error("Failed to create shader");
-        }
-        
-        const char* codePtr = source.c_str();
-        glShaderSource(id, 1, &codePtr, nullptr);
-        glCompileShader(id);
-
-        GLint success;
-        glGetShaderiv(id, GL_COMPILE_STATUS, &success);
-        if (!success) {
-            GLchar infoLog[512];
-            glGetShaderInfoLog(id, sizeof(infoLog), nullptr, infoLog);
-            throw std::runtime_error("Shader compilation failed: " + std::string(infoLog));
-        }
-    }
-
-    GLuint getId() const { return id; }
-
-private:
-    ShaderHandler id;
-};
-
-
-class ShaderProgram {
-public:
-    ShaderProgram() {
-        id = glCreateProgram();
-        if (id == 0) {
-            throw std::runtime_error("Failed to create shader");
-        }
-    }
-
-    ~ShaderProgram() {
-        glDeleteProgram(id);
-    }
-
-    ShaderProgram(const ShaderProgram&) = delete;
-    ShaderProgram& operator=(const ShaderProgram&) = delete;
-
-    void link(RefVector<Shader> shaders) {
-        for (auto& ref : shaders) {
-            glAttachShader(id, ref.get().getId());
-        }
-        glLinkProgram(id);
-
-        GLint success;
-        glGetProgramiv(id, GL_LINK_STATUS, &success);
-        if (!success) {
-            GLchar infoLog[512];
-            glGetProgramInfoLog(id, sizeof(infoLog), nullptr, infoLog);
-            throw std::runtime_error("Shader program linking failed: " + std::string(infoLog));
-        }
-
-        for (auto& ref : shaders) {
-            glDetachShader(id, ref.get().getId());
-        }
-    }
-
-    GLuint getId() const { return id; }
-
-    void use() {
-        glUseProgram(id);
-    }
-
-    GLuint getUniformLocation(std::string name) {
-        return glGetUniformLocation(id, name.c_str());
-    }
-
-private:
-    GLuint id;
-};
 
 
 struct Vertex {
@@ -297,42 +189,6 @@ private:
 };
 
 
-class Program : public ShaderProgram {
-public:
-    Program() {
-        Shader vertex(GL_VERTEX_SHADER, R"(
-            #version 330 core
-            
-            layout (location = 0) in vec2 pos;
-            layout (location = 1) in vec2 tex;
-            out vec2 texCoord;
-
-            void main() {
-                gl_Position = vec4(pos, 0.0, 1.0);
-                texCoord = tex;
-            }
-        )");
-        Shader fragment(GL_FRAGMENT_SHADER, R"(
-            #version 330 core
-            in vec2 texCoord;
-            out vec4 FragColor;
-
-            uniform sampler2D atlas;
-
-            void main() {
-                FragColor = texture(atlas, texCoord);
-            }
-        )");
-        RefVector<Shader> shaders = { vertex, fragment };
-        link(shaders);
-        use();
-        glEnable(GL_BLEND);
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-        glActiveTexture(GL_TEXTURE0);
-    }
-};
-
-
 class WindowRenderer;
 
 class Renderer {
@@ -364,7 +220,7 @@ public:
 private:
     WinAPI::GLContext gl;
     std::unique_ptr<OpenGL::ImageTexture<WinAPI::WGL>> texture;
-    std::unique_ptr<Program> program;
+    OpenGL::ShaderProgram<WinAPI::WGL> program;
 
     void init(HWND hWnd) {
         gl = WinAPI::GLContext(hWnd);
@@ -372,7 +228,37 @@ private:
         texture = std::make_unique<OpenGL::ImageTexture<WinAPI::WGL>>(
             scope,
             "C:/Users/zholu/Documents/Programming/istok/playground/gui.png");
-        program = std::make_unique<Program>();
+        OpenGL::Shader<WinAPI::WGL> vertex(scope, GL_VERTEX_SHADER, R"(
+            #version 330 core
+            
+            layout (location = 0) in vec2 pos;
+            layout (location = 1) in vec2 tex;
+            out vec2 texCoord;
+
+            void main() {
+                gl_Position = vec4(pos, 0.0, 1.0);
+                texCoord = tex;
+            }
+        )");
+        OpenGL::Shader<WinAPI::WGL> fragment(scope, GL_FRAGMENT_SHADER, R"(
+            #version 330 core
+            in vec2 texCoord;
+            out vec4 FragColor;
+
+            uniform sampler2D atlas;
+
+            void main() {
+                FragColor = texture(atlas, texCoord);
+            }
+        )");
+        std::vector<OpenGL::Shader<WinAPI::WGL>> shaders;
+        shaders.push_back(std::move(vertex));
+        shaders.push_back(std::move(fragment));
+        program = OpenGL::ShaderProgram<WinAPI::WGL>(scope, shaders);
+        program.use(scope);
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        glActiveTexture(GL_TEXTURE0);
     }
 };
 
