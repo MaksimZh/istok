@@ -22,6 +22,8 @@ struct Vertex2D {
 template <OpenGLContext GL>
 class Vertex2DArray {
 public:
+    Vertex2DArray() = default;
+    
     Vertex2DArray(GL::Scope& scope)
     : vao(scope), vbo(scope) {
         vao.bind(scope);
@@ -40,6 +42,8 @@ public:
     
     Vertex2DArray(const Vertex2DArray&) = delete;
     Vertex2DArray& operator=(const Vertex2DArray&) = delete;
+    Vertex2DArray(Vertex2DArray&&) = default;
+    Vertex2DArray& operator=(Vertex2DArray&&) = default;
 
     void bind(GL::Scope& scope) {
         vao.bind(scope);
@@ -76,10 +80,14 @@ struct RectSprite {
 template <OpenGLContext GL>
 class Triangle2DArray {
 public:
+    Triangle2DArray() = default;
+    
     Triangle2DArray(GL::Scope& scope) : vertices(scope) {}
     
     Triangle2DArray(const Triangle2DArray&) = delete;
     Triangle2DArray& operator=(const Triangle2DArray&) = delete;
+    Triangle2DArray(Triangle2DArray&&) = default;
+    Triangle2DArray& operator=(Triangle2DArray&&) = default;
     
     void append(const Triangle2D& source) {
         appendStruct(source);

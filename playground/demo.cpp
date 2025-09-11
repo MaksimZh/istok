@@ -115,9 +115,9 @@ public:
     void prepare(NativeHandle handle) {
         master.prepare(handle);
         Renderer::Scope scope(master, handle);
-        triangles = std::make_unique<OpenGL::Triangle2DArray<WinAPI::WGL>>(scope);
+        triangles = OpenGL::Triangle2DArray<WinAPI::WGL>(scope);
         float cell = 16.f / 256;
-        triangles->append(OpenGL::RectSprite(
+        triangles.append(OpenGL::RectSprite(
             {-1, 1, 1, -1},
             {cell, 1 - cell, 9 * cell, 6 * cell}));
     }
@@ -132,14 +132,14 @@ public:
         glViewport(0, 0, rect.right, rect.bottom);
         glClearColor(0, 0, 0, 0);
         glClear(GL_COLOR_BUFFER_BIT);
-        triangles->draw(scope);
+        triangles.draw(scope);
         scope.swapBuffers();
     }
 
 private:
     Renderer& master;
     std::unique_ptr<Scene> scene;
-    std::unique_ptr<OpenGL::Triangle2DArray<WinAPI::WGL>> triangles;
+    OpenGL::Triangle2DArray<WinAPI::WGL> triangles;
 
     friend Renderer;
 
