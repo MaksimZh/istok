@@ -348,12 +348,17 @@ public:
         }
     }
 
-    class ContextLock {
+    class Scope {
     public:
-        ContextLock(Renderer& renderer, NativeHandle handle)
-        : context(renderer.gl, handle.hWnd) {}
+        Scope(Renderer& renderer, NativeHandle handle)
+        : scope(renderer.gl, handle.hWnd) {}
+
+        void swapBuffers() {
+            scope.swapBuffers();
+        }
+    
     private:
-        WinAPI::CurrentWGL context;
+        WinAPI::WGL::Scope scope;
     };
 
 private:
@@ -363,9 +368,9 @@ private:
 
     void init(HWND hWnd) {
         gl = WinAPI::GLContext(hWnd);
-        WinAPI::CurrentWGL context(gl, hWnd);
+        WinAPI::WGL::Scope scope(gl, hWnd);
         texture = std::make_unique<OpenGL::ImageTexture<WinAPI::WGL>>(
-            context,
+            scope,
             "C:/Users/zholu/Documents/Programming/istok/playground/gui.png");
         program = std::make_unique<Program>();
     }
@@ -391,7 +396,7 @@ public:
 
     void prepare(NativeHandle handle) {
         master.prepare(handle);
-        Renderer::ContextLock cl(master, handle);
+        Renderer::Scope cl(master, handle);
         triangles = std::make_unique<TriangleArray>();
         float cell = 16.f / 256;
         triangles->append(RectSprite::create(
@@ -403,7 +408,7 @@ public:
         if (scene == nullptr) {
             return;
         }
-        Renderer::ContextLock cl(master, handle);
+        Renderer::Scope scope(master, handle);
         RECT rect;
         GetClientRect(handle.hWnd, &rect);
         glViewport(0, 0, rect.right, rect.bottom);
@@ -411,6 +416,7 @@ public:
         glClear(GL_COLOR_BUFFER_BIT);
         triangles->bind();
         glDrawArrays(GL_TRIANGLES, 0, triangles->size() * 3);
+        scope.swapBuffers();
     }
 
 private:

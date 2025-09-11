@@ -1,25 +1,20 @@
 // Copyright 2025 Maksim Sergeevich Zholudev. All rights reserved
 #pragma once
 
+#include <type_traits>
 
-namespace Istok::GUI::GL {
+namespace Istok::GUI::OpenGL {
 
-/** @brief Interface for RAII wrapper of current OpenGL context control
- *  
- * All functions that require active OpenGL context must require reference
- * to CurrentGL as argument. This ensures that all wrappers around OpenGL
- * will be used within correct state.
- */
-class CurrentGL {
-public:
-    CurrentGL() = default;
-    virtual ~CurrentGL() = 0;
-    CurrentGL(const CurrentGL&) = delete;
-    CurrentGL& operator=(const CurrentGL&) = delete;
-    CurrentGL(CurrentGL&&) = delete;
-    CurrentGL& operator=(CurrentGL&&) = delete;
+template <typename Owner>
+concept OpenGLContextOwner = std::movable<Owner>
+&& requires(Owner owner) {
+    {owner.isCurrent()} noexcept -> std::same_as<bool>;
 };
 
-CurrentGL::~CurrentGL() = default;
+template <typename GL>
+concept OpenGLContext = requires {
+    typename GL::Scope;
+    typename GL::Owner;
+} && OpenGLContextOwner<typename GL::Owner>;
 
-} // namespace Istok::GUI::GL
+} // namespace Istok::GUI::OpenGL

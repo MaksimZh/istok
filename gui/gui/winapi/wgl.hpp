@@ -242,33 +242,33 @@ void prepareForGL(HWND hWnd) {
 }
 
 
-class CurrentWGL: public GL::CurrentGL {
-public:
-    CurrentWGL(GLContext& gl, HWND hWnd)
-    : gl(gl), dc(hWnd) {
-        gl.makeCurrent(dc);
-    }
-
-    ~CurrentWGL() {
-        SwapBuffers(dc.get());
-        gl.release();
-    }
-
-private:
-    GLContext& gl;
-    DCHandle dc;
-};
-
-
 class WGL {
 public:
-    using Scope = CurrentWGL;
+    class Scope {
+    public:
+        Scope(GLContext& gl, HWND hWnd)
+        : gl(gl), dc(hWnd) {
+            gl.makeCurrent(dc);
+        }
+
+        ~Scope() {
+            gl.release();
+        }
+
+        void swapBuffers() {
+            SwapBuffers(dc.get());
+        }
+
+    private:
+        GLContext& gl;
+        DCHandle dc;
+    };
     
     class Owner {
     public:
         Owner() = default;
         
-        Owner(CurrentWGL& context) : handle(wglGetCurrentContext()) {}
+        Owner(Scope& context) : handle(wglGetCurrentContext()) {}
 
         bool isCurrent() const noexcept {
             return wglGetCurrentContext() == handle;

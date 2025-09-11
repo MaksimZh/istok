@@ -12,7 +12,7 @@
 
 namespace Istok::GUI::OpenGL {
 
-template <typename GL>
+template <OpenGLContext GL>
 class Texture2DHandle {
 public:
     Texture2DHandle() = default;
@@ -128,7 +128,7 @@ private:
 };
 
 
-template <typename GL>
+template <OpenGLContext GL>
 class ImageTexture {
 public:
     ImageTexture(GL::Scope& context, const std::string& fileName)
