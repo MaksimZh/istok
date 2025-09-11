@@ -36,7 +36,7 @@ public:
     Texture2DHandle& operator=(Texture2DHandle&& other) = default;
 
     void bind(GL::Scope& scope) {
-        glBindTexture(GL_TEXTURE_2D, handle.get());
+        glBindTexture(GL_TEXTURE_2D, handle.get(scope));
     }
 
 private:

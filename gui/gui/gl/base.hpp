@@ -32,7 +32,7 @@ public:
         return handle != 0;
     }
 
-    GLuint get() const {
+    GLuint get(GL::Scope& scope) const {
         ensureContext();
         return handle;
     }
