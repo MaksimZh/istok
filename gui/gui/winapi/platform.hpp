@@ -31,7 +31,7 @@ concept GUIWindow = requires (
 } && requires(
     Window window,
     std::unique_ptr<typename Window::Renderer>&& renderer,
-    Window::Renderer::Scene&& scene,
+    std::unique_ptr<typename Window::Renderer::Scene>&& scene,
     std::unique_ptr<WindowAreaTester>&& areaTester
 ) {
     {window.setRenderer(std::move(renderer))} -> std::same_as<void>;
@@ -165,7 +165,8 @@ public:
         }
     }
 
-    void loadScene(ID id, Renderer::Scene&& scene) noexcept
+    void loadScene(
+        ID id, std::unique_ptr<typename Renderer::Scene>&& scene) noexcept
     {
         try {
             windows.getWindow(id).loadScene(std::move(scene));

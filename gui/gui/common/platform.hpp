@@ -89,7 +89,7 @@ concept GUIPlatform = requires {
     typename Platform::ID id,
     WindowParams windowParams,
     std::unique_ptr<typename Platform::Renderer>&& renderer,
-    Platform::Renderer::Scene&& scene,
+    std::unique_ptr<typename Platform::Renderer::Scene>&& scene,
     std::unique_ptr<WindowAreaTester>&& areaTester
 ) {
     {platform.getMessage()} noexcept ->

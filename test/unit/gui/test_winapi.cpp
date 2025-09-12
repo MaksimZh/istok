@@ -20,7 +20,7 @@ struct MockRenderer {
     using NativeHandle = std::string;
     using Scene = std::string;
 
-    void loadScene(Scene&& scene) {
+    void loadScene(std::unique_ptr<Scene>&& scene) {
         this->scene = std::move(scene);
     }
 
@@ -32,7 +32,7 @@ struct MockRenderer {
         log.push(std::format("draw {}", handle));
     }
 
-    Scene scene;
+    std::unique_ptr<Scene> scene;
     SimpleQueue<std::string> log;
 };
 
@@ -100,7 +100,7 @@ TEST_CASE("WinAPI - WindowData", "[unit][gui]") {
 
     SECTION("Rendering") {
         REQUIRE_THROWS(data.getRenderer());
-        REQUIRE_THROWS(data.loadScene(MockRenderer::Scene()));
+        REQUIRE_THROWS(data.loadScene(std::make_unique<MockRenderer::Scene>()));
         REQUIRE(data.testArea(Position<int>(0, 0)) == WindowArea::client);
         
         auto tmpRenderer = std::make_unique<MockRenderer>();
@@ -109,9 +109,9 @@ TEST_CASE("WinAPI - WindowData", "[unit][gui]") {
 
         REQUIRE(&data.getRenderer() == renderer);
         
-        data.loadScene(MockRenderer::Scene("foo"));
+        data.loadScene(std::make_unique<MockRenderer::Scene>("foo"));
 
-        REQUIRE(renderer->scene == "foo");
+        REQUIRE(*renderer->scene == "foo");
     }
 
     SECTION("Area test") {
@@ -131,7 +131,7 @@ TEST_CASE("WinAPI - WindowCore", "[unit][gui]") {
         WindowParams({}, "win"), handler);
 
     SECTION("Rendering") {
-        REQUIRE_THROWS(core.loadScene(MockRenderer::Scene()));
+        REQUIRE_THROWS(core.loadScene(std::make_unique<MockRenderer::Scene>()));
         REQUIRE_THROWS(core.draw());
 
         auto tmpRenderer = std::make_unique<MockRenderer>();
@@ -142,8 +142,8 @@ TEST_CASE("WinAPI - WindowCore", "[unit][gui]") {
         REQUIRE(renderer->log.take() == "prepare win");
         REQUIRE(renderer->log.empty());
 
-        core.loadScene(MockRenderer::Scene("foo"));
-        REQUIRE(renderer->scene == "foo");
+        core.loadScene(std::make_unique<MockRenderer::Scene>("foo"));
+        REQUIRE(*renderer->scene == "foo");
 
         REQUIRE(renderer->log.empty());
         core.draw();
@@ -177,7 +177,7 @@ TEST_CASE("WinAPI - Window", "[unit][gui]") {
     }
 
     SECTION("Rendering") {
-        REQUIRE_THROWS(window.loadScene(MockRenderer::Scene()));
+        REQUIRE_THROWS(window.loadScene(std::make_unique<MockRenderer::Scene>()));
     
         REQUIRE(handler.log.empty());
         window.onPaint();
@@ -192,8 +192,8 @@ TEST_CASE("WinAPI - Window", "[unit][gui]") {
         REQUIRE(renderer->log.take() == "prepare win");
         REQUIRE(renderer->log.empty());
 
-        window.loadScene(MockRenderer::Scene("foo"));
-        REQUIRE(renderer->scene == "foo");
+        window.loadScene(std::make_unique<MockRenderer::Scene>("foo"));
+        REQUIRE(*renderer->scene == "foo");
 
         REQUIRE(renderer->log.empty());
         window.onPaint();
