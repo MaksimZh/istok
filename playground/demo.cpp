@@ -137,11 +137,6 @@ public:
         master.prepare(handle);
         Renderer::Scope scope(master, handle);
         triangles = OpenGL::Triangle2DArray<WinAPI::WGL>(scope);
-        float cell = 16.f / 256;
-        triangles.append(OpenGL::RectSprite(
-            {-1, 1, 1, -1},
-            {cell, 1 - cell, 9 * cell, 1 - 6 * cell},
-            5));
     }
 
     void draw(NativeHandle handle) {
@@ -154,6 +149,52 @@ public:
         glViewport(0, 0, rect.right, rect.bottom);
         glClearColor(0, 0, 0, 0);
         glClear(GL_COLOR_BUFFER_BIT);
+        triangles.clear();
+        float mt = 25;
+        float mb = 8;
+        float ml = 48;
+        float mr = 64;
+        float wx = 2.0f / rect.right;
+        float wy = 2.0f / rect.bottom;
+        float tx = 1.0f / 256;
+        float ty = 1.0f / 256;
+        
+        float wx0 = -1;
+        float wx1 = wx0 + ml * wx;
+        float wx3 = 1;
+        float wx2 = wx3 - mr * wx;
+        float wy0 = 1;
+        float wy1 = wy0 - mt * wy;
+        float wy3 = -1;
+        float wy2 = wy3 + mb * wy;
+        
+        float tx0 = 16 * tx;
+        float tx1 = tx0 + ml * tx;
+        float tx3 = 144 * tx;
+        float tx2 = tx3 - mr * tx;
+        float ty0 = 1 - 16 * ty;
+        float ty1 = ty0 - mt * ty;
+        float ty3 = 1 - 96 * ty;
+        float ty2 = ty3 + mb * ty;
+        
+        triangles.append(OpenGL::RectSprite(
+            {wx0, wy0, wx1, wy1}, {tx0, ty0, tx1, ty1}, 0));
+        triangles.append(OpenGL::RectSprite(
+            {wx1, wy0, wx2, wy1}, {tx1, ty0, tx2, ty1}, 0));
+        triangles.append(OpenGL::RectSprite(
+            {wx2, wy0, wx3, wy1}, {tx2, ty0, tx3, ty1}, 0));
+        triangles.append(OpenGL::RectSprite(
+            {wx0, wy1, wx1, wy2}, {tx0, ty1, tx1, ty2}, 0));
+        triangles.append(OpenGL::RectSprite(
+            {wx1, wy1, wx2, wy2}, {tx1, ty1, tx2, ty2}, 0));
+        triangles.append(OpenGL::RectSprite(
+            {wx2, wy1, wx3, wy2}, {tx2, ty1, tx3, ty2}, 0));
+        triangles.append(OpenGL::RectSprite(
+            {wx0, wy2, wx1, wy3}, {tx0, ty2, tx1, ty3}, 0));
+        triangles.append(OpenGL::RectSprite(
+            {wx1, wy2, wx2, wy3}, {tx1, ty2, tx2, ty3}, 0));
+        triangles.append(OpenGL::RectSprite(
+            {wx2, wy2, wx3, wy3}, {tx2, ty2, tx3, ty3}, 0));
         triangles.draw(scope);
         scope.swapBuffers();
     }
@@ -198,7 +239,7 @@ int main() {
     Entity window = ecs.createEntity();
     Entity menu = ecs.createEntity();
     gui.createWindow(window, WindowParams{{200, 100, 600, 400}, "Istok"});
-    gui.createWindow(menu, WindowParams{{300, 200, 400, 500}, std::nullopt});
+    gui.createWindow(menu, WindowParams{{300, 200, 500, 500}, std::nullopt});
     gui.setRenderer(window, renderer.create());
     gui.setRenderer(menu, renderer.create());
     gui.loadScene(window, std::make_unique<WindowRenderer::Scene>(0.f, 1.f, 0.f, 0.f));

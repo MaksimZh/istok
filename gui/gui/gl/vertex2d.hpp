@@ -93,6 +93,11 @@ public:
     Triangle2DArray& operator=(const Triangle2DArray&) = delete;
     Triangle2DArray(Triangle2DArray&&) = default;
     Triangle2DArray& operator=(Triangle2DArray&&) = default;
+
+    void clear() {
+        data.clear();
+        ready = false;
+    }
     
     void append(const Triangle2D& source) {
         appendStruct(source);
