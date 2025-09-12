@@ -93,12 +93,8 @@ public:
         }
     }
 
-    struct NativeHandle {
-        HWND hWnd;
-    };
-
-    NativeHandle getNativeHandle() const noexcept {
-        return NativeHandle(hWnd);
+    HWND getHandle() const noexcept {
+        return hWnd;
     }
 
 private:
@@ -138,13 +134,15 @@ public:
     HWndWindow(const WindowParams& params, MessageHandler& handler)
     : window(params, this), handler(handler) {
         enableTransparency();
-        ShowWindow(getNativeHandle().hWnd, SW_SHOW);
+        ShowWindow(window.getHandle(), SW_SHOW);
     }
 
-    using NativeHandle = BasicWindow::NativeHandle;
+    struct NativeHandle {
+        HWND hWnd;
+    };
 
     NativeHandle getNativeHandle() const noexcept {
-        return window.getNativeHandle();
+        return NativeHandle(window.getHandle());
     }
 
 private:
@@ -196,7 +194,7 @@ private:
         bb.dwFlags = DWM_BB_ENABLE | DWM_BB_BLURREGION;
         bb.hRgnBlur = hRgn;
         bb.fEnable = TRUE;
-        DwmEnableBlurBehindWindow(getNativeHandle().hWnd, &bb);
+        DwmEnableBlurBehindWindow(window.getHandle(), &bb);
     }
 };
 
