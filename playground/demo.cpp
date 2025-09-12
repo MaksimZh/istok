@@ -123,10 +123,8 @@ public:
     using NativeHandle = WinAPI::HWndWindow::NativeHandle;
     
     struct Scene {
-        float r;
-        float g;
-        float b;
-        float a;
+        Rect<float> texOut;
+        Rect<float> texIn;
     };
 
     void loadScene(std::unique_ptr<Scene>&& scene) {
@@ -150,14 +148,12 @@ public:
         glClearColor(0, 0, 0, 0);
         glClear(GL_COLOR_BUFFER_BIT);
         triangles.clear();
-        float mt = 25;
-        float mb = 8;
-        float ml = 48;
-        float mr = 64;
-        float wx = 2.0f / rect.right;
-        float wy = 2.0f / rect.bottom;
-        float tx = 1.0f / 256;
-        float ty = 1.0f / 256;
+        float mt = scene->texOut.top - scene->texIn.top;
+        float mb = scene->texIn.bottom - scene->texOut.bottom;
+        float ml = scene->texIn.left - scene->texOut.left;
+        float mr = scene->texOut.right - scene->texIn.right;
+        float wx = 512.0f / rect.right;
+        float wy = 512.0f / rect.bottom;
         
         float wx0 = -1;
         float wx1 = wx0 + ml * wx;
@@ -168,14 +164,14 @@ public:
         float wy3 = -1;
         float wy2 = wy3 + mb * wy;
         
-        float tx0 = 16 * tx;
-        float tx1 = tx0 + ml * tx;
-        float tx3 = 144 * tx;
-        float tx2 = tx3 - mr * tx;
-        float ty0 = 1 - 16 * ty;
-        float ty1 = ty0 - mt * ty;
-        float ty3 = 1 - 96 * ty;
-        float ty2 = ty3 + mb * ty;
+        float tx0 = scene->texOut.left;
+        float tx1 = scene->texIn.left;
+        float tx2 = scene->texIn.right;
+        float tx3 = scene->texOut.right;
+        float ty0 = scene->texOut.top;
+        float ty1 = scene->texIn.top;
+        float ty2 = scene->texIn.bottom;
+        float ty3 = scene->texOut.bottom;
         
         triangles.append(OpenGL::RectSprite(
             {wx0, wy0, wx1, wy1}, {tx0, ty0, tx1, ty1}, 0));
@@ -242,9 +238,16 @@ int main() {
     gui.createWindow(menu, WindowParams{{300, 200, 500, 500}, std::nullopt});
     gui.setRenderer(window, renderer.create());
     gui.setRenderer(menu, renderer.create());
-    gui.loadScene(window, std::make_unique<WindowRenderer::Scene>(0.f, 1.f, 0.f, 0.f));
-    gui.loadScene(menu, std::make_unique<WindowRenderer::Scene>(0.f, 0.f, 1.f, 0.f));
-    gui.setAreaTester(window, std::make_unique<Caption>(32));
+    float px = 1.0f / 256;
+    gui.loadScene(window, std::make_unique<WindowRenderer::Scene>(
+        Rect<float>{16 * px, 1 - 16 * px, 9 * 16 * px, 1 - 6 * 16 * px},
+        Rect<float>{4 * 16 * px, 1 - (16 + 25) * px, 5 * 16 * px, 1 - (6 * 16 - 8) * px}
+    ));
+    gui.loadScene(menu, std::make_unique<WindowRenderer::Scene>(
+        Rect<float>{16 * px, 1 - 16 * px, 9 * 16 * px, 1 - 6 * 16 * px},
+        Rect<float>{4 * 16 * px, 1 - (16 + 25) * px, 5 * 16 * px, 1 - (6 * 16 - 8) * px}
+    ));
+    gui.setAreaTester(window, std::make_unique<Caption>(24));
     while (true) {
         PlatformEvent<Entity> msg = gui.getMessage();
         if (std::holds_alternative<PlatformEvents::Exception>(msg)) {
