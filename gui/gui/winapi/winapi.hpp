@@ -80,6 +80,7 @@ public:
         SetWindowLongPtr(
             hWnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(this));
         enableTransparency();
+        ShowWindow(hWnd, SW_SHOW);
     }
 
     ~HWndWindow() noexcept {
@@ -94,10 +95,6 @@ public:
 
     NativeHandle getNativeHandle() const noexcept {
         return NativeHandle(hWnd);
-    }
-
-    void show() const noexcept {
-        ShowWindow(hWnd, SW_SHOW);
     }
 
 private:
