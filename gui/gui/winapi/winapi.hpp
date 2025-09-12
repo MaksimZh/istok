@@ -61,10 +61,16 @@ private:
 };
 
 
-class HWndWindow {
+class SysMessageHandler {
 public:
-    HWndWindow(const WindowParams& params, MessageHandler& handler)
-    : handler(handler) {
+    virtual LRESULT handleMessage(
+        HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) noexcept = 0;
+};
+
+
+class BasicWindow {
+public:
+    BasicWindow(const WindowParams& params, SysMessageHandler* handler) {
         hWnd = CreateWindowEx(
             params.title.has_value() ? NULL : WS_EX_TOOLWINDOW,
             getWindowClass(),
@@ -78,12 +84,10 @@ public:
             throw std::runtime_error("Cannot create window");
         }
         SetWindowLongPtr(
-            hWnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(this));
-        enableTransparency();
-        ShowWindow(hWnd, SW_SHOW);
+            hWnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(handler));
     }
 
-    ~HWndWindow() noexcept {
+    ~BasicWindow() noexcept {
         if (hWnd) {
             DestroyWindow(hWnd);
         }
@@ -98,7 +102,6 @@ public:
     }
 
 private:
-    MessageHandler& handler;
     HWND hWnd = nullptr;
 
     static LPCWSTR getWindowClass() {
@@ -109,7 +112,7 @@ private:
     static LRESULT CALLBACK windowProc(
         HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) noexcept
     {
-        if (auto handler = reinterpret_cast<HWndWindow*>(
+        if (auto handler = reinterpret_cast<SysMessageHandler*>(
                 GetWindowLongPtr(hWnd, GWLP_USERDATA)))
         {
             return handler->handleMessage(hWnd, msg, wParam, lParam);
@@ -117,8 +120,39 @@ private:
         return DefWindowProc(hWnd, msg, wParam, lParam);
     }
 
+    static std::wstring toUTF16(const std::string& source) {
+        int size = MultiByteToWideChar(
+            CP_UTF8, 0, source.c_str(), -1, nullptr, 0);
+        if (size == 0) {
+            throw std::runtime_error("UTF-8 to UTF-16 conversion failed");
+        }
+        std::wstring result(size, L'\0');
+        MultiByteToWideChar(CP_UTF8, 0, source.c_str(), -1, &result[0], size);
+        return result;
+    }
+};
+
+
+class HWndWindow: public SysMessageHandler {
+public:
+    HWndWindow(const WindowParams& params, MessageHandler& handler)
+    : window(params, this), handler(handler) {
+        enableTransparency();
+        ShowWindow(getNativeHandle().hWnd, SW_SHOW);
+    }
+
+    using NativeHandle = BasicWindow::NativeHandle;
+
+    NativeHandle getNativeHandle() const noexcept {
+        return window.getNativeHandle();
+    }
+
+private:
+    BasicWindow window;
+    MessageHandler& handler;
+
     LRESULT handleMessage(
-        HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) noexcept
+        HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) noexcept override
     {
         switch (msg) {
         case WM_CLOSE:
@@ -156,24 +190,13 @@ private:
         return DefWindowProc(hWnd, msg, wParam, lParam);
     }
 
-    static std::wstring toUTF16(const std::string& source) {
-        int size = MultiByteToWideChar(
-            CP_UTF8, 0, source.c_str(), -1, nullptr, 0);
-        if (size == 0) {
-            throw std::runtime_error("UTF-8 to UTF-16 conversion failed");
-        }
-        std::wstring result(size, L'\0');
-        MultiByteToWideChar(CP_UTF8, 0, source.c_str(), -1, &result[0], size);
-        return result;
-    }
-
     void enableTransparency() {
         DWM_BLURBEHIND bb = { 0 };
         HRGN hRgn = CreateRectRgn(0, 0, -1, -1);
         bb.dwFlags = DWM_BB_ENABLE | DWM_BB_BLURREGION;
         bb.hRgnBlur = hRgn;
         bb.fEnable = TRUE;
-        DwmEnableBlurBehindWindow(hWnd, &bb);
+        DwmEnableBlurBehindWindow(getNativeHandle().hWnd, &bb);
     }
 };
 
