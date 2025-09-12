@@ -42,6 +42,7 @@ concept GUISysWindow = requires(
 ) {
     {window.getNativeHandle()} noexcept ->
         std::same_as<typename SysWindow::NativeHandle>;
+    {window.show()} noexcept -> std::same_as<void>;
 };
 
 
@@ -87,7 +88,9 @@ requires std::same_as<
 class WindowCore {
 public:
     WindowCore(const WindowParams& params, MessageHandler& handler)
-    : window(params, handler) {}
+    : window(params, handler) {
+        window.show();
+    }
 
     void setRenderer(std::unique_ptr<Renderer>&& renderer) {
         if (!renderer) {

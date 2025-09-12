@@ -56,6 +56,8 @@ struct MockSysWindow {
         return params.title.value_or("");
     }
 
+    void show() const noexcept {}
+
     WindowParams params;
 };
 
