@@ -127,7 +127,7 @@ public:
         Rect<float> texIn;
     };
 
-    void loadScene(std::unique_ptr<Scene>&& scene) {
+    void loadScene(Scene&& scene) {
         this->scene = std::move(scene);
     }
 
@@ -138,9 +138,6 @@ public:
     }
 
     void draw(NativeHandle handle) {
-        if (scene == nullptr) {
-            return;
-        }
         Renderer::Scope scope(master, handle);
         RECT rect;
         GetClientRect(handle.hWnd, &rect);
@@ -148,10 +145,10 @@ public:
         glClearColor(0, 0, 0, 0);
         glClear(GL_COLOR_BUFFER_BIT);
         triangles.clear();
-        float mt = scene->texOut.top - scene->texIn.top;
-        float mb = scene->texIn.bottom - scene->texOut.bottom;
-        float ml = scene->texIn.left - scene->texOut.left;
-        float mr = scene->texOut.right - scene->texIn.right;
+        float mt = scene.texOut.top - scene.texIn.top;
+        float mb = scene.texIn.bottom - scene.texOut.bottom;
+        float ml = scene.texIn.left - scene.texOut.left;
+        float mr = scene.texOut.right - scene.texIn.right;
         float wx = 512.0f / rect.right;
         float wy = 512.0f / rect.bottom;
         
@@ -164,14 +161,14 @@ public:
         float wy3 = -1;
         float wy2 = wy3 + mb * wy;
         
-        float tx0 = scene->texOut.left;
-        float tx1 = scene->texIn.left;
-        float tx2 = scene->texIn.right;
-        float tx3 = scene->texOut.right;
-        float ty0 = scene->texOut.top;
-        float ty1 = scene->texIn.top;
-        float ty2 = scene->texIn.bottom;
-        float ty3 = scene->texOut.bottom;
+        float tx0 = scene.texOut.left;
+        float tx1 = scene.texIn.left;
+        float tx2 = scene.texIn.right;
+        float tx3 = scene.texOut.right;
+        float ty0 = scene.texOut.top;
+        float ty1 = scene.texIn.top;
+        float ty2 = scene.texIn.bottom;
+        float ty3 = scene.texOut.bottom;
         
         triangles.append(OpenGL::RectSprite(
             {wx0, wy0, wx1, wy1}, {tx0, ty0, tx1, ty1}, 0));
@@ -197,7 +194,7 @@ public:
 
 private:
     Renderer& master;
-    std::unique_ptr<Scene> scene;
+    Scene scene;
     OpenGL::Triangle2DArray<WinAPI::WGL> triangles;
 
     friend Renderer;
@@ -239,11 +236,11 @@ int main() {
     gui.setRenderer(window, renderer.create());
     gui.setRenderer(menu, renderer.create());
     float px = 1.0f / 256;
-    gui.loadScene(window, std::make_unique<WindowRenderer::Scene>(
+    gui.loadScene(window, WindowRenderer::Scene(
         Rect<float>{16 * px, 1 - 16 * px, 9 * 16 * px, 1 - 6 * 16 * px},
         Rect<float>{4 * 16 * px, 1 - (16 + 25) * px, 5 * 16 * px, 1 - (6 * 16 - 8) * px}
     ));
-    gui.loadScene(menu, std::make_unique<WindowRenderer::Scene>(
+    gui.loadScene(menu, WindowRenderer::Scene(
         Rect<float>{16 * px, 1 - 16 * px, 9 * 16 * px, 1 - 6 * 16 * px},
         Rect<float>{4 * 16 * px, 1 - (16 + 25) * px, 5 * 16 * px, 1 - (6 * 16 - 8) * px}
     ));

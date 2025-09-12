@@ -20,10 +20,10 @@ template <typename Renderer>
 concept GUIRenderer = requires {
     typename Renderer::NativeHandle;
     typename Renderer::Scene;
-} && requires(
+} && std::movable<typename Renderer::Scene> && requires(
     Renderer renderer,
     Renderer::NativeHandle handle,
-    std::unique_ptr<typename Renderer::Scene>&& scene
+    Renderer::Scene&& scene
 ) {
     {renderer.loadScene(std::move(scene))} -> std::same_as<void>;
     {renderer.prepare(handle)} -> std::same_as<void>;
@@ -59,7 +59,7 @@ public:
         return *renderer;
     }
 
-    void loadScene(std::unique_ptr<typename Renderer::Scene>&& scene) {
+    void loadScene(Renderer::Scene&& scene) {
         getRenderer().loadScene(std::move(scene));
     }
 
@@ -97,7 +97,7 @@ public:
         data.setRenderer(std::move(renderer));
     }
 
-    void loadScene(std::unique_ptr<typename Renderer::Scene>&& scene) {
+    void loadScene(Renderer::Scene&& scene) {
         data.loadScene(std::move(scene));
     }
     
@@ -147,7 +147,7 @@ public:
         core.setRenderer(std::move(renderer));
     }
 
-    void loadScene(std::unique_ptr<typename Renderer::Scene>&& scene) {
+    void loadScene(Renderer::Scene&& scene) {
         core.loadScene(std::move(scene));
     }
 
