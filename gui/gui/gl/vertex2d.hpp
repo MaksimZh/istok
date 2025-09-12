@@ -50,6 +50,11 @@ public:
     Vertex2DArray(Vertex2DArray&&) = default;
     Vertex2DArray& operator=(Vertex2DArray&&) = default;
 
+    void destroy(GL::Scope& scope) {
+        vbo.destroy(scope);
+        vao.destroy(scope);
+    }
+
     void bind(GL::Scope& scope) {
         vao.bind(scope);
         vbo.bind(scope);
@@ -93,6 +98,12 @@ public:
     Triangle2DArray& operator=(const Triangle2DArray&) = delete;
     Triangle2DArray(Triangle2DArray&&) = default;
     Triangle2DArray& operator=(Triangle2DArray&&) = default;
+
+    void destroy(GL::Scope& scope) {
+        vertices.destroy(scope);
+        data.clear();
+        ready = true;
+    }
 
     void clear() {
         data.clear();

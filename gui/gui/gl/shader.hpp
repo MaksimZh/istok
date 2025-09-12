@@ -94,6 +94,10 @@ public:
     ShaderProgram(ShaderProgram&& other) = default;
     ShaderProgram& operator=(ShaderProgram&& other) = default;
 
+    void destroy(GL::Scope& scope) {
+        handle.destroy(scope);
+    }
+
     void use(GL::Scope& scope) {
         glUseProgram(handle.get(scope));
     }

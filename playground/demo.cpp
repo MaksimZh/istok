@@ -21,7 +21,7 @@ using namespace Istok::ECS;
 class WindowRenderer;
 
 class Renderer {
-public:
+public:    
     using NativeHandle = WinAPI::HWndWindow::NativeHandle;
     
     std::unique_ptr<WindowRenderer> create();
@@ -29,12 +29,18 @@ public:
     void prepare(NativeHandle handle) {
         WinAPI::prepareForGL(handle.hWnd);
         if (!gl) {
-            init(handle.hWnd);
+            init();
         }
     }
 
     class Scope {
     public:
+        Scope(Renderer& renderer)
+        : scope(
+            renderer.gl,
+            renderer.dummyWindow ? renderer.dummyWindow->getHandle() : nullptr
+        ) {}
+        
         Scope(Renderer& renderer, NativeHandle handle)
         : scope(renderer.gl, handle.hWnd) {}
 
@@ -50,12 +56,28 @@ public:
         WinAPI::WGL::Scope scope;
     };
 
+    ~Renderer() noexcept {
+        if (!gl || !dummyWindow) {
+            return;
+        }
+        try {
+            WinAPI::WGL::Scope scope(gl, dummyWindow->getHandle());
+            program.destroy(scope);
+            texture.destroy(scope);
+        } catch(...) {}
+    }
+
 private:
+    std::unique_ptr<WinAPI::BasicWindow> dummyWindow;
     WinAPI::GLContext gl;
     OpenGL::ImageTexture<WinAPI::WGL> texture;
     OpenGL::ShaderProgram<WinAPI::WGL> program;
 
-    void init(HWND hWnd) {
+    void init() {
+        dummyWindow = std::make_unique<WinAPI::BasicWindow>(
+            WindowParams{}, nullptr);
+        HWND hWnd = dummyWindow->getHandle();
+        WinAPI::prepareForGL(hWnd);
         gl = WinAPI::GLContext(hWnd);
         WinAPI::WGL::Scope scope(gl, hWnd);
         texture = OpenGL::ImageTexture<WinAPI::WGL>(
@@ -195,6 +217,13 @@ public:
         scope.swapBuffers();
     }
 
+    ~WindowRenderer() noexcept {
+        try {
+            Renderer::Scope scope(master);
+            triangles.destroy(scope);
+        } catch(...) {}
+    }
+
 private:
     Renderer& master;
     std::unique_ptr<Scene> scene;
@@ -251,7 +280,12 @@ int main() {
     while (true) {
         PlatformEvent<Entity> msg = gui.getMessage();
         if (std::holds_alternative<PlatformEvents::Exception>(msg)) {
-            std::cout << "main: gui exception" << std::endl << std::flush;
+            try {
+                std::rethrow_exception(
+                    std::get<PlatformEvents::Exception>(msg).exception);
+            } catch(const std::exception& ex) {
+                std::cout << "main: gui exception: " << ex.what() << std::endl << std::flush;
+            }
             break;
         }
         if (std::holds_alternative<PlatformEvents::Shutdown>(msg)) {
