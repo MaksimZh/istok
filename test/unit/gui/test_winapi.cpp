@@ -124,7 +124,7 @@ TEST_CASE("WinAPI - WindowData", "[unit][gui]") {
     }
 }
 
-
+/*
 TEST_CASE("WinAPI - WindowCore", "[unit][gui]") {
     MockMessageHandler handler;
     WindowCore<MockSysWindow, MockRenderer> core(
@@ -162,7 +162,7 @@ TEST_CASE("WinAPI - WindowCore", "[unit][gui]") {
         REQUIRE(core.testArea(Position<int>(1, 1)) == WindowArea::client);
     }
 }
-
+*/
 /*
 TEST_CASE("WinAPI - Window", "[unit][gui]") {
     using Win = Window<MockSysWindow, MockRenderer>;

@@ -80,21 +80,20 @@ private:
 };
 
 
-template <GUISysWindow SysWindow, GUIRenderer Renderer>
+template <GUISysWindow SysWindow, typename Renderer>
 requires std::same_as<
     typename SysWindow::NativeHandle,
     typename Renderer::NativeHandle>
 class WindowCore {
 public:
-    WindowCore(const WindowParams& params, MessageHandler& handler)
-    : window(params, handler) {}
-
-    void setRenderer(std::unique_ptr<Renderer>&& renderer) {
-        if (!renderer) {
-            throw std::runtime_error("No renderer provided");
-        }
-        renderer->prepare(window.getNativeHandle());
-        data.setRenderer(std::move(renderer));
+    WindowCore(
+        const WindowParams& params,
+        Renderer& renderer,
+        MessageHandler& handler
+    ) : window(params, handler) {
+        auto windowRenderer = renderer.create();
+        windowRenderer->prepare(window.getNativeHandle());
+        data.setRenderer(std::move(windowRenderer));
     }
 
     void loadScene(std::unique_ptr<typename Renderer::Scene>&& scene) {
@@ -116,7 +115,7 @@ public:
 
 private:
     SysWindow window;
-    WindowData<Renderer> data;
+    WindowData<typename Renderer::WindowRenderer> data;
 };
 
 
@@ -132,9 +131,7 @@ public:
         const WindowParams& params,
         Renderer& renderer,
         EventHandler<Window>& handler
-    ) : core(params, *this), handler(handler) {
-        core.setRenderer(renderer.create());
-    }
+    ) : core(params, renderer, *this), handler(handler) {}
 
     void onClose() noexcept override {
         handler.onClose(this);
@@ -162,7 +159,7 @@ public:
     }
 
 private:
-    WindowCore<SysWindow, typename Renderer::WindowRenderer> core;
+    WindowCore<SysWindow, Renderer> core;
     EventHandler<Window>& handler;
 };
 
