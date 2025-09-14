@@ -253,7 +253,7 @@ struct Caption: public WindowAreaTester {
 };
 
 using Window = WinAPI::Window<WinAPI::HWndWindow, WindowRenderer>;
-using Platform = WinAPI::Platform<Entity, Window>;
+using Platform = WinAPI::Platform<Entity, Window, Renderer>;
 static_assert(GUIPlatform<Platform>);
 
 int main() {
@@ -265,8 +265,6 @@ int main() {
     Entity menu = ecs.createEntity();
     gui.createWindow(window, WindowParams{{200, 100, 600, 400}, "Istok"});
     gui.createWindow(menu, WindowParams{{300, 200, 500, 500}, std::nullopt});
-    gui.setRenderer(window, renderer.create());
-    gui.setRenderer(menu, renderer.create());
     float px = 1.0f / 256;
     gui.loadScene(window, std::make_unique<WindowRenderer::Scene>(
         Rect<float>{16 * px, 1 - 16 * px, 9 * 16 * px, 1 - 6 * 16 * px},

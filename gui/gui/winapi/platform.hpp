@@ -109,7 +109,7 @@ private:
 };
 
 
-template <typename ID_, GUIWindow Window>
+template <typename ID_, GUIWindow Window, typename Renderer_>
 class Platform: public EventHandler<Window> {
 public:
     using ID = ID_;
@@ -134,6 +134,7 @@ public:
     void createWindow(ID id, const WindowParams& params) noexcept {
         try {
             windows.create(id, params);
+            windows.getWindow(id).setRenderer(renderer.create());
         } catch(...) {
             onException(std::current_exception());
         }
@@ -188,6 +189,7 @@ public:
     }
     
 private:
+    Renderer_ renderer;
     WindowManager<ID, Window> windows;
     Tools::SimpleQueue<PlatformEvent<ID>> outQueue;
 };

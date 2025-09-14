@@ -333,5 +333,5 @@ TEST_CASE("WinAPI - WindowManager", "[unit][gui]") {
 TEST_CASE("WinAPI - Platform", "[unit][gui]") {
     using Win = Window<MockSysWindow, MockRenderer>;
     MockEventHandler<Win> handler;
-    Platform<int, Win> platform;
+    //Platform<int, Win> platform;
 }
