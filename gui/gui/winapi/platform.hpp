@@ -22,19 +22,19 @@ public:
 
 
 template <typename Window>
-concept GUIWindow = requires (
+concept GUIWindow = requires {
+    typename Window::Renderer;
+} && requires(
     const WindowParams& params,
+    Window::Renderer& renderer,
     EventHandler<Window>& handler
 ) {
-    typename Window::Renderer;
-    {Window(params, handler)};
+    {Window(params, renderer, handler)};
 } && requires(
     Window window,
-    std::unique_ptr<typename Window::Renderer>&& renderer,
     std::unique_ptr<typename Window::Renderer::Scene>&& scene,
     std::unique_ptr<WindowAreaTester>&& areaTester
 ) {
-    {window.setRenderer(std::move(renderer))} -> std::same_as<void>;
     {window.loadScene(std::move(scene))} -> std::same_as<void>;
     {window.setAreaTester(std::move(areaTester))} -> std::same_as<void>;
 };
@@ -123,9 +123,7 @@ public:
     : handler(handler) {}
     
     std::unique_ptr<Window> create(const WindowParams& params) override {
-        auto window = std::make_unique<Window>(params, handler);
-        window->setRenderer(renderer.create());
-        return window;
+        return std::make_unique<Window>(params, renderer, handler);
     }
 
 private:

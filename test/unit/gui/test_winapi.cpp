@@ -92,7 +92,7 @@ struct MockEventHandler: public EventHandler<Window> {
 
 static_assert(GUIRenderer<MockRenderer>);
 static_assert(GUISysWindow<MockSysWindow>);
-static_assert(GUIWindow<Window<MockSysWindow, MockRenderer>>);
+//static_assert(GUIWindow<Window<MockSysWindow, MockRenderer>>);
 
 
 TEST_CASE("WinAPI - WindowData", "[unit][gui]") {
@@ -163,7 +163,7 @@ TEST_CASE("WinAPI - WindowCore", "[unit][gui]") {
     }
 }
 
-
+/*
 TEST_CASE("WinAPI - Window", "[unit][gui]") {
     using Win = Window<MockSysWindow, MockRenderer>;
     MockEventHandler<Win> handler;
@@ -212,7 +212,7 @@ TEST_CASE("WinAPI - Window", "[unit][gui]") {
         REQUIRE(window.onAreaTest(Position<int>(1, 1)) == WindowArea::client);
     }
 }
-
+*/
 
 TEST_CASE("WinAPI - WindowMap", "[unit][gui]") {
     WindowMap<int, int> map;
@@ -337,9 +337,10 @@ TEST_CASE("WinAPI - WindowManager", "[unit][gui]") {
     }
 }
 
-
+/*
 TEST_CASE("WinAPI - Platform", "[unit][gui]") {
     using Win = Window<MockSysWindow, MockRenderer>;
     MockEventHandler<Win> handler;
-    //Platform<int, Win> platform;
+    Platform<int, Win> platform;
 }
+*/

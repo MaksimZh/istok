@@ -28,6 +28,7 @@ class Renderer {
 public:    
     using NativeHandle = WinAPI::HWndWindow::NativeHandle;
     using Scene = Scene;
+    using WindowRenderer = WindowRenderer;
 
     Renderer() {
         dummyWindow = std::make_unique<WinAPI::BasicWindow>(
@@ -247,7 +248,7 @@ struct Caption: public WindowAreaTester {
     }
 };
 
-using Window = WinAPI::Window<WinAPI::HWndWindow, WindowRenderer>;
+using Window = WinAPI::Window<WinAPI::HWndWindow, Renderer>;
 using Platform = WinAPI::Platform<Entity, Window, Renderer>;
 static_assert(GUIPlatform<Platform>);
 

@@ -120,7 +120,7 @@ private:
 };
 
 
-template <GUISysWindow SysWindow, GUIRenderer Renderer_>
+template <GUISysWindow SysWindow, typename Renderer_>
 requires std::same_as<
     typename SysWindow::NativeHandle,
     typename Renderer_::NativeHandle>
@@ -128,8 +128,13 @@ class Window: public MessageHandler {
 public:
     using Renderer = Renderer_;
     
-    Window(const WindowParams& params, EventHandler<Window>& handler)
-    : core(params, *this), handler(handler) {}
+    Window(
+        const WindowParams& params,
+        Renderer& renderer,
+        EventHandler<Window>& handler
+    ) : core(params, *this), handler(handler) {
+        core.setRenderer(renderer.create());
+    }
 
     void onClose() noexcept override {
         handler.onClose(this);
@@ -141,10 +146,6 @@ public:
         } catch(...) {
             handler.onException(std::current_exception());
         }
-    }
-
-    void setRenderer(std::unique_ptr<Renderer>&& renderer) {
-        core.setRenderer(std::move(renderer));
     }
 
     void loadScene(std::unique_ptr<typename Renderer::Scene>&& scene) {
@@ -161,7 +162,7 @@ public:
     }
 
 private:
-    WindowCore<SysWindow, Renderer> core;
+    WindowCore<SysWindow, typename Renderer::WindowRenderer> core;
     EventHandler<Window>& handler;
 };
 
