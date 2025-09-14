@@ -207,7 +207,6 @@ public:
     }
     
 private:
-    Renderer renderer;
     WindowManager<ID, Window> windows;
     Tools::SimpleQueue<PlatformEvent<ID>> outQueue;
 };
