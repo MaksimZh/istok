@@ -28,57 +28,8 @@ class Renderer {
 public:    
     using NativeHandle = WinAPI::HWndWindow::NativeHandle;
     using Scene = Scene;
-    
-    std::unique_ptr<WindowRenderer> create();
 
-    void prepare(NativeHandle handle) {
-        WinAPI::prepareForGL(handle.hWnd);
-        if (!gl) {
-            init();
-        }
-    }
-
-    class Scope {
-    public:
-        Scope(Renderer& renderer)
-        : scope(
-            renderer.gl,
-            renderer.dummyWindow ? renderer.dummyWindow->getHandle() : nullptr
-        ) {}
-        
-        Scope(Renderer& renderer, NativeHandle handle)
-        : scope(renderer.gl, handle.hWnd) {}
-
-        void swapBuffers() {
-            scope.swapBuffers();
-        }
-
-        operator WinAPI::WGL::Scope&() {
-            return scope;
-        }
-    
-    private:
-        WinAPI::WGL::Scope scope;
-    };
-
-    ~Renderer() noexcept {
-        if (!gl || !dummyWindow) {
-            return;
-        }
-        try {
-            WinAPI::WGL::Scope scope(gl, dummyWindow->getHandle());
-            program.destroy(scope);
-            texture.destroy(scope);
-        } catch(...) {}
-    }
-
-private:
-    std::unique_ptr<WinAPI::BasicWindow> dummyWindow;
-    WinAPI::GLContext gl;
-    OpenGL::ImageTexture<WinAPI::WGL> texture;
-    OpenGL::ShaderProgram<WinAPI::WGL> program;
-
-    void init() {
+    Renderer() {
         dummyWindow = std::make_unique<WinAPI::BasicWindow>(
             WindowParams{}, nullptr);
         HWND hWnd = dummyWindow->getHandle();
@@ -140,6 +91,49 @@ private:
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     }
+    
+    std::unique_ptr<WindowRenderer> create();
+
+    void prepare(NativeHandle handle) {
+        WinAPI::prepareForGL(handle.hWnd);
+    }
+
+    class Scope {
+    public:
+        Scope(Renderer& renderer)
+        : scope(
+            renderer.gl,
+            renderer.dummyWindow ? renderer.dummyWindow->getHandle() : nullptr
+        ) {}
+        
+        Scope(Renderer& renderer, NativeHandle handle)
+        : scope(renderer.gl, handle.hWnd) {}
+
+        void swapBuffers() {
+            scope.swapBuffers();
+        }
+
+        operator WinAPI::WGL::Scope&() {
+            return scope;
+        }
+    
+    private:
+        WinAPI::WGL::Scope scope;
+    };
+
+    ~Renderer() noexcept {
+        try {
+            WinAPI::WGL::Scope scope(gl, dummyWindow->getHandle());
+            program.destroy(scope);
+            texture.destroy(scope);
+        } catch(...) {}
+    }
+
+private:
+    std::unique_ptr<WinAPI::BasicWindow> dummyWindow;
+    WinAPI::GLContext gl;
+    OpenGL::ImageTexture<WinAPI::WGL> texture;
+    OpenGL::ShaderProgram<WinAPI::WGL> program;
 };
 
 
