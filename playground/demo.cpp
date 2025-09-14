@@ -95,8 +95,9 @@ public:
     
     std::unique_ptr<WindowRenderer> create();
 
-    void prepare(NativeHandle handle) {
+    std::unique_ptr<WindowRenderer> prepareWindow(NativeHandle handle) {
         WinAPI::prepareForGL(handle.hWnd);
+        return create();
     }
 
     class Scope {
@@ -147,12 +148,6 @@ public:
 
     void loadScene(std::unique_ptr<Scene>&& scene) {
         this->scene = std::move(scene);
-    }
-
-    void prepare(NativeHandle handle) {
-        master.prepare(handle);
-        Renderer::Scope scope(master, handle);
-        triangles = OpenGL::Triangle2DArray<WinAPI::WGL>(scope);
     }
 
     void draw(NativeHandle handle) {
@@ -227,7 +222,10 @@ private:
 
     friend Renderer;
 
-    WindowRenderer(Renderer& master) : master(master) {}
+    WindowRenderer(Renderer& master) : master(master) {
+        Renderer::Scope scope(master);
+        triangles = OpenGL::Triangle2DArray<WinAPI::WGL>(scope);
+    }
 };
 
 

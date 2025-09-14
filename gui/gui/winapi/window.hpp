@@ -26,7 +26,6 @@ concept GUIRenderer = requires {
     std::unique_ptr<typename Renderer::Scene>&& scene
 ) {
     {renderer.loadScene(std::move(scene))} -> std::same_as<void>;
-    {renderer.prepare(handle)} -> std::same_as<void>;
     {renderer.draw(handle)} -> std::same_as<void>;
 };
 
@@ -91,9 +90,7 @@ public:
         Renderer& renderer,
         MessageHandler& handler
     ) : window(params, handler) {
-        auto windowRenderer = renderer.create();
-        windowRenderer->prepare(window.getNativeHandle());
-        data.setRenderer(std::move(windowRenderer));
+        data.setRenderer(renderer.prepareWindow(window.getNativeHandle()));
     }
 
     void loadScene(std::unique_ptr<typename Renderer::Scene>&& scene) {
