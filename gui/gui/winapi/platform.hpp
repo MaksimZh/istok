@@ -81,14 +81,21 @@ private:
 };
 
 
-template <typename ID, GUIWindow Window>
+template <typename Window>
+class WindowFactory {
+public:
+    virtual std::unique_ptr<Window> create(const WindowParams& params) = 0;
+};
+
+
+template <typename ID, typename Window>
 class WindowManager {
 public:
-    WindowManager(EventHandler<Window>& handler)
-    : handler(handler) {}
+    WindowManager(std::unique_ptr<WindowFactory<Window>>&& factory)
+    : factory(std::move(factory)) {}
 
     void create(ID id, const WindowParams& params) {
-        windows.insert(id, std::make_unique<Window>(params, handler));
+        windows.insert(id, factory->create(params));
     }
 
     void destroy(ID id) {
@@ -104,8 +111,26 @@ public:
     }
 
 private:
-    EventHandler<Window>& handler;
+    std::unique_ptr<WindowFactory<Window>> factory;
     WindowMap<ID, Window> windows;
+};
+
+
+template <GUIWindow Window, typename Renderer>
+class PlatformWindowFactory: public WindowFactory<Window> {
+public:
+    PlatformWindowFactory(EventHandler<Window>& handler)
+    : handler(handler) {}
+    
+    std::unique_ptr<Window> create(const WindowParams& params) override {
+        auto window = std::make_unique<Window>(params, handler);
+        window->setRenderer(renderer.create());
+        return window;
+    }
+
+private:
+    EventHandler<Window>& handler;
+    Renderer renderer;
 };
 
 
@@ -115,7 +140,9 @@ public:
     using ID = ID_;
     using Scene = Renderer::Scene;
 
-    Platform() : windows(*this) {}
+    Platform() : windows(
+        std::make_unique<PlatformWindowFactory<Window, Renderer>>(*this)
+    ) {}
 
     PlatformEvent<ID> getMessage() noexcept {
         while (outQueue.empty()) {
@@ -134,7 +161,6 @@ public:
     void createWindow(ID id, const WindowParams& params) noexcept {
         try {
             windows.create(id, params);
-            windows.getWindow(id).setRenderer(renderer.create());
         } catch(...) {
             onException(std::current_exception());
         }

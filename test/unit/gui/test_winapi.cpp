@@ -277,26 +277,34 @@ TEST_CASE("WinAPI - WindowMap", "[unit][gui]") {
 
 
 TEST_CASE("WinAPI - WindowManager", "[unit][gui]") {
-    using Win = Window<MockSysWindow, MockRenderer>;
-    MockEventHandler<Win> handler;
-    WindowManager<int, Win> manager(handler);
+    using Window = std::string;
+    
+    struct Factory: public WindowFactory<Window> {
+        std::unique_ptr<Window> create(
+            const WindowParams& params
+        ) override {
+            return std::make_unique<Window>(params.title.value_or(""));
+        }
+    };
+
+    WindowManager<int, Window> manager(std::make_unique<Factory>());
 
     SECTION("Empty") {
-        Win foo(WindowParams({}, "foo"), handler);
+        Window foo("foo");
         REQUIRE_THROWS(manager.getID(&foo));
         REQUIRE_THROWS(manager.getWindow(42));
         REQUIRE_THROWS(manager.destroy(42));
     }
 
     SECTION("Single window") {
-        Win foo(WindowParams({}, "foo"), handler);
+        Window foo("foo");
         manager.create(1, WindowParams({}, "win"));
 
         REQUIRE_THROWS(manager.getID(&foo));
         REQUIRE_THROWS(manager.getWindow(42));
         REQUIRE_THROWS(manager.destroy(42));
 
-        Win* window = &manager.getWindow(1);
+        Window* window = &manager.getWindow(1);
         REQUIRE(manager.getID(window) == 1);
 
         manager.destroy(1);
@@ -306,7 +314,7 @@ TEST_CASE("WinAPI - WindowManager", "[unit][gui]") {
     }
 
     SECTION("Multiply window") {
-        Win foo(WindowParams({}, "foo"), handler);
+        Window foo("foo");
         manager.create(1, WindowParams({}, "a"));
         manager.create(2, WindowParams({}, "b"));
         manager.create(3, WindowParams({}, "c"));
@@ -319,7 +327,7 @@ TEST_CASE("WinAPI - WindowManager", "[unit][gui]") {
         REQUIRE(manager.getID(&manager.getWindow(2)) == 2);
         REQUIRE(manager.getID(&manager.getWindow(3)) == 3);
 
-        Win* window = &manager.getWindow(2);
+        Window* window = &manager.getWindow(2);
         manager.destroy(2);
         REQUIRE(manager.getID(&manager.getWindow(1)) == 1);
         REQUIRE(manager.getID(&manager.getWindow(3)) == 3);
