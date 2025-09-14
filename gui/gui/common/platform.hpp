@@ -82,22 +82,18 @@ public:
 template <typename Platform>
 concept GUIPlatform = requires {
     typename Platform::ID;
-    typename Platform::Renderer;
-    requires std::is_default_constructible_v<Platform>;
+    typename Platform::Scene;
 } && requires(
     Platform platform,
     typename Platform::ID id,
     WindowParams windowParams,
-    std::unique_ptr<typename Platform::Renderer>&& renderer,
-    std::unique_ptr<typename Platform::Renderer::Scene>&& scene,
+    std::unique_ptr<typename Platform::Scene>&& scene,
     std::unique_ptr<WindowAreaTester>&& areaTester
 ) {
     {platform.getMessage()} noexcept ->
         std::same_as<PlatformEvent<typename Platform::ID>>;
     {platform.createWindow(id, windowParams)} noexcept -> std::same_as<void>;
     {platform.destroyWindow(id)} noexcept -> std::same_as<void>;
-    {platform.setRenderer(id, std::move(renderer))} noexcept ->
-        std::same_as<void>;
     {platform.loadScene(id, std::move(scene))} noexcept -> std::same_as<void>;
     {platform.setAreaTester(id, std::move(areaTester))} noexcept ->
         std::same_as<void>;

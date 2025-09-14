@@ -17,12 +17,17 @@
 using namespace Istok::GUI;
 using namespace Istok::ECS;
 
+struct Scene {
+    Rect<float> texOut;
+    Rect<float> texIn;
+};
 
 class WindowRenderer;
 
 class Renderer {
 public:    
     using NativeHandle = WinAPI::HWndWindow::NativeHandle;
+    using Scene = Scene;
     
     std::unique_ptr<WindowRenderer> create();
 
@@ -143,11 +148,7 @@ public:
     WindowRenderer() = default;
 
     using NativeHandle = WinAPI::HWndWindow::NativeHandle;
-    
-    struct Scene {
-        Rect<float> texOut;
-        Rect<float> texIn;
-    };
+    using Scene = Scene;
 
     void loadScene(std::unique_ptr<Scene>&& scene) {
         this->scene = std::move(scene);

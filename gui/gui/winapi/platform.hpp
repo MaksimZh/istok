@@ -109,11 +109,11 @@ private:
 };
 
 
-template <typename ID_, GUIWindow Window, typename Renderer_>
+template <typename ID_, GUIWindow Window, typename Renderer>
 class Platform: public EventHandler<Window> {
 public:
     using ID = ID_;
-    using Renderer = Window::Renderer;
+    using Scene = Renderer::Scene;
 
     Platform() : windows(*this) {}
 
@@ -148,14 +148,6 @@ public:
         }
     }
 
-    void setRenderer(ID id, std::unique_ptr<Renderer>&& renderer) noexcept {
-        try {
-            windows.getWindow(id).setRenderer(std::move(renderer));
-        } catch(...) {
-            onException(std::current_exception());
-        }
-    }
-
     void setAreaTester(
         ID id, std::unique_ptr<WindowAreaTester>&& tester) noexcept
     {
@@ -167,7 +159,7 @@ public:
     }
 
     void loadScene(
-        ID id, std::unique_ptr<typename Renderer::Scene>&& scene) noexcept
+        ID id, std::unique_ptr<Scene>&& scene) noexcept
     {
         try {
             windows.getWindow(id).loadScene(std::move(scene));
@@ -189,7 +181,7 @@ public:
     }
     
 private:
-    Renderer_ renderer;
+    Renderer renderer;
     WindowManager<ID, Window> windows;
     Tools::SimpleQueue<PlatformEvent<ID>> outQueue;
 };
