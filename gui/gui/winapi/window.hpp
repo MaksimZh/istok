@@ -90,7 +90,7 @@ public:
         Renderer& renderer,
         MessageHandler& handler
     ) : window(params, handler) {
-        data.setRenderer(renderer.prepareWindow(window.getNativeHandle()));
+        data.setRenderer(renderer.initWindow(window.getNativeHandle()));
     }
 
     void loadScene(std::unique_ptr<typename Renderer::Scene>&& scene) {

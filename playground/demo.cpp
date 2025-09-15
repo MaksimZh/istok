@@ -93,12 +93,7 @@ public:
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     }
     
-    std::unique_ptr<WindowRenderer> create();
-
-    std::unique_ptr<WindowRenderer> prepareWindow(NativeHandle handle) {
-        WinAPI::prepareForGL(handle.hWnd);
-        return create();
-    }
+    std::unique_ptr<WindowRenderer> initWindow(const NativeHandle& handle);
 
     class Scope {
     public:
@@ -222,15 +217,16 @@ private:
 
     friend Renderer;
 
-    WindowRenderer(Renderer& master) : master(master) {
+    WindowRenderer(Renderer& master, NativeHandle handle) : master(master) {
+        WinAPI::prepareForGL(handle.hWnd);
         Renderer::Scope scope(master);
         triangles = OpenGL::Triangle2DArray<WinAPI::WGL>(scope);
     }
 };
 
 
-std::unique_ptr<WindowRenderer> Renderer::create() {
-    return std::unique_ptr<WindowRenderer>(new WindowRenderer(*this));
+std::unique_ptr<WindowRenderer> Renderer::initWindow(const NativeHandle& handle) {
+    return std::unique_ptr<WindowRenderer>(new WindowRenderer(*this, handle));
 }
 
 
