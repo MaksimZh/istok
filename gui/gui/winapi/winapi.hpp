@@ -137,12 +137,8 @@ public:
         ShowWindow(window.getHandle(), SW_SHOW);
     }
 
-    struct NativeHandle {
-        HWND hWnd;
-    };
-
-    NativeHandle getNativeHandle() const noexcept {
-        return NativeHandle(window.getHandle());
+    HWND getHandle() const noexcept {
+        return window.getHandle();
     }
 
 private:

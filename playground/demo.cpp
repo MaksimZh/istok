@@ -26,7 +26,6 @@ class WindowRenderer;
 
 class Renderer {
 public:    
-    using NativeHandle = WinAPI::HWndWindow::NativeHandle;
     using Scene = Scene;
     using WindowRenderer = WindowRenderer;
 
@@ -93,7 +92,7 @@ public:
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     }
     
-    std::unique_ptr<WindowRenderer> initWindow(const NativeHandle& handle);
+    std::unique_ptr<WindowRenderer> initWindow(WinAPI::HWndWindow& window);
 
     class Scope {
     public:
@@ -103,8 +102,8 @@ public:
             renderer.dummyWindow ? renderer.dummyWindow->getHandle() : nullptr
         ) {}
         
-        Scope(Renderer& renderer, NativeHandle handle)
-        : scope(renderer.gl, handle.hWnd) {}
+        Scope(Renderer& renderer, HWND hWnd)
+        : scope(renderer.gl, hWnd) {}
 
         void swapBuffers() {
             scope.swapBuffers();
@@ -138,7 +137,6 @@ class WindowRenderer {
 public:
     WindowRenderer() = delete;
 
-    using NativeHandle = Renderer::NativeHandle;
     using Scene = Scene;
 
     void loadScene(std::unique_ptr<Scene>&& scene) {
@@ -149,9 +147,9 @@ public:
         if (scene == nullptr) {
             return;
         }
-        Renderer::Scope scope(master, handle);
+        Renderer::Scope scope(master, hWnd);
         RECT rect;
-        GetClientRect(handle.hWnd, &rect);
+        GetClientRect(hWnd, &rect);
         glViewport(0, 0, rect.right, rect.bottom);
         glClearColor(0, 0, 0, 0);
         glClear(GL_COLOR_BUFFER_BIT);
@@ -205,30 +203,30 @@ public:
 
     ~WindowRenderer() noexcept {
         try {
-            Renderer::Scope scope(master, handle);
+            Renderer::Scope scope(master, hWnd);
             triangles.destroy(scope);
         } catch(...) {}
     }
 
 private:
     Renderer& master;
-    NativeHandle handle;
+    HWND hWnd;
     std::unique_ptr<Scene> scene;
     OpenGL::Triangle2DArray<WinAPI::WGL> triangles;
 
     friend Renderer;
 
-    WindowRenderer(Renderer& master, const NativeHandle& window)
-    : master(master), handle(window) {
-        WinAPI::prepareForGL(handle.hWnd);
-        Renderer::Scope scope(master, handle);
+    WindowRenderer(Renderer& master, HWND hWnd)
+    : master(master), hWnd(hWnd) {
+        WinAPI::prepareForGL(hWnd);
+        Renderer::Scope scope(master, hWnd);
         triangles = OpenGL::Triangle2DArray<WinAPI::WGL>(scope);
     }
 };
 
 
-std::unique_ptr<WindowRenderer> Renderer::initWindow(const NativeHandle& handle) {
-    return std::unique_ptr<WindowRenderer>(new WindowRenderer(*this, handle));
+std::unique_ptr<WindowRenderer> Renderer::initWindow(WinAPI::HWndWindow& window) {
+    return std::unique_ptr<WindowRenderer>(new WindowRenderer(*this, window.getHandle()));
 }
 
 

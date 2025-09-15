@@ -18,7 +18,6 @@ public:
 
 template <typename Renderer>
 concept GUIRenderer = requires {
-    typename Renderer::NativeHandle;
     typename Renderer::Scene;
 } && requires(
     Renderer renderer,
@@ -33,13 +32,7 @@ concept GUISysWindow = requires(
     const WindowParams& params,
     MessageHandler& handler
 ) {
-    typename SysWindow::NativeHandle;
     {SysWindow(params, handler)};
-} && requires(
-    SysWindow window
-) {
-    {window.getNativeHandle()} noexcept ->
-        std::same_as<typename SysWindow::NativeHandle>;
 };
 
 
@@ -79,9 +72,6 @@ private:
 
 
 template <GUISysWindow SysWindow, typename Renderer>
-requires std::same_as<
-    typename SysWindow::NativeHandle,
-    typename Renderer::NativeHandle>
 class WindowCore {
 public:
     WindowCore(
@@ -89,7 +79,7 @@ public:
         Renderer& renderer,
         MessageHandler& handler
     ) : window(params, handler) {
-        data.setRenderer(renderer.initWindow(window.getNativeHandle()));
+        data.setRenderer(renderer.initWindow(window));
     }
 
     void loadScene(std::unique_ptr<typename Renderer::Scene>&& scene) {
@@ -116,9 +106,6 @@ private:
 
 
 template <GUISysWindow SysWindow, typename Renderer_>
-requires std::same_as<
-    typename SysWindow::NativeHandle,
-    typename Renderer_::NativeHandle>
 class Window: public MessageHandler {
 public:
     using Renderer = Renderer_;
