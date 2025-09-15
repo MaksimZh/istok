@@ -36,16 +36,28 @@ concept GUISysWindow = requires(
 };
 
 
-template <GUISysWindow SysWindow, typename Renderer>
+template <typename Scene>
+class Renderer {
+public:
+    virtual void loadScene(std::unique_ptr<Scene>&& scene) = 0;
+    virtual void draw() = 0;
+};
+
+
+template <GUISysWindow SysWindow, typename Factory>
 class WindowCore {
 public:
     WindowCore(
         const WindowParams& params,
-        Renderer& rendererFactory,
+        Factory& rendererFactory,
         MessageHandler& handler
-    ) : window(params, handler), renderer(rendererFactory.initWindow(window)) {}
+    ) :
+        window(params, handler),
+        renderer(rendererFactory.initWindow(window)),
+        areaTester(std::make_unique<DummyAreaTester>())
+    {}
 
-    void loadScene(std::unique_ptr<typename Renderer::Scene>&& scene) {
+    void loadScene(std::unique_ptr<typename Factory::Scene>&& scene) {
         renderer->loadScene(std::move(scene));
     }
     
@@ -64,8 +76,17 @@ public:
 
 private:
     SysWindow window;
-    std::unique_ptr<typename Renderer::WindowRenderer> renderer;
+    std::unique_ptr<Renderer<typename Factory::Scene>> renderer;
     std::unique_ptr<WindowAreaTester> areaTester;
+
+    class DummyAreaTester: public WindowAreaTester {
+    public:
+        WindowArea testWindowArea(
+            Position<int> position
+        ) const noexcept override {
+            return WindowArea::client;
+        }
+    };
 };
 
 

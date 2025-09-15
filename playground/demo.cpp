@@ -24,12 +24,12 @@ struct Scene {
 
 class WindowRenderer;
 
-class Renderer {
+class Factory {
 public:    
     using Scene = Scene;
     using WindowRenderer = WindowRenderer;
 
-    Renderer() {
+    Factory() {
         dummyWindow = std::make_unique<WinAPI::BasicWindow>(
             WindowParams{}, nullptr);
         HWND hWnd = dummyWindow->getHandle();
@@ -92,17 +92,17 @@ public:
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     }
     
-    std::unique_ptr<WindowRenderer> initWindow(WinAPI::HWndWindow& window);
+    std::unique_ptr<WinAPI::Renderer<Scene>> initWindow(WinAPI::HWndWindow& window);
 
     class Scope {
     public:
-        Scope(Renderer& renderer)
+        Scope(Factory& renderer)
         : scope(
             renderer.gl,
             renderer.dummyWindow ? renderer.dummyWindow->getHandle() : nullptr
         ) {}
         
-        Scope(Renderer& renderer, HWND hWnd)
+        Scope(Factory& renderer, HWND hWnd)
         : scope(renderer.gl, hWnd) {}
 
         void swapBuffers() {
@@ -117,7 +117,7 @@ public:
         WinAPI::WGL::Scope scope;
     };
 
-    ~Renderer() noexcept {
+    ~Factory() noexcept {
         try {
             WinAPI::WGL::Scope scope(gl, dummyWindow->getHandle());
             program.destroy(scope);
@@ -133,21 +133,21 @@ private:
 };
 
 
-class WindowRenderer {
+class WindowRenderer: public WinAPI::Renderer<Scene> {
 public:
     WindowRenderer() = delete;
 
     using Scene = Scene;
 
-    void loadScene(std::unique_ptr<Scene>&& scene) {
+    void loadScene(std::unique_ptr<Scene>&& scene) override {
         this->scene = std::move(scene);
     }
 
-    void draw() {
+    void draw() override {
         if (scene == nullptr) {
             return;
         }
-        Renderer::Scope scope(master, hWnd);
+        Factory::Scope scope(master, hWnd);
         RECT rect;
         GetClientRect(hWnd, &rect);
         glViewport(0, 0, rect.right, rect.bottom);
@@ -203,29 +203,29 @@ public:
 
     ~WindowRenderer() noexcept {
         try {
-            Renderer::Scope scope(master, hWnd);
+            Factory::Scope scope(master, hWnd);
             triangles.destroy(scope);
         } catch(...) {}
     }
 
 private:
-    Renderer& master;
+    Factory& master;
     HWND hWnd;
     std::unique_ptr<Scene> scene;
     OpenGL::Triangle2DArray<WinAPI::WGL> triangles;
 
-    friend Renderer;
+    friend Factory;
 
-    WindowRenderer(Renderer& master, HWND hWnd)
+    WindowRenderer(Factory& master, HWND hWnd)
     : master(master), hWnd(hWnd) {
         WinAPI::prepareForGL(hWnd);
-        Renderer::Scope scope(master, hWnd);
+        Factory::Scope scope(master, hWnd);
         triangles = OpenGL::Triangle2DArray<WinAPI::WGL>(scope);
     }
 };
 
 
-std::unique_ptr<WindowRenderer> Renderer::initWindow(WinAPI::HWndWindow& window) {
+std::unique_ptr<WinAPI::Renderer<Scene>> Factory::initWindow(WinAPI::HWndWindow& window) {
     return std::unique_ptr<WindowRenderer>(new WindowRenderer(*this, window.getHandle()));
 }
 
@@ -242,14 +242,14 @@ struct Caption: public WindowAreaTester {
     }
 };
 
-using Window = WinAPI::Window<WinAPI::HWndWindow, Renderer>;
-using Platform = WinAPI::Platform<Entity, Window, Renderer>;
+using Window = WinAPI::Window<WinAPI::HWndWindow, Factory>;
+using Platform = WinAPI::Platform<Entity, Window, Factory>;
 static_assert(GUIPlatform<Platform>);
 
 int main() {
     std::cout << "main: start" << std::endl << std::flush;
     EntityComponentManager ecs;
-    Renderer renderer;
+    Factory renderer;
     Platform gui;
     Entity window = ecs.createEntity();
     Entity menu = ecs.createEntity();
