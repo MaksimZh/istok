@@ -132,15 +132,13 @@ private:
 };
 
 
-template <typename ID_, typename Window, typename Renderer>
-class Platform: public EventHandler<Window> {
+template <typename ID_, typename WindowFactory>
+class Platform: public EventHandler<typename WindowFactory::Window> {
 public:
     using ID = ID_;
-    using Scene = Renderer::Scene;
+    using Scene = WindowFactory::Window::Scene;
 
-    Platform() : windows(
-        std::make_unique<PlatformWindowFactory<Window, Renderer>>(*this)
-    ) {}
+    Platform() : windows(std::make_unique<WindowFactory>(*this)) {}
 
     PlatformEvent<ID> getMessage() noexcept {
         while (outQueue.empty()) {

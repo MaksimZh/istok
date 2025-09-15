@@ -86,9 +86,11 @@ private:
 };
 
 
-template <GUISysWindow SysWindow, typename Scene>
+template <GUISysWindow SysWindow, typename Scene_>
 class Window: public MessageHandler {
 public:
+    using Scene = Scene_;
+    
     Window(
         const WindowParams& params,
         RendererFactory<Scene, SysWindow>& renderer,
