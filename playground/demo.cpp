@@ -136,7 +136,7 @@ private:
 
 class WindowRenderer {
 public:
-    WindowRenderer() = default;
+    WindowRenderer() = delete;
 
     using NativeHandle = Renderer::NativeHandle;
     using Scene = Scene;
