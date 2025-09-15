@@ -36,72 +36,36 @@ concept GUISysWindow = requires(
 };
 
 
-template <GUIRenderer Renderer>
-class WindowData {
-public:
-    void setRenderer(std::unique_ptr<Renderer>&& renderer) {
-        this->renderer = std::move(renderer);
-    }
-    
-    Renderer& getRenderer() {
-        if (renderer == nullptr) {
-            throw std::runtime_error("Renderer not attached");
-        }
-        return *renderer;
-    }
-
-    void loadScene(std::unique_ptr<typename Renderer::Scene>&& scene) {
-        getRenderer().loadScene(std::move(scene));
-    }
-
-    void setAreaTester(std::unique_ptr<WindowAreaTester>&& tester) {
-        this->areaTester = std::move(tester);
-    }
-
-    WindowArea testArea(Position<int> position) const noexcept {
-        if (!areaTester) {
-            return WindowArea::client;
-        }
-        return areaTester->testWindowArea(position);
-    }
-
-private:
-    std::unique_ptr<Renderer> renderer;
-    std::unique_ptr<WindowAreaTester> areaTester;
-};
-
-
 template <GUISysWindow SysWindow, typename Renderer>
 class WindowCore {
 public:
     WindowCore(
         const WindowParams& params,
-        Renderer& renderer,
+        Renderer& rendererFactory,
         MessageHandler& handler
-    ) : window(params, handler) {
-        data.setRenderer(renderer.initWindow(window));
-    }
+    ) : window(params, handler), renderer(rendererFactory.initWindow(window)) {}
 
     void loadScene(std::unique_ptr<typename Renderer::Scene>&& scene) {
-        data.loadScene(std::move(scene));
+        renderer->loadScene(std::move(scene));
     }
     
     void draw() {
-        data.getRenderer().draw();
+        renderer->draw();
     }
 
 
     void setAreaTester(std::unique_ptr<WindowAreaTester>&& tester) {
-        data.setAreaTester(std::move(tester));
+        areaTester = std::move(tester);
     }
 
     WindowArea testArea(Position<int> position) const noexcept {
-        return data.testArea(position);
+        return areaTester->testWindowArea(position);
     }
 
 private:
     SysWindow window;
-    WindowData<typename Renderer::WindowRenderer> data;
+    std::unique_ptr<typename Renderer::WindowRenderer> renderer;
+    std::unique_ptr<WindowAreaTester> areaTester;
 };
 
 
