@@ -245,7 +245,7 @@ struct Caption: public WindowAreaTester {
 using Window = WinAPI::Window<WinAPI::HWndWindow, Scene>;
 using Platform = WinAPI::Platform<
     Entity,
-    WinAPI::PlatformWindowFactory<Window, Factory>>;
+    WinAPI::GraphicWindowFactory<WinAPI::HWndWindow, Factory>>;
 
 int main() {
     std::cout << "main: start" << std::endl << std::flush;

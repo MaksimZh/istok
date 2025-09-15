@@ -116,24 +116,6 @@ private:
 };
 
 
-template <typename Window_, typename Renderer>
-class PlatformWindowFactory: public WindowFactory<Window_> {
-public:
-    using Window = Window_;
-    
-    PlatformWindowFactory(EventHandler<Window>& handler)
-    : handler(handler) {}
-    
-    std::unique_ptr<Window> create(const WindowParams& params) override {
-        return std::make_unique<Window>(params, renderer, handler);
-    }
-
-private:
-    EventHandler<Window>& handler;
-    Renderer renderer;
-};
-
-
 template <typename ID_, typename WindowFactory>
 class Platform: public EventHandler<typename WindowFactory::Window> {
 public:

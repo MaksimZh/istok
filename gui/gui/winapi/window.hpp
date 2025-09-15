@@ -128,4 +128,23 @@ private:
 };
 
 
+template <typename SysWindow, typename RendererFactory>
+class GraphicWindowFactory:
+    public WindowFactory<Window<SysWindow, typename RendererFactory::Scene>>
+{
+public:
+    using Window = Window<SysWindow, typename RendererFactory::Scene>;
+
+    GraphicWindowFactory(EventHandler<Window>& handler)
+    : handler(handler) {}
+    
+    std::unique_ptr<Window> create(const WindowParams& params) override {
+        return std::make_unique<Window>(params, rendererFactory, handler);
+    }
+
+private:
+    EventHandler<Window>& handler;
+    RendererFactory rendererFactory;
+};
+
 } // namespace Istok::GUI::WinAPI
