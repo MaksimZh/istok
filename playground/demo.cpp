@@ -138,14 +138,14 @@ class WindowRenderer {
 public:
     WindowRenderer() = default;
 
-    using NativeHandle = WinAPI::HWndWindow::NativeHandle;
+    using NativeHandle = Renderer::NativeHandle;
     using Scene = Scene;
 
     void loadScene(std::unique_ptr<Scene>&& scene) {
         this->scene = std::move(scene);
     }
 
-    void draw(NativeHandle handle) {
+    void draw() {
         if (scene == nullptr) {
             return;
         }
@@ -205,21 +205,23 @@ public:
 
     ~WindowRenderer() noexcept {
         try {
-            Renderer::Scope scope(master);
+            Renderer::Scope scope(master, handle);
             triangles.destroy(scope);
         } catch(...) {}
     }
 
 private:
     Renderer& master;
+    NativeHandle handle;
     std::unique_ptr<Scene> scene;
     OpenGL::Triangle2DArray<WinAPI::WGL> triangles;
 
     friend Renderer;
 
-    WindowRenderer(Renderer& master, NativeHandle handle) : master(master) {
+    WindowRenderer(Renderer& master, const NativeHandle& window)
+    : master(master), handle(window) {
         WinAPI::prepareForGL(handle.hWnd);
-        Renderer::Scope scope(master);
+        Renderer::Scope scope(master, handle);
         triangles = OpenGL::Triangle2DArray<WinAPI::WGL>(scope);
     }
 };

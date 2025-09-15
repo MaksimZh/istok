@@ -22,11 +22,10 @@ concept GUIRenderer = requires {
     typename Renderer::Scene;
 } && requires(
     Renderer renderer,
-    Renderer::NativeHandle handle,
     std::unique_ptr<typename Renderer::Scene>&& scene
 ) {
     {renderer.loadScene(std::move(scene))} -> std::same_as<void>;
-    {renderer.draw(handle)} -> std::same_as<void>;
+    {renderer.draw()} -> std::same_as<void>;
 };
 
 template <typename SysWindow>
@@ -98,7 +97,7 @@ public:
     }
     
     void draw() {
-        data.getRenderer().draw(window.getNativeHandle());
+        data.getRenderer().draw();
     }
 
 
