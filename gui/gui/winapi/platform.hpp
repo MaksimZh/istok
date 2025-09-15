@@ -116,7 +116,7 @@ private:
 };
 
 
-template <GUIWindow Window, typename Renderer>
+template <typename Window, typename Renderer>
 class PlatformWindowFactory: public WindowFactory<Window> {
 public:
     PlatformWindowFactory(EventHandler<Window>& handler)
@@ -132,7 +132,7 @@ private:
 };
 
 
-template <typename ID_, GUIWindow Window, typename Renderer>
+template <typename ID_, typename Window, typename Renderer>
 class Platform: public EventHandler<Window> {
 public:
     using ID = ID_;

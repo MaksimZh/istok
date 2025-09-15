@@ -24,7 +24,7 @@ struct Scene {
 
 class WindowRenderer;
 
-class Factory {
+class Factory: public WinAPI::RendererFactory<Scene, WinAPI::HWndWindow> {
 public:    
     using Scene = Scene;
     using WindowRenderer = WindowRenderer;
@@ -92,7 +92,7 @@ public:
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     }
     
-    std::unique_ptr<WinAPI::Renderer<Scene>> initWindow(WinAPI::HWndWindow& window);
+    std::unique_ptr<WinAPI::Renderer<Scene>> create(WinAPI::HWndWindow& window);
 
     class Scope {
     public:
@@ -225,7 +225,7 @@ private:
 };
 
 
-std::unique_ptr<WinAPI::Renderer<Scene>> Factory::initWindow(WinAPI::HWndWindow& window) {
+std::unique_ptr<WinAPI::Renderer<Scene>> Factory::create(WinAPI::HWndWindow& window) {
     return std::unique_ptr<WindowRenderer>(new WindowRenderer(*this, window.getHandle()));
 }
 
@@ -242,7 +242,7 @@ struct Caption: public WindowAreaTester {
     }
 };
 
-using Window = WinAPI::Window<WinAPI::HWndWindow, Factory>;
+using Window = WinAPI::Window<WinAPI::HWndWindow, Scene>;
 using Platform = WinAPI::Platform<Entity, Window, Factory>;
 static_assert(GUIPlatform<Platform>);
 

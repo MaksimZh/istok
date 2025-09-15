@@ -44,20 +44,27 @@ public:
 };
 
 
-template <GUISysWindow SysWindow, typename Factory>
+template <typename Scene, typename SysWindow>
+class RendererFactory {
+public:
+    virtual std::unique_ptr<Renderer<Scene>> create(SysWindow& window) = 0;
+};
+
+
+template <GUISysWindow SysWindow, typename Scene>
 class WindowCore {
 public:
     WindowCore(
         const WindowParams& params,
-        Factory& rendererFactory,
+        RendererFactory<Scene, SysWindow>& rendererFactory,
         MessageHandler& handler
     ) :
         window(params, handler),
-        renderer(rendererFactory.initWindow(window)),
+        renderer(rendererFactory.create(window)),
         areaTester(std::make_unique<DummyAreaTester>())
     {}
 
-    void loadScene(std::unique_ptr<typename Factory::Scene>&& scene) {
+    void loadScene(std::unique_ptr<Scene>&& scene) {
         renderer->loadScene(std::move(scene));
     }
     
@@ -76,7 +83,7 @@ public:
 
 private:
     SysWindow window;
-    std::unique_ptr<Renderer<typename Factory::Scene>> renderer;
+    std::unique_ptr<Renderer<Scene>> renderer;
     std::unique_ptr<WindowAreaTester> areaTester;
 
     class DummyAreaTester: public WindowAreaTester {
@@ -90,14 +97,12 @@ private:
 };
 
 
-template <GUISysWindow SysWindow, typename Renderer_>
+template <GUISysWindow SysWindow, typename Scene>
 class Window: public MessageHandler {
 public:
-    using Renderer = Renderer_;
-    
     Window(
         const WindowParams& params,
-        Renderer& renderer,
+        RendererFactory<Scene, SysWindow>& renderer,
         EventHandler<Window>& handler
     ) : core(params, renderer, *this), handler(handler) {}
 
@@ -113,7 +118,7 @@ public:
         }
     }
 
-    void loadScene(std::unique_ptr<typename Renderer::Scene>&& scene) {
+    void loadScene(std::unique_ptr<Scene>&& scene) {
         core.loadScene(std::move(scene));
     }
 
@@ -127,7 +132,7 @@ public:
     }
 
 private:
-    WindowCore<SysWindow, Renderer> core;
+    WindowCore<SysWindow, Scene> core;
     EventHandler<Window>& handler;
 };
 
