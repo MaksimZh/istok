@@ -16,17 +16,6 @@ public:
 };
 
 
-template <typename Renderer>
-concept GUIRenderer = requires {
-    typename Renderer::Scene;
-} && requires(
-    Renderer renderer,
-    std::unique_ptr<typename Renderer::Scene>&& scene
-) {
-    {renderer.loadScene(std::move(scene))} -> std::same_as<void>;
-    {renderer.draw()} -> std::same_as<void>;
-};
-
 template <typename SysWindow>
 concept GUISysWindow = requires(
     const WindowParams& params,
