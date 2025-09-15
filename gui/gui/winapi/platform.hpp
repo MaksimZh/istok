@@ -116,14 +116,24 @@ private:
 };
 
 
-template <typename ID_, typename WindowFactory>
-class Platform: public EventHandler<typename WindowFactory::Window> {
+template <typename Window>
+class WindowFactoryBuilder {
+public:
+    virtual ~WindowFactoryBuilder() = default;
+
+    virtual std::unique_ptr<WindowFactory<Window>> buildWindowFactory(
+        EventHandler<Window>& eventHandler) = 0;
+};
+
+
+template <typename ID_, typename Window>
+class Platform: public EventHandler<Window> {
 public:
     using ID = ID_;
-    using Window = WindowFactory::Window;
     using Scene = Window::Scene;
 
-    Platform() : windows(std::make_unique<WindowFactory>(*this)) {}
+    Platform(std::unique_ptr<WindowFactoryBuilder<Window>> windowFactoryBuilder)
+    : windows(std::move(buildWindowFactory(std::move(windowFactoryBuilder)))) {}
 
     PlatformEvent<ID> getMessage() noexcept {
         while (outQueue.empty()) {
@@ -190,6 +200,15 @@ public:
 private:
     WindowManager<ID, Window> windows;
     Tools::SimpleQueue<PlatformEvent<ID>> outQueue;
+
+    std::unique_ptr<WindowFactory<Window>> buildWindowFactory(
+        std::unique_ptr<WindowFactoryBuilder<Window>>&& windowFactoryBuilder
+    ) {
+        if (!windowFactoryBuilder) {
+            throw std::runtime_error("No window factory builder found");
+        }
+        return windowFactoryBuilder->buildWindowFactory(*this);
+    }
 };
 
 } // namespace Istok::GUI::WinAPI

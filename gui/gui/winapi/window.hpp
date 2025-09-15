@@ -128,23 +128,28 @@ private:
 };
 
 
-template <typename SysWindow, typename RendererFactory>
-class GraphicWindowFactory:
-    public WindowFactory<Window<SysWindow, typename RendererFactory::Scene>>
+template <typename SysWindow, typename Scene>
+class GraphicWindowFactory: public WindowFactory<Window<SysWindow, Scene>>
 {
 public:
-    using Window = Window<SysWindow, typename RendererFactory::Scene>;
+    using Window = Window<SysWindow, Scene>;
 
-    GraphicWindowFactory(EventHandler<Window>& handler)
-    : handler(handler) {}
+    GraphicWindowFactory(
+        std::unique_ptr<RendererFactory<Scene, SysWindow>>&& rendererFactory,
+        EventHandler<Window>& handler
+    ) : rendererFactory(std::move(rendererFactory)), handler(handler) {
+        if (!this->rendererFactory) {
+            throw std::runtime_error("Renderer factory not found");
+        }
+    }
     
     std::unique_ptr<Window> create(const WindowParams& params) override {
-        return std::make_unique<Window>(params, rendererFactory, handler);
+        return std::make_unique<Window>(params, *rendererFactory, handler);
     }
 
 private:
+    std::unique_ptr<RendererFactory<Scene, SysWindow>> rendererFactory;
     EventHandler<Window>& handler;
-    RendererFactory rendererFactory;
 };
 
 } // namespace Istok::GUI::WinAPI

@@ -242,16 +242,27 @@ struct Caption: public WindowAreaTester {
     }
 };
 
+
 using Window = WinAPI::Window<WinAPI::HWndWindow, Scene>;
-using Platform = WinAPI::Platform<
-    Entity,
-    WinAPI::GraphicWindowFactory<WinAPI::HWndWindow, Factory>>;
+using Platform = WinAPI::Platform<Entity, Window>;
+using MyWindowFactory = WinAPI::GraphicWindowFactory<WinAPI::HWndWindow, Scene>;
+
+struct WFB: public WinAPI::WindowFactoryBuilder<Window> {
+    std::unique_ptr<WinAPI::WindowFactory<Window>> buildWindowFactory(
+        WinAPI::EventHandler<Window>& eventHandler
+    ) override {
+        return std::make_unique<MyWindowFactory>(
+            std::make_unique<Factory>(),
+            eventHandler
+        );
+    }
+};
 
 int main() {
     std::cout << "main: start" << std::endl << std::flush;
     EntityComponentManager ecs;
     Factory renderer;
-    Platform gui;
+    Platform gui(std::make_unique<WFB>());
     Entity window = ecs.createEntity();
     Entity menu = ecs.createEntity();
     gui.createWindow(window, WindowParams{{200, 100, 600, 400}, "Istok"});
