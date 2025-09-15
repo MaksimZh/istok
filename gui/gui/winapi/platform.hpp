@@ -116,9 +116,11 @@ private:
 };
 
 
-template <typename Window, typename Renderer>
-class PlatformWindowFactory: public WindowFactory<Window> {
+template <typename Window_, typename Renderer>
+class PlatformWindowFactory: public WindowFactory<Window_> {
 public:
+    using Window = Window_;
+    
     PlatformWindowFactory(EventHandler<Window>& handler)
     : handler(handler) {}
     
@@ -136,7 +138,8 @@ template <typename ID_, typename WindowFactory>
 class Platform: public EventHandler<typename WindowFactory::Window> {
 public:
     using ID = ID_;
-    using Scene = WindowFactory::Window::Scene;
+    using Window = WindowFactory::Window;
+    using Scene = Window::Scene;
 
     Platform() : windows(std::make_unique<WindowFactory>(*this)) {}
 
