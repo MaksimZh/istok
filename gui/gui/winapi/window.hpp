@@ -40,25 +40,38 @@ public:
 };
 
 
-template <GUISysWindow SysWindow, typename Scene>
-class WindowCore {
+template <GUISysWindow SysWindow, typename Scene_>
+class Window: public MessageHandler {
 public:
-    WindowCore(
+    using Scene = Scene_;
+    
+    Window(
         const WindowParams& params,
         RendererFactory<Scene, SysWindow>& rendererFactory,
-        MessageHandler& handler
-    ) :
-        window(params, handler),
-        renderer(rendererFactory.create(window)),
+        EventHandler<Window>& handler
+    ) : core(params, *this), handler(handler),
+        renderer(rendererFactory.create(core)),
         areaTester(std::make_unique<DummyAreaTester>())
-    {}
+    {
+        if (!renderer) {
+            throw std::runtime_error("Renderer not created");
+        }
+    }
+
+    void onClose() noexcept override {
+        handler.onClose(this);
+    }
+
+    void onPaint() noexcept override {
+        try {
+            renderer->draw();
+        } catch(...) {
+            handler.onException(std::current_exception());
+        }
+    }
 
     void loadScene(std::unique_ptr<Scene>&& scene) {
         renderer->loadScene(std::move(scene));
-    }
-    
-    void draw() {
-        renderer->draw();
     }
 
 
@@ -66,12 +79,13 @@ public:
         areaTester = std::move(tester);
     }
 
-    WindowArea testArea(Position<int> position) const noexcept {
+    WindowArea onAreaTest(Position<int> position) noexcept override {
         return areaTester->testWindowArea(position);
     }
 
 private:
-    SysWindow window;
+    SysWindow core;
+    EventHandler<Window>& handler;
     std::unique_ptr<Renderer<Scene>> renderer;
     std::unique_ptr<WindowAreaTester> areaTester;
 
@@ -83,48 +97,6 @@ private:
             return WindowArea::client;
         }
     };
-};
-
-
-template <GUISysWindow SysWindow, typename Scene_>
-class Window: public MessageHandler {
-public:
-    using Scene = Scene_;
-    
-    Window(
-        const WindowParams& params,
-        RendererFactory<Scene, SysWindow>& renderer,
-        EventHandler<Window>& handler
-    ) : core(params, renderer, *this), handler(handler) {}
-
-    void onClose() noexcept override {
-        handler.onClose(this);
-    }
-
-    void onPaint() noexcept override {
-        try {
-            core.draw();
-        } catch(...) {
-            handler.onException(std::current_exception());
-        }
-    }
-
-    void loadScene(std::unique_ptr<Scene>&& scene) {
-        core.loadScene(std::move(scene));
-    }
-
-
-    void setAreaTester(std::unique_ptr<WindowAreaTester>&& tester) {
-        core.setAreaTester(std::move(tester));
-    }
-
-    WindowArea onAreaTest(Position<int> position) noexcept override {
-        return core.testArea(position);
-    }
-
-private:
-    WindowCore<SysWindow, Scene> core;
-    EventHandler<Window>& handler;
 };
 
 
