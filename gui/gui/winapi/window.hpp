@@ -18,11 +18,11 @@ public:
 
 
 template <typename SysWindow>
-concept GUISysWindow = requires(
-    const WindowParams& params,
-    MessageHandler& handler
-) {
-    {SysWindow(params, handler)};
+class SysWindowFactory {
+public:
+    virtual ~SysWindowFactory() = default;
+    virtual SysWindow createSysWindow(
+        const WindowParams& params, MessageHandler& handler) = 0;
 };
 
 
@@ -43,16 +43,18 @@ public:
 };
 
 
-template <GUISysWindow SysWindow, typename Scene_>
+template <typename SysWindow, typename Scene_>
 class Window: public MessageHandler {
 public:
     using Scene = Scene_;
     
     Window(
         const WindowParams& params,
+        SysWindowFactory<SysWindow>& sysWindowFactory,
         RendererFactory<SysWindow, Scene>& rendererFactory,
         EventHandler<Window>& handler
-    ) : core(params, *this), handler(handler),
+    ) : core(sysWindowFactory.createSysWindow(params, *this)),
+        handler(handler),
         renderer(rendererFactory.create(core)),
         areaTester(std::make_unique<DummyAreaTester>())
     {
@@ -103,26 +105,35 @@ private:
 };
 
 
-template <GUISysWindow SysWindow, typename Scene>
+template <typename SysWindow, typename Scene>
 class GraphicWindowFactory: public WindowFactory<Window<SysWindow, Scene>>
 {
 public:
     using Window = Window<SysWindow, Scene>;
 
     GraphicWindowFactory(
+        std::unique_ptr<SysWindowFactory<SysWindow>>&& sysWindowFactory,
         std::unique_ptr<RendererFactory<SysWindow, Scene>>&& rendererFactory,
         EventHandler<Window>& handler
-    ) : rendererFactory(std::move(rendererFactory)), handler(handler) {
+    ) : rendererFactory(std::move(rendererFactory)),
+        sysWindowFactory(std::move(sysWindowFactory)),
+        handler(handler)
+    {
+        if (!this->sysWindowFactory) {
+            throw std::runtime_error("System window factory not found");
+        }
         if (!this->rendererFactory) {
             throw std::runtime_error("Renderer factory not found");
         }
     }
     
     std::unique_ptr<Window> create(const WindowParams& params) override {
-        return std::make_unique<Window>(params, *rendererFactory, handler);
+        return std::make_unique<Window>(
+            params, *sysWindowFactory, *rendererFactory, handler);
     }
 
 private:
+    std::unique_ptr<SysWindowFactory<SysWindow>> sysWindowFactory;
     std::unique_ptr<RendererFactory<SysWindow, Scene>> rendererFactory;
     EventHandler<Window>& handler;
 };

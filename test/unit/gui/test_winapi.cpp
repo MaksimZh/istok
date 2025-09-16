@@ -91,7 +91,7 @@ struct MockEventHandler: public EventHandler<Window> {
 
 
 //static_assert(GUIRenderer<MockRenderer>);
-static_assert(GUISysWindow<MockSysWindow>);
+//static_assert(GUISysWindow<MockSysWindow>);
 //static_assert(GUIWindow<Window<MockSysWindow, MockRenderer>>);
 
 /*

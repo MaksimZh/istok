@@ -247,11 +247,20 @@ using Window = WinAPI::Window<WinAPI::HWndWindow, Scene>;
 using Platform = WinAPI::Platform<Entity, Window>;
 using MyWindowFactory = WinAPI::GraphicWindowFactory<WinAPI::HWndWindow, Scene>;
 
+struct SWF: public WinAPI::SysWindowFactory<WinAPI::HWndWindow> {
+    WinAPI::HWndWindow createSysWindow(
+        const WindowParams& params, WinAPI::MessageHandler& handler
+    ) {
+        return WinAPI::HWndWindow(params, handler);
+    }
+};
+
 struct WFB: public WinAPI::WindowFactoryBuilder<Window> {
     std::unique_ptr<WinAPI::WindowFactory<Window>> buildWindowFactory(
         WinAPI::EventHandler<Window>& eventHandler
     ) override {
         return std::make_unique<MyWindowFactory>(
+            std::make_unique<SWF>(),
             std::make_unique<Factory>(),
             eventHandler
         );
