@@ -21,25 +21,6 @@ public:
 };
 
 
-template <typename Window>
-concept GUIWindow = requires {
-    typename Window::Renderer;
-} && requires(
-    const WindowParams& params,
-    Window::Renderer& renderer,
-    EventHandler<Window>& handler
-) {
-    {Window(params, renderer, handler)};
-} && requires(
-    Window window,
-    std::unique_ptr<typename Window::Renderer::Scene>&& scene,
-    std::unique_ptr<WindowAreaTester>&& areaTester
-) {
-    {window.loadScene(std::move(scene))} -> std::same_as<void>;
-    {window.setAreaTester(std::move(areaTester))} -> std::same_as<void>;
-};
-
-
 template <typename ID, typename Window>
 class WindowMap {
 public:
@@ -126,7 +107,20 @@ public:
 };
 
 
-template <typename ID_, typename Window>
+template <typename Window>
+concept GUIWindow = requires {
+    typename Window::Scene;
+} && requires(
+    Window window,
+    std::unique_ptr<typename Window::Scene>&& scene,
+    std::unique_ptr<WindowAreaTester>&& areaTester
+) {
+    {window.loadScene(std::move(scene))} -> std::same_as<void>;
+    {window.setAreaTester(std::move(areaTester))} -> std::same_as<void>;
+};
+
+
+template <typename ID_, GUIWindow Window>
 class Platform: public EventHandler<Window> {
 public:
     using ID = ID_;

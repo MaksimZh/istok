@@ -100,7 +100,7 @@ private:
 };
 
 
-template <typename SysWindow, typename Scene>
+template <GUISysWindow SysWindow, typename Scene>
 class GraphicWindowFactory: public WindowFactory<Window<SysWindow, Scene>>
 {
 public:
