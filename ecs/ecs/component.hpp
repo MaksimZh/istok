@@ -21,6 +21,7 @@ public:
     ComponentStorage& operator=(const ComponentStorage&) = delete;
     ComponentStorage(ComponentStorage&&) noexcept = default;
     ComponentStorage& operator=(ComponentStorage&&) noexcept = default;
+    virtual ~ComponentStorage() = default;
     
     virtual size_t size() const = 0;
     virtual bool has(Entity e) const = 0;

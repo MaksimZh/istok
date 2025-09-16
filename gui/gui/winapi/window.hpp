@@ -10,6 +10,7 @@ namespace Istok::GUI::WinAPI {
 
 class MessageHandler {
 public:
+    virtual ~MessageHandler() = default;
     virtual void onClose() noexcept = 0;
     virtual void onPaint() noexcept = 0;
     virtual WindowArea onAreaTest(Position<int> position) noexcept = 0;
@@ -28,6 +29,7 @@ concept GUISysWindow = requires(
 template <typename Scene>
 class Renderer {
 public:
+    virtual ~Renderer() = default;
     virtual void loadScene(std::unique_ptr<Scene>&& scene) = 0;
     virtual void draw() = 0;
 };
@@ -36,6 +38,7 @@ public:
 template <typename SysWindow, typename Scene>
 class RendererFactory {
 public:
+    virtual ~RendererFactory() = default;
     virtual std::unique_ptr<Renderer<Scene>> create(SysWindow& window) = 0;
 };
 

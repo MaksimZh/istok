@@ -16,6 +16,7 @@ namespace Istok::GUI::WinAPI {
 template <typename Window>
 class EventHandler {
 public:
+    virtual ~EventHandler() = default;
     virtual void onException(std::exception_ptr exception) noexcept = 0;
     virtual void onClose(Window* sender) noexcept = 0;
 };
@@ -65,6 +66,7 @@ private:
 template <typename Window>
 class WindowFactory {
 public:
+    virtual ~WindowFactory() = default;
     virtual std::unique_ptr<Window> create(const WindowParams& params) = 0;
 };
 
@@ -101,7 +103,6 @@ template <typename Window>
 class WindowFactoryBuilder {
 public:
     virtual ~WindowFactoryBuilder() = default;
-
     virtual std::unique_ptr<WindowFactory<Window>> buildWindowFactory(
         EventHandler<Window>& eventHandler) = 0;
 };

@@ -75,6 +75,7 @@ enum class WindowArea {
 
 class WindowAreaTester {
 public:
+    virtual ~WindowAreaTester() = default;
     virtual WindowArea testWindowArea(Position<int> position) const noexcept = 0;
 };
 

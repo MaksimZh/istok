@@ -63,6 +63,7 @@ private:
 
 class SysMessageHandler {
 public:
+    virtual ~SysMessageHandler() = default;
     virtual LRESULT handleMessage(
         HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) noexcept = 0;
 };
