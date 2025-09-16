@@ -24,7 +24,7 @@ struct Scene {
 
 class WindowRenderer;
 
-class Factory: public WinAPI::RendererFactory<Scene, WinAPI::HWndWindow> {
+class Factory: public WinAPI::RendererFactory<WinAPI::HWndWindow, Scene> {
 public:    
     using Scene = Scene;
     using WindowRenderer = WindowRenderer;

@@ -33,7 +33,7 @@ public:
 };
 
 
-template <typename Scene, typename SysWindow>
+template <typename SysWindow, typename Scene>
 class RendererFactory {
 public:
     virtual std::unique_ptr<Renderer<Scene>> create(SysWindow& window) = 0;
@@ -47,7 +47,7 @@ public:
     
     Window(
         const WindowParams& params,
-        RendererFactory<Scene, SysWindow>& rendererFactory,
+        RendererFactory<SysWindow, Scene>& rendererFactory,
         EventHandler<Window>& handler
     ) : core(params, *this), handler(handler),
         renderer(rendererFactory.create(core)),
@@ -107,7 +107,7 @@ public:
     using Window = Window<SysWindow, Scene>;
 
     GraphicWindowFactory(
-        std::unique_ptr<RendererFactory<Scene, SysWindow>>&& rendererFactory,
+        std::unique_ptr<RendererFactory<SysWindow, Scene>>&& rendererFactory,
         EventHandler<Window>& handler
     ) : rendererFactory(std::move(rendererFactory)), handler(handler) {
         if (!this->rendererFactory) {
@@ -120,7 +120,7 @@ public:
     }
 
 private:
-    std::unique_ptr<RendererFactory<Scene, SysWindow>> rendererFactory;
+    std::unique_ptr<RendererFactory<SysWindow, Scene>> rendererFactory;
     EventHandler<Window>& handler;
 };
 
