@@ -11,7 +11,6 @@ namespace Istok::GUI::WinAPI {
 class MessageHandler {
 public:
     virtual ~MessageHandler() = default;
-    virtual void onClose() noexcept = 0;
     virtual void onPaint() noexcept = 0;
     virtual WindowArea onAreaTest(Position<int> position) noexcept = 0;
 };
@@ -67,10 +66,6 @@ public:
         UINT msg, std::unique_ptr<WindowMessageHandler>&& handler
     ) {
         core.setHandler(msg, std::move(handler));
-    }
-
-    void onClose() noexcept override {
-        handler.onClose(this);
     }
 
     void onPaint() noexcept override {

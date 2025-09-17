@@ -61,7 +61,6 @@ struct MockSysWindow {
 
 
 struct MockMessageHandler: public MessageHandler {
-    void onClose() noexcept override {}
     void onPaint() noexcept override {}
     WindowArea onAreaTest(Position<int> position) noexcept override {
         return WindowArea::client;

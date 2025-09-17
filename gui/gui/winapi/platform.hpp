@@ -19,7 +19,6 @@ class EventHandler {
 public:
     virtual ~EventHandler() = default;
     virtual void onException(std::exception_ptr exception) noexcept = 0;
-    virtual void onClose(Window* sender) noexcept = 0;
 };
 
 
@@ -261,9 +260,6 @@ public:
 
     void onException(std::exception_ptr exception) noexcept override {
         outQueue.push(PlatformEvents::Exception(exception));
-    }
-
-    void onClose(Window* sender) noexcept override {
     }
     
 private:

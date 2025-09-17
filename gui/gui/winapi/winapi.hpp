@@ -163,9 +163,6 @@ private:
             return handlers[msg]->handleMessage(hWnd, msg, wParam, lParam);
         }
         switch (msg) {
-        case WM_CLOSE:
-            handler.onClose();
-            return 0;
         case WM_PAINT: {
             handler.onPaint();
             PAINTSTRUCT ps;
