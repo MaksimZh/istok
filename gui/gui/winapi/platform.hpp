@@ -223,6 +223,9 @@ public:
     void createWindow(ID id, const WindowParams& params) noexcept {
         try {
             windows.create(id, params);
+            windows.getWindow(id).setHandler(
+                WM_CLOSE, std::make_unique<WindowCloseHandler<ID>>(
+                    id, outQueue));
         } catch(...) {
             onException(std::current_exception());
         }
@@ -261,11 +264,6 @@ public:
     }
 
     void onClose(Window* sender) noexcept override {
-        try {
-            outQueue.push(PlatformEvents::WindowClose(windows.getID(sender)));
-        } catch(...) {
-            onException(std::current_exception());
-        }
     }
     
 private:
