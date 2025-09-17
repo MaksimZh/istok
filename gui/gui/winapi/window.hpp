@@ -63,6 +63,12 @@ public:
         }
     }
 
+    void setHandler(
+        UINT msg, std::unique_ptr<WindowMessageHandler>&& handler
+    ) {
+        core.setHandler(msg, std::move(handler));
+    }
+
     void onClose() noexcept override {
         handler.onClose(this);
     }

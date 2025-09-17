@@ -7,7 +7,9 @@
 #include <windowsx.h>
 #include <dwmapi.h>
 
+#include <iostream>
 #include <memory>
+#include <unordered_map>
 
 namespace Istok::GUI::WinAPI {
 
@@ -90,6 +92,7 @@ public:
 
     ~BasicWindow() noexcept {
         if (hWnd) {
+            SetWindowLongPtr(hWnd, GWLP_USERDATA, NULL);
             DestroyWindow(hWnd);
         }
     }
@@ -142,13 +145,23 @@ public:
         return window.getHandle();
     }
 
+    void setHandler(
+        UINT msg, std::unique_ptr<WindowMessageHandler>&& handler
+    ) {
+        handlers[msg] = std::move(handler);
+    }
+
 private:
     BasicWindow window;
     MessageHandler& handler;
+    std::unordered_map<UINT, std::unique_ptr<WindowMessageHandler>> handlers;
 
     LRESULT handleMessage(
         HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) noexcept override
     {
+        if (handlers.contains(msg)) {
+            return handlers[msg]->handleMessage(hWnd, msg, wParam, lParam);
+        }
         switch (msg) {
         case WM_CLOSE:
             handler.onClose();

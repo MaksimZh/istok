@@ -6,6 +6,7 @@
 #include <tools/helpers.hpp>
 
 #include <windows.h>
+#include <windowsx.h>
 
 #include <stdexcept>
 #include <memory>
@@ -118,6 +119,81 @@ concept GUIWindow = requires {
 ) {
     {window.loadScene(std::move(scene))} -> std::same_as<void>;
     {window.setAreaTester(std::move(areaTester))} -> std::same_as<void>;
+};
+
+
+class WindowMessageHandler {
+public:
+    virtual ~WindowMessageHandler() = default;
+    virtual LRESULT handleMessage(
+        HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) noexcept = 0;
+};
+
+
+class DefaultWindowMessageHandler: public WindowMessageHandler {
+public:
+    LRESULT handleMessage(
+        HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam
+    ) noexcept override {
+        return DefWindowProc(hWnd, msg, wParam, lParam);
+    }
+};
+
+
+template <typename ID>
+class WindowCloseHandler: public WindowMessageHandler {
+public:
+    WindowCloseHandler(ID id, Tools::SimpleQueue<PlatformEvent<ID>>& outQueue)
+    : id(id), outQueue(outQueue) {}
+
+    LRESULT handleMessage(
+        HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam
+    ) noexcept override {
+        outQueue.push(PlatformEvents::WindowClose(id));
+        return 0;
+    }
+
+private:
+    ID id;
+    Tools::SimpleQueue<PlatformEvent<ID>>& outQueue;
+};
+
+
+class WindowAreaTestHandler: public WindowMessageHandler {
+public:
+    LRESULT handleMessage(
+        HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam
+    ) noexcept override {
+        if (!tester) {
+            return HTCLIENT;
+        }
+        RECT rect;
+        GetWindowRect(hWnd, &rect);
+        Position<int> position(
+            GET_X_LPARAM(lParam) - rect.left,
+            GET_Y_LPARAM(lParam) - rect.top);
+        switch (tester->testWindowArea(position)) {
+        case WindowArea::hole: return HTTRANSPARENT;
+        case WindowArea::client: return HTCLIENT;
+        case WindowArea::moving: return HTCAPTION;
+        case WindowArea::sizingTL: return HTTOPLEFT;
+        case WindowArea::sizingT: return HTTOP;
+        case WindowArea::sizingTR: return HTTOPRIGHT;
+        case WindowArea::sizingR: return HTRIGHT;
+        case WindowArea::sizingBR: return HTBOTTOMRIGHT;
+        case WindowArea::sizingB: return HTBOTTOM;
+        case WindowArea::sizingBL: return HTBOTTOMLEFT;
+        case WindowArea::sizingL: return HTLEFT;
+        default: return HTCLIENT;
+        }
+    }
+
+    void setAreaTester(std::unique_ptr<WindowAreaTester>&& tester) {
+        this->tester = std::move(tester);
+    }
+
+private:
+    std::unique_ptr<WindowAreaTester> tester;
 };
 
 
