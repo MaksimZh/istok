@@ -281,14 +281,6 @@ public:
         }
     }
 
-    void createWindow(ID id, const WindowParams& params) {
-        sendCommand(PlatformCommands::CreateWindow<ID>{id, params});
-    }
-
-    void destroyWindow(ID id) {
-        sendCommand(PlatformCommands::DestroyWindow<ID>{id});
-    }
-
     void setAreaTester(
         ID id, std::unique_ptr<WindowAreaTester>&& tester) noexcept
     {

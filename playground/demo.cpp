@@ -274,8 +274,10 @@ int main() {
     Platform gui(std::make_unique<WFB>());
     Entity window = ecs.createEntity();
     Entity menu = ecs.createEntity();
-    gui.createWindow(window, WindowParams{{200, 100, 600, 400}, "Istok"});
-    gui.createWindow(menu, WindowParams{{300, 200, 500, 500}, std::nullopt});
+    gui.sendCommand(PlatformCommands::CreateWindow<Entity>(
+        window, WindowParams{{200, 100, 600, 400}, "Istok"}));
+    gui.sendCommand(PlatformCommands::CreateWindow<Entity>(
+        menu, WindowParams{{300, 200, 500, 500}, std::nullopt}));
     float px = 1.0f / 256;
     gui.loadScene(window, std::make_unique<WindowRenderer::Scene>(
         Rect<float>{16 * px, 1 - 16 * px, 9 * 16 * px, 1 - 6 * 16 * px},
@@ -304,7 +306,7 @@ int main() {
         if (std::holds_alternative<PlatformEvents::WindowClose<Entity>>(msg)) {
             std::cout << "main: closed" << std::endl << std::flush;
             auto ent = std::get<PlatformEvents::WindowClose<Entity>>(msg).id;
-            gui.destroyWindow(ent);
+            gui.sendCommand(PlatformCommands::DestroyWindow<Entity>(ent));
             if (ent == window) {
                 break;
             }
