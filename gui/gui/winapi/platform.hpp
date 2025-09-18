@@ -215,32 +215,27 @@ public:
     ) : windows(windows), outQueue(outQueue) {}
 
     void handlePlatformCommand(PlatformCommand<ID> command) override {
-        if (std::holds_alternative<PlatformCommands::CreateWindow<ID>>(
-            command)
-        ) {
-            auto cmd = std::get<PlatformCommands::CreateWindow<ID>>(command);
-            createWindow(cmd.id, cmd.params);
-            return;
-        }
-        if (std::holds_alternative<PlatformCommands::DestroyWindow<ID>>(
-            command)
-        ) {
-            auto cmd = std::get<PlatformCommands::DestroyWindow<ID>>(command);
-            windows.destroy(cmd.id);
-            return;
-        }
+        std::visit([this](const auto& x) { this->handle(x); }, command);
     }
 
 private:
     WindowManager<ID, Window>& windows;
     Tools::SimpleQueue<PlatformEvent<ID>>& outQueue;
     
-    void createWindow(ID id, const WindowParams& params) {
-        windows.create(id, params);
-        windows.getWindow(id).setHandler(
+    void handle(const PlatformCommands::CreateWindow<ID>& command) {
+        windows.create(command.id, command.params);
+        windows.getWindow(command.id).setHandler(
             WM_CLOSE, std::make_unique<WindowCloseHandler<ID>>(
-                id, outQueue));
+                command.id, outQueue));
     }
+
+    void handle(const PlatformCommands::DestroyWindow<ID>& command) {
+        windows.destroy(command.id);
+    }
+
+    // Fallback for commands we don't care
+    template <typename T>
+    void handle(const T& command) {}
 };
 
 
