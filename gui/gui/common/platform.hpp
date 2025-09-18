@@ -9,9 +9,45 @@
 
 namespace Istok::GUI {
 
+template <typename T>
+struct Position {
+    T x;
+    T y;
+};
+
+template <typename T>
+struct Rect {
+    T left;
+    T top;
+    T right;
+    T bottom;
+};
+
+
+/// @brief Window parameters
+struct WindowParams {
+    /// Rectangle of the window in screen coordinates
+    Rect<int> location;
+    
+    /// Title of the window to be used by the system
+    /// Note that on Windows this string is shown in the taskbar
+    /// and nullopt hides the window from the taskbar
+    std::optional<std::string> title;
+    //TODO: replace with variant to explicitly distinguish
+    // primary (taskbar) and auxiliary windows
+};
+
 namespace PlatformCommands {
     /// @brief Heartbeat request, checking if platform is alive
     struct HeartbeatRequest {};
+    
+    /// @brief Create new window
+    /// @tparam ID Window identifier type
+    template <typename ID>
+    struct CreateWindow {
+        ID id;
+        WindowParams params;
+    };
 }
 
 namespace PlatformEvents {
@@ -32,32 +68,20 @@ namespace PlatformEvents {
     struct WindowClose { ID id; };
 }
 
+
+template <typename ID>
+using PlatformCommand = std::variant<
+    PlatformCommands::HeartbeatRequest,
+    PlatformCommands::CreateWindow<ID>
+>;
+
+
 template <typename ID>
 using PlatformEvent = std::variant<
     PlatformEvents::Exception,
     PlatformEvents::Shutdown,
     PlatformEvents::WindowClose<ID>
 >;
-
-
-template <typename T>
-struct Position {
-    T x;
-    T y;
-};
-
-template <typename T>
-struct Rect {
-    T left;
-    T top;
-    T right;
-    T bottom;
-};
-
-struct WindowParams {
-    Rect<int> location;
-    std::optional<std::string> title;
-};
 
 enum class WindowArea {
     hole,

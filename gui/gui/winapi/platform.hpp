@@ -7,6 +7,7 @@
 
 #include <windows.h>
 #include <windowsx.h>
+#undef CreateWindow
 
 #include <stdexcept>
 #include <memory>
@@ -196,6 +197,44 @@ private:
 };
 
 
+template <typename ID>
+class PlatformCommandHandler {
+public:
+    virtual ~PlatformCommandHandler() = default;
+    virtual void handlePlatformCommand(PlatformCommand<ID> command) = 0;
+};
+
+
+template <typename ID, typename Window>
+class WindowHandler: public PlatformCommandHandler<ID> {
+public:
+    WindowHandler(
+        WindowManager<ID, Window>& windows,
+        Tools::SimpleQueue<PlatformEvent<ID>>& outQueue
+    ) : windows(windows), outQueue(outQueue) {}
+
+    void handlePlatformCommand(PlatformCommand<ID> command) override {
+        if (std::holds_alternative<PlatformCommands::CreateWindow<ID>>(
+            command)
+        ) {
+            auto cmd = std::get<PlatformCommands::CreateWindow<ID>>(command);
+            createWindow(cmd.id, cmd.params);
+        }
+    }
+
+private:
+    WindowManager<ID, Window>& windows;
+    Tools::SimpleQueue<PlatformEvent<ID>>& outQueue;
+    
+    void createWindow(ID id, const WindowParams& params) {
+        windows.create(id, params);
+        windows.getWindow(id).setHandler(
+            WM_CLOSE, std::make_unique<WindowCloseHandler<ID>>(
+                id, outQueue));
+    }
+};
+
+
 template <typename ID_, GUIWindow Window>
 class Platform: public EventHandler<Window> {
 public:
@@ -203,7 +242,10 @@ public:
     using Scene = Window::Scene;
 
     Platform(std::unique_ptr<WindowFactoryBuilder<Window>> windowFactoryBuilder)
-    : windows(std::move(buildWindowFactory(std::move(windowFactoryBuilder)))) {}
+    : windows(std::move(buildWindowFactory(std::move(windowFactoryBuilder)))) {
+        handlers.push_back(std::make_unique<WindowHandler<ID, Window>>(
+            windows, outQueue));
+    }
 
     PlatformEvent<ID> getMessage() noexcept {
         while (outQueue.empty()) {
@@ -219,15 +261,19 @@ public:
         return outQueue.take();
     }
 
-    void createWindow(ID id, const WindowParams& params) noexcept {
+    void sendCommand(PlatformCommand<ID> command) {
         try {
-            windows.create(id, params);
-            windows.getWindow(id).setHandler(
-                WM_CLOSE, std::make_unique<WindowCloseHandler<ID>>(
-                    id, outQueue));
+            for (auto& handler : handlers) {
+                assert(handler);
+                handler->handlePlatformCommand(command);
+            }
         } catch(...) {
             onException(std::current_exception());
         }
+    }
+
+    void createWindow(ID id, const WindowParams& params) {
+        sendCommand(PlatformCommands::CreateWindow<ID>{id, params});
     }
 
     void destroyWindow(ID id) noexcept {
@@ -263,6 +309,7 @@ public:
     }
     
 private:
+    std::vector<std::unique_ptr<PlatformCommandHandler<ID>>> handlers;
     WindowManager<ID, Window> windows;
     Tools::SimpleQueue<PlatformEvent<ID>> outQueue;
 
