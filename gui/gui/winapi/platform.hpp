@@ -8,6 +8,7 @@
 #include <windows.h>
 #include <windowsx.h>
 #undef CreateWindow
+#undef DestroyWindow
 
 #include <stdexcept>
 #include <memory>
@@ -219,6 +220,14 @@ public:
         ) {
             auto cmd = std::get<PlatformCommands::CreateWindow<ID>>(command);
             createWindow(cmd.id, cmd.params);
+            return;
+        }
+        if (std::holds_alternative<PlatformCommands::DestroyWindow<ID>>(
+            command)
+        ) {
+            auto cmd = std::get<PlatformCommands::DestroyWindow<ID>>(command);
+            windows.destroy(cmd.id);
+            return;
         }
     }
 
@@ -276,12 +285,8 @@ public:
         sendCommand(PlatformCommands::CreateWindow<ID>{id, params});
     }
 
-    void destroyWindow(ID id) noexcept {
-        try {
-            windows.destroy(id);
-        } catch(...) {
-            onException(std::current_exception());
-        }
+    void destroyWindow(ID id) {
+        sendCommand(PlatformCommands::DestroyWindow<ID>{id});
     }
 
     void setAreaTester(

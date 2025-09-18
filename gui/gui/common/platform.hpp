@@ -48,6 +48,13 @@ namespace PlatformCommands {
         ID id;
         WindowParams params;
     };
+
+    /// @brief Create new window
+    /// @tparam ID Window identifier type
+    template <typename ID>
+    struct DestroyWindow {
+        ID id;
+    };
 }
 
 namespace PlatformEvents {
@@ -72,7 +79,8 @@ namespace PlatformEvents {
 template <typename ID>
 using PlatformCommand = std::variant<
     PlatformCommands::HeartbeatRequest,
-    PlatformCommands::CreateWindow<ID>
+    PlatformCommands::CreateWindow<ID>,
+    PlatformCommands::DestroyWindow<ID>
 >;
 
 
