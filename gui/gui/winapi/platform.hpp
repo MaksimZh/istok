@@ -2,7 +2,7 @@
 #pragma once
 
 #include <gui/common/platform.hpp>
-#include <tools/queue.hpp>
+#include <tools/exchange.hpp>
 #include <tools/helpers.hpp>
 
 #include <windows.h>
@@ -144,7 +144,7 @@ public:
 template <typename ID>
 class WindowCloseHandler: public WindowMessageHandler {
 public:
-    WindowCloseHandler(ID id, Tools::SimpleQueue<PlatformEvent<ID>>& outQueue)
+    WindowCloseHandler(ID id, Tools::Queue<PlatformEvent<ID>>& outQueue)
     : id(id), outQueue(outQueue) {}
 
     LRESULT handleMessage(
@@ -156,7 +156,7 @@ public:
 
 private:
     ID id;
-    Tools::SimpleQueue<PlatformEvent<ID>>& outQueue;
+    Tools::Queue<PlatformEvent<ID>>& outQueue;
 };
 
 
@@ -211,7 +211,7 @@ class WindowHandler: public PlatformCommandHandler<ID> {
 public:
     WindowHandler(
         WindowManager<ID, Window>& windows,
-        Tools::SimpleQueue<PlatformEvent<ID>>& outQueue
+        Tools::Queue<PlatformEvent<ID>>& outQueue
     ) : windows(windows), outQueue(outQueue) {}
 
     void handlePlatformCommand(PlatformCommand<ID> command) override {
@@ -220,7 +220,7 @@ public:
 
 private:
     WindowManager<ID, Window>& windows;
-    Tools::SimpleQueue<PlatformEvent<ID>>& outQueue;
+    Tools::Queue<PlatformEvent<ID>>& outQueue;
     
     void handle(const PlatformCommands::CreateWindow<ID>& command) {
         windows.create(command.id, command.params);
@@ -303,7 +303,7 @@ public:
 private:
     std::vector<std::unique_ptr<PlatformCommandHandler<ID>>> handlers;
     WindowManager<ID, Window> windows;
-    Tools::SimpleQueue<PlatformEvent<ID>> outQueue;
+    Tools::Queue<PlatformEvent<ID>> outQueue;
 
     std::unique_ptr<WindowFactory<Window>> buildWindowFactory(
         std::unique_ptr<WindowFactoryBuilder<Window>>&& windowFactoryBuilder

@@ -270,7 +270,6 @@ struct WFB: public WinAPI::WindowFactoryBuilder<Window> {
 int main() {
     std::cout << "main: start" << std::endl << std::flush;
     EntityComponentManager ecs;
-    Factory renderer;
     Platform gui(std::make_unique<WFB>());
     Entity window = ecs.createEntity();
     Entity menu = ecs.createEntity();
