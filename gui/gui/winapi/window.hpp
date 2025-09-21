@@ -1,6 +1,7 @@
 // Copyright 2025 Maksim Sergeevich Zholudev. All rights reserved
 #pragma once
 
+#include <tools/exchange.hpp>
 #include "platform.hpp"
 
 #include <memory>
@@ -62,10 +63,8 @@ public:
         }
     }
 
-    void setHandler(
-        UINT msg, std::unique_ptr<WindowMessageHandler>&& handler
-    ) {
-        core.setHandler(msg, std::move(handler));
+    void setHandler(Tools::HandlerChain<LRESULT, WindowMessage>::Handler handler) {
+        core.setHandler(handler);
     }
 
     void onPaint() noexcept override {

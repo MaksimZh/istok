@@ -123,33 +123,24 @@ concept GUIWindow = requires {
 };
 
 
-class WindowMessageHandler {
-public:
-    virtual ~WindowMessageHandler() = default;
-    virtual LRESULT handleMessage(
-        HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) noexcept = 0;
-};
-
-
-class DefaultWindowMessageHandler: public WindowMessageHandler {
-public:
-    LRESULT handleMessage(
-        HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam
-    ) noexcept override {
-        return DefWindowProc(hWnd, msg, wParam, lParam);
-    }
+struct WindowMessage {
+    HWND hWnd;
+    UINT msg;
+    WPARAM wParam;
+    LPARAM lParam;
 };
 
 
 template <typename ID>
-class WindowCloseHandler: public WindowMessageHandler {
+class WindowCloseHandler {
 public:
     WindowCloseHandler(ID id, Tools::Queue<PlatformEvent<ID>>& outQueue)
     : id(id), outQueue(outQueue) {}
 
-    LRESULT handleMessage(
-        HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam
-    ) noexcept override {
+    std::optional<LRESULT> operator()(WindowMessage message) noexcept {
+        if (message.msg != WM_CLOSE) {
+            return std::nullopt;
+        }
         outQueue.push(PlatformEvents::WindowClose(id));
         return 0;
     }
@@ -160,19 +151,17 @@ private:
 };
 
 
-class WindowAreaTestHandler: public WindowMessageHandler {
+class WindowAreaTestHandler {
 public:
-    LRESULT handleMessage(
-        HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam
-    ) noexcept override {
+    std::optional<LRESULT> operator()(WindowMessage message) noexcept {
         if (!tester) {
             return HTCLIENT;
         }
         RECT rect;
-        GetWindowRect(hWnd, &rect);
+        GetWindowRect(message.hWnd, &rect);
         Position<int> position(
-            GET_X_LPARAM(lParam) - rect.left,
-            GET_Y_LPARAM(lParam) - rect.top);
+            GET_X_LPARAM(message.lParam) - rect.left,
+            GET_Y_LPARAM(message.lParam) - rect.top);
         switch (tester->testWindowArea(position)) {
         case WindowArea::hole: return HTTRANSPARENT;
         case WindowArea::client: return HTCLIENT;
@@ -221,12 +210,13 @@ public:
 private:
     WindowManager<ID, Window>& windows;
     Tools::Queue<PlatformEvent<ID>>& outQueue;
+    std::vector<std::unique_ptr<WindowCloseHandler<ID>>> handlers;
     
     void handle(const PlatformCommands::CreateWindow<ID>& command) {
         windows.create(command.id, command.params);
-        windows.getWindow(command.id).setHandler(
-            WM_CLOSE, std::make_unique<WindowCloseHandler<ID>>(
+        handlers.push_back(std::make_unique<WindowCloseHandler<ID>>(
                 command.id, outQueue));
+        windows.getWindow(command.id).setHandler(*handlers.back());
     }
 
     void handle(const PlatformCommands::DestroyWindow<ID>& command) {

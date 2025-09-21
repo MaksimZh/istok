@@ -1,6 +1,7 @@
 // Copyright 2025 Maksim Sergeevich Zholudev. All rights reserved
 #pragma once
 
+#include <tools/exchange.hpp>
 #include "window.hpp"
 
 #include <windows.h>
@@ -145,22 +146,20 @@ public:
         return window.getHandle();
     }
 
-    void setHandler(
-        UINT msg, std::unique_ptr<WindowMessageHandler>&& handler
-    ) {
-        handlers[msg] = std::move(handler);
+    void setHandler(Tools::HandlerChain<LRESULT, WindowMessage>::Handler handler) {
+        handlerChain.add(handler);
     }
 
 private:
     BasicWindow window;
     MessageHandler& handler;
-    std::unordered_map<UINT, std::unique_ptr<WindowMessageHandler>> handlers;
+    Tools::HandlerChain<LRESULT, WindowMessage> handlerChain;
 
     LRESULT handleMessage(
         HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) noexcept override
     {
-        if (handlers.contains(msg)) {
-            return handlers[msg]->handleMessage(hWnd, msg, wParam, lParam);
+        if (auto r = handlerChain(WindowMessage(hWnd, msg, wParam, lParam))) {
+            return r.value();
         }
         switch (msg) {
         case WM_PAINT: {
