@@ -9,7 +9,10 @@ using namespace Istok::Tools;
 
 TEST_CASE("Tools - queue", "[unit][tools]") {
     Queue<int> queue;
-    REQUIRE(queue.take() == std::nullopt);
+    
+    SECTION("empty") {
+        REQUIRE(queue.take() == std::nullopt);
+    }
 
     SECTION("push and take") {
         queue.push(42);
@@ -39,5 +42,41 @@ TEST_CASE("Tools - queue", "[unit][tools]") {
         REQUIRE(queue.take() == 3);
         REQUIRE(queue.take() == 4);
         REQUIRE(queue.take() == std::nullopt);
+    }
+}
+
+
+TEST_CASE("Tools - handler chain", "[unit][tools]") {
+    HandlerChain<int, int> chain;
+    
+    SECTION("empty") {
+        REQUIRE(chain(1) == std::nullopt);
+    }
+
+    SECTION("single") {
+        chain.add([](int x) {
+            return (x % 2 == 0) ? std::optional<int>(x * 10) : std::nullopt;
+        });
+        REQUIRE(chain(1) == std::nullopt);
+        REQUIRE(chain(2) == 20);
+    }
+
+    SECTION("multi") {
+        chain.add([](int x) {
+            return (x % 2 == 0) ? std::optional<int>(x * 10) : std::nullopt;
+        });
+        chain.add([](int x) {
+            return (x % 3 == 0) ? std::optional<int>(x * 100) : std::nullopt;
+        });
+        chain.add([](int x) {
+            return (x % 5 == 0) ? std::optional<int>(x * 1000) : std::nullopt;
+        });
+        REQUIRE(chain(1) == std::nullopt);
+        REQUIRE(chain(2) == 20);
+        REQUIRE(chain(3) == 300);
+        REQUIRE(chain(4) == 40);
+        REQUIRE(chain(5) == 5000);
+        REQUIRE(chain(6) == 60);
+        REQUIRE(chain(7) == std::nullopt);
     }
 }

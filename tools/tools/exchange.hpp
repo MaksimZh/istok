@@ -4,6 +4,7 @@
 #include <functional>
 #include <queue>
 #include <optional>
+#include <vector>
 
 namespace Istok::Tools {
 
@@ -53,6 +54,35 @@ public:
 
 private:
     std::queue<T> container;
+};
+
+
+template <typename R, typename T>
+class HandlerChain {
+public:
+    using Handler = std::function<std::optional<R>(const T&)>;
+    
+    HandlerChain() = default;
+    HandlerChain(const HandlerChain&) = delete;
+    HandlerChain& operator=(const HandlerChain&) = delete;
+    HandlerChain(HandlerChain&&) = default;
+    HandlerChain& operator=(HandlerChain&&) = default;
+
+    void add(Handler handler) {
+        handlers.push_back(handler);
+    }
+
+    std::optional<R> operator()(const T& x) const {
+        for (auto& h : handlers) {
+            if (auto r = h(x)) {
+                return r;
+            }
+        }
+        return std::nullopt;
+    }
+
+private:
+    std::vector<Handler> handlers;
 };
 
 
