@@ -252,7 +252,10 @@ public:
     }
 
     PlatformEvent<ID> getMessage() noexcept {
-        while (outQueue.empty()) {
+        while (true) {
+            if (auto outMessage = outQueue.take()) {
+                return outMessage.value();
+            }
             MSG msg;
             GetMessage(&msg, NULL, 0, 0);
             if (msg.message == WM_QUIT) {
@@ -262,7 +265,6 @@ public:
             TranslateMessage(&msg);
             DispatchMessage(&msg);
         }
-        return outQueue.take();
     }
 
     void sendCommand(PlatformCommand<ID> command) {
