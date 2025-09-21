@@ -6,31 +6,31 @@
 
 namespace Istok::Tools {
 
-template<typename T, typename = void>
+template <typename T, typename = void>
 struct Hash {
     using type = std::hash<T>;
 };
 
-template<typename T>
+template <typename T>
 struct Hash<T, std::void_t<typename T::Hasher>> {
     using type = typename T::Hasher;
 };
 
-template<typename T>
+template <typename T>
 using hash = typename Hash<T>::type;
 
 
-template<typename T>
+template <typename T>
 struct UnwrapOptional {
     using type = T;
 };
 
-template<typename T>
+template <typename T>
 struct UnwrapOptional<std::optional<T>> {
     using type = T;
 };
 
-template<typename T>
+template <typename T>
 using unwrapOptional = typename UnwrapOptional<T>::type;
 
 
