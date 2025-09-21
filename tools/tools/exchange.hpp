@@ -29,6 +29,20 @@ public:
     virtual void subscribe(std::function<void(const T&)> callback) = 0;
 };
 
+template <typename T>
+class ConsumerChain {
+public:
+    virtual ~ConsumerChain() = default;
+    virtual void chainConsumer(std::function<std::optional<T>(T&&)> consumer) = 0;
+};
+
+template <typename R, typename T>
+class ProcessorChain {
+public:
+    virtual ~ProcessorChain() = default;
+    virtual void chainProcessor(std::function<std::optional<R>(const T&)> processor) = 0;
+};
+
 
 template <typename T>
 class Queue: public Sink<T>, public Source<std::optional<T>> {
@@ -82,6 +96,34 @@ public:
     }
 
 private:
+    std::vector<Handler> handlers;
+};
+
+
+template <typename T>
+class MessageBus: public Sink<T>, public Broadcaster<T> {
+public:
+    using Handler = std::function<void(const T&)>;
+    
+    void push(T&& value) override {
+        queue.push(std::move(value));
+        while (true) {
+            auto optMessage = queue.take();
+            if (!optMessage) {
+                break;
+            }
+            for (auto& h : handlers) {
+                h(optMessage.value());
+            }
+        }
+    }
+
+    void subscribe(Handler handler) override {
+        handlers.push_back(handler);
+    }
+
+private:
+    Queue<T> queue;
     std::vector<Handler> handlers;
 };
 
