@@ -259,8 +259,7 @@ public:
             MSG msg;
             GetMessage(&msg, NULL, 0, 0);
             if (msg.message == WM_QUIT) {
-                outQueue.push(PlatformEvents::Shutdown{});
-                break;
+                return PlatformEvents::Shutdown{};
             }
             TranslateMessage(&msg);
             DispatchMessage(&msg);
