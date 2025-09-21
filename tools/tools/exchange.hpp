@@ -3,6 +3,7 @@
 
 #include <functional>
 #include <queue>
+#include <optional>
 
 namespace Istok::Tools {
 
@@ -17,7 +18,6 @@ template <typename T>
 class Source {
 public:
     virtual ~Source() = default;
-    virtual bool empty() = 0;
     virtual T take() = 0;
 };
 
@@ -30,7 +30,7 @@ public:
 
 
 template <typename T>
-class Queue: public Sink<T>, public Source<T> {
+class Queue: public Sink<T>, public Source<std::optional<T>> {
 public:
     Queue() = default;
     Queue(const Queue&) = delete;
@@ -42,13 +42,9 @@ public:
         container.push(std::move(value));
     }
 
-    bool empty() override {
-        return container.empty();
-    }
-
-    T take() override {
+    std::optional<T> take() override {
         if (container.empty()) {
-            throw std::runtime_error("Reading from empty queue");
+            return std::nullopt;
         }
         T value = std::move(container.front());
         container.pop();
