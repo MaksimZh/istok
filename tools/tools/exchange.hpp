@@ -90,7 +90,14 @@ public:
     }
 
     std::optional<T> operator()(T&& x) const {
-        return std::nullopt;
+        for (auto& f : consumers) {
+            auto r = f(std::move(x));
+            if (!r) {
+                return std::nullopt;
+            }
+            x = std::move(r.value());
+        }
+        return std::move(x);
     }
 
 private:

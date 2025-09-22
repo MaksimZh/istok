@@ -46,38 +46,117 @@ TEST_CASE("Tools - queue", "[unit][tools]") {
 }
 
 
-TEST_CASE("Tools - returning dispatcher", "[unit][tools]") {
-    ReturningDispatcher<int, int> chain;
+TEST_CASE("Tools - consuming dispatcher", "[unit][tools]") {
+    ConsumingDispatcher<int> dispatcher;
     
     SECTION("empty") {
-        REQUIRE(chain(1) == std::nullopt);
+        REQUIRE(dispatcher(1) == 1);
     }
 
     SECTION("single") {
-        chain.chainProcessor([](int x) {
-            return (x % 2 == 0) ? std::optional<int>(x * 10) : std::nullopt;
+        int a = 0;
+        dispatcher.chainConsumer([&a](int&& x) {
+            if (x % 2 != 0) {
+                return std::optional<int>(x);
+            }
+            a = x;
+            return std::optional<int>();
         });
-        REQUIRE(chain(1) == std::nullopt);
-        REQUIRE(chain(2) == 20);
+        REQUIRE(dispatcher(1) == 1);
+        REQUIRE(a == 0);
+        REQUIRE(dispatcher(2) == std::nullopt);
+        REQUIRE(a == 2);
     }
 
     SECTION("multi") {
-        chain.chainProcessor([](int x) {
+        int a = 0;
+        dispatcher.chainConsumer([&a](int&& x) {
+            if (x % 2 != 0) {
+                return std::optional<int>(x);
+            }
+            a = x;
+            return std::optional<int>();
+        });
+        int b = 0;
+        dispatcher.chainConsumer([&b](int&& x) {
+            if (x % 3 != 0) {
+                return std::optional<int>(x);
+            }
+            b = x;
+            return std::optional<int>();
+        });
+        int c = 0;
+        dispatcher.chainConsumer([&c](int&& x) {
+            if (x % 5 != 0) {
+                return std::optional<int>(x);
+            }
+            c = x;
+            return std::optional<int>();
+        });
+        REQUIRE(dispatcher(1) == 1);
+        REQUIRE(a == 0);
+        REQUIRE(b == 0);
+        REQUIRE(c == 0);
+        REQUIRE(dispatcher(2) == std::nullopt);
+        REQUIRE(a == 2);
+        REQUIRE(b == 0);
+        REQUIRE(c == 0);
+        REQUIRE(dispatcher(3) == std::nullopt);
+        REQUIRE(a == 2);
+        REQUIRE(b == 3);
+        REQUIRE(c == 0);
+        REQUIRE(dispatcher(4) == std::nullopt);
+        REQUIRE(a == 4);
+        REQUIRE(b == 3);
+        REQUIRE(c == 0);
+        REQUIRE(dispatcher(5) == std::nullopt);
+        REQUIRE(a == 4);
+        REQUIRE(b == 3);
+        REQUIRE(c == 5);
+        REQUIRE(dispatcher(6) == std::nullopt);
+        REQUIRE(a == 6);
+        REQUIRE(b == 3);
+        REQUIRE(c == 5);
+        REQUIRE(dispatcher(7) == 7);
+        REQUIRE(a == 6);
+        REQUIRE(b == 3);
+        REQUIRE(c == 5);
+    }
+}
+
+
+TEST_CASE("Tools - returning dispatcher", "[unit][tools]") {
+    ReturningDispatcher<int, int> dispatcher;
+    
+    SECTION("empty") {
+        REQUIRE(dispatcher(1) == std::nullopt);
+    }
+
+    SECTION("single") {
+        dispatcher.chainProcessor([](int x) {
             return (x % 2 == 0) ? std::optional<int>(x * 10) : std::nullopt;
         });
-        chain.chainProcessor([](int x) {
+        REQUIRE(dispatcher(1) == std::nullopt);
+        REQUIRE(dispatcher(2) == 20);
+    }
+
+    SECTION("multi") {
+        dispatcher.chainProcessor([](int x) {
+            return (x % 2 == 0) ? std::optional<int>(x * 10) : std::nullopt;
+        });
+        dispatcher.chainProcessor([](int x) {
             return (x % 3 == 0) ? std::optional<int>(x * 100) : std::nullopt;
         });
-        chain.chainProcessor([](int x) {
+        dispatcher.chainProcessor([](int x) {
             return (x % 5 == 0) ? std::optional<int>(x * 1000) : std::nullopt;
         });
-        REQUIRE(chain(1) == std::nullopt);
-        REQUIRE(chain(2) == 20);
-        REQUIRE(chain(3) == 300);
-        REQUIRE(chain(4) == 40);
-        REQUIRE(chain(5) == 5000);
-        REQUIRE(chain(6) == 60);
-        REQUIRE(chain(7) == std::nullopt);
+        REQUIRE(dispatcher(1) == std::nullopt);
+        REQUIRE(dispatcher(2) == 20);
+        REQUIRE(dispatcher(3) == 300);
+        REQUIRE(dispatcher(4) == 40);
+        REQUIRE(dispatcher(5) == 5000);
+        REQUIRE(dispatcher(6) == 60);
+        REQUIRE(dispatcher(7) == std::nullopt);
     }
 }
 
