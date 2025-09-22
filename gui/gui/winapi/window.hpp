@@ -63,7 +63,7 @@ public:
         }
     }
 
-    void setHandler(Tools::HandlerChain<LRESULT, WindowMessage>::Handler handler) {
+    void setHandler(Tools::ReturningDispatcher<LRESULT, WindowMessage>::Handler handler) {
         core.setHandler(handler);
     }
 

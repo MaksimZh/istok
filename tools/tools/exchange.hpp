@@ -72,18 +72,20 @@ private:
 
 
 template <typename R, typename T>
-class HandlerChain {
+class ReturningDispatcher: public ProcessorChain<R, T> {
 public:
     using Handler = std::function<std::optional<R>(const T&)>;
     
-    HandlerChain() = default;
-    HandlerChain(const HandlerChain&) = delete;
-    HandlerChain& operator=(const HandlerChain&) = delete;
-    HandlerChain(HandlerChain&&) = default;
-    HandlerChain& operator=(HandlerChain&&) = default;
+    ReturningDispatcher() = default;
+    ReturningDispatcher(const ReturningDispatcher&) = delete;
+    ReturningDispatcher& operator=(const ReturningDispatcher&) = delete;
+    ReturningDispatcher(ReturningDispatcher&&) = default;
+    ReturningDispatcher& operator=(ReturningDispatcher&&) = default;
 
-    void add(Handler handler) {
-        handlers.push_back(handler);
+    void chainProcessor(
+        std::function<std::optional<R>(const T&)> processor
+    ) override {
+        handlers.push_back(processor);
     }
 
     std::optional<R> operator()(const T& x) const {
@@ -104,6 +106,12 @@ template <typename T>
 class MessageBus: public Sink<T>, public Broadcaster<T> {
 public:
     using Handler = std::function<void(const T&)>;
+
+    MessageBus() = default;
+    MessageBus(const MessageBus&) = delete;
+    MessageBus& operator=(const MessageBus&) = delete;
+    MessageBus(MessageBus&&) = default;
+    MessageBus& operator=(MessageBus&&) = default;
     
     void push(T&& value) override {
         queue.push(std::move(value));

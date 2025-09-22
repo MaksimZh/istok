@@ -146,14 +146,14 @@ public:
         return window.getHandle();
     }
 
-    void setHandler(Tools::HandlerChain<LRESULT, WindowMessage>::Handler handler) {
-        handlerChain.add(handler);
+    void setHandler(Tools::ReturningDispatcher<LRESULT, WindowMessage>::Handler handler) {
+        handlerChain.chainProcessor(handler);
     }
 
 private:
     BasicWindow window;
     MessageHandler& handler;
-    Tools::HandlerChain<LRESULT, WindowMessage> handlerChain;
+    Tools::ReturningDispatcher<LRESULT, WindowMessage> handlerChain;
 
     LRESULT handleMessage(
         HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) noexcept override

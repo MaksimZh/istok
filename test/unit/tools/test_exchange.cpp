@@ -46,15 +46,15 @@ TEST_CASE("Tools - queue", "[unit][tools]") {
 }
 
 
-TEST_CASE("Tools - handler chain", "[unit][tools]") {
-    HandlerChain<int, int> chain;
+TEST_CASE("Tools - returning dispatcher", "[unit][tools]") {
+    ReturningDispatcher<int, int> chain;
     
     SECTION("empty") {
         REQUIRE(chain(1) == std::nullopt);
     }
 
     SECTION("single") {
-        chain.add([](int x) {
+        chain.chainProcessor([](int x) {
             return (x % 2 == 0) ? std::optional<int>(x * 10) : std::nullopt;
         });
         REQUIRE(chain(1) == std::nullopt);
@@ -62,13 +62,13 @@ TEST_CASE("Tools - handler chain", "[unit][tools]") {
     }
 
     SECTION("multi") {
-        chain.add([](int x) {
+        chain.chainProcessor([](int x) {
             return (x % 2 == 0) ? std::optional<int>(x * 10) : std::nullopt;
         });
-        chain.add([](int x) {
+        chain.chainProcessor([](int x) {
             return (x % 3 == 0) ? std::optional<int>(x * 100) : std::nullopt;
         });
-        chain.add([](int x) {
+        chain.chainProcessor([](int x) {
             return (x % 5 == 0) ? std::optional<int>(x * 1000) : std::nullopt;
         });
         REQUIRE(chain(1) == std::nullopt);
@@ -78,5 +78,37 @@ TEST_CASE("Tools - handler chain", "[unit][tools]") {
         REQUIRE(chain(5) == 5000);
         REQUIRE(chain(6) == 60);
         REQUIRE(chain(7) == std::nullopt);
+    }
+}
+
+
+TEST_CASE("Tools - message bus", "[unit][tools]") {
+    MessageBus<int> bus;
+
+    SECTION("subscription") {
+        bus.push(1);
+        int a = 0;
+        bus.subscribe([&a](const int& x) { a = x; });
+        REQUIRE(a == 0);
+        bus.push(2);
+        REQUIRE(a == 2);
+        int b = 0;
+        bus.subscribe([&b](const int& x) { b = x; });
+        REQUIRE(b == 0);
+        bus.push(3);
+        REQUIRE(a == 3);
+        REQUIRE(b == 3);
+    }
+
+    SECTION("inner messaging") {
+        std::vector<int> a;
+        bus.subscribe([&a](const int& x) { a.push_back(x); });
+        bus.subscribe([&bus](const int& x) {
+            if (x > 0) {
+                bus.push(x - 1);
+            }
+        });
+        bus.push(3);
+        REQUIRE(a == std::vector<int>{3, 2, 1, 0});
     }
 }
