@@ -25,22 +25,25 @@ public:
 template <typename T>
 class Broadcaster {
 public:
+    using Subscriber = std::function<void(const T&)>;
     virtual ~Broadcaster() = default;
-    virtual void subscribe(std::function<void(const T&)> callback) = 0;
+    virtual void subscribe(Subscriber subscriber) = 0;
 };
 
 template <typename T>
 class ConsumerChain {
 public:
+    using Consumer = std::function<std::optional<T>(T&&)>;
     virtual ~ConsumerChain() = default;
-    virtual void chainConsumer(std::function<std::optional<T>(T&&)> consumer) = 0;
+    virtual void chainConsumer(Consumer consumer) = 0;
 };
 
 template <typename R, typename T>
 class ProcessorChain {
 public:
+    using Processor = std::function<std::optional<R>(const T&)>;
     virtual ~ProcessorChain() = default;
-    virtual void chainProcessor(std::function<std::optional<R>(const T&)> processor) = 0;
+    virtual void chainProcessor(Processor processor) = 0;
 };
 
 
@@ -71,10 +74,34 @@ private:
 };
 
 
+template <typename T>
+class ConsumingDispatcher: public ConsumerChain<T> {
+public:
+    using Consumer = typename ConsumerChain<T>::Consumer;
+    
+    ConsumingDispatcher() = default;
+    ConsumingDispatcher(const ConsumingDispatcher&) = delete;
+    ConsumingDispatcher& operator=(const ConsumingDispatcher&) = delete;
+    ConsumingDispatcher(ConsumingDispatcher&&) = default;
+    ConsumingDispatcher& operator=(ConsumingDispatcher&&) = default;
+
+    void chainConsumer(Consumer consumer) override {
+        consumers.push_back(consumer);
+    }
+
+    std::optional<T> operator()(T&& x) const {
+        return std::nullopt;
+    }
+
+private:
+    std::vector<Consumer> consumers;
+};
+
+
 template <typename R, typename T>
 class ReturningDispatcher: public ProcessorChain<R, T> {
 public:
-    using Handler = std::function<std::optional<R>(const T&)>;
+    using Processor = typename ProcessorChain<R, T>::Processor;
     
     ReturningDispatcher() = default;
     ReturningDispatcher(const ReturningDispatcher&) = delete;
@@ -82,14 +109,12 @@ public:
     ReturningDispatcher(ReturningDispatcher&&) = default;
     ReturningDispatcher& operator=(ReturningDispatcher&&) = default;
 
-    void chainProcessor(
-        std::function<std::optional<R>(const T&)> processor
-    ) override {
-        handlers.push_back(processor);
+    void chainProcessor(Processor processor) override {
+        processors.push_back(processor);
     }
 
     std::optional<R> operator()(const T& x) const {
-        for (auto& h : handlers) {
+        for (auto& h : processors) {
             if (auto r = h(x)) {
                 return r;
             }
@@ -98,14 +123,14 @@ public:
     }
 
 private:
-    std::vector<Handler> handlers;
+    std::vector<Processor> processors;
 };
 
 
 template <typename T>
 class MessageBus: public Sink<T>, public Broadcaster<T> {
 public:
-    using Handler = std::function<void(const T&)>;
+    using Subscriber = typename Broadcaster<T>::Subscriber;
 
     MessageBus() = default;
     MessageBus(const MessageBus&) = delete;
@@ -120,19 +145,19 @@ public:
             if (!optMessage) {
                 break;
             }
-            for (auto& h : handlers) {
+            for (auto& h : subscribers) {
                 h(optMessage.value());
             }
         }
     }
 
-    void subscribe(Handler handler) override {
-        handlers.push_back(handler);
+    void subscribe(Subscriber subscriber) override {
+        subscribers.push_back(subscriber);
     }
 
 private:
     Queue<T> queue;
-    std::vector<Handler> handlers;
+    std::vector<Subscriber> subscribers;
 };
 
 
