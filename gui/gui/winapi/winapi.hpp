@@ -146,7 +146,7 @@ public:
         return window.getHandle();
     }
 
-    void setHandler(Tools::ReturningDispatcher<LRESULT, WindowMessage>::Handler handler) {
+    void setHandler(Tools::ReturningDispatcher<LRESULT, WindowMessage>::Processor handler) {
         handlerChain.chainProcessor(handler);
     }
 
