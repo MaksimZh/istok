@@ -44,7 +44,7 @@ public:
 
 
 template <typename SysWindow, typename Scene_>
-class Window: public MessageHandler {
+class Window: public MessageHandler, public WindowMessageDispatcher {
 public:
     using Scene = Scene_;
     
@@ -63,8 +63,8 @@ public:
         }
     }
 
-    void setHandler(Tools::ReturningDispatcher<LRESULT, WindowMessage>::Processor handler) {
-        core.setHandler(handler);
+    void chainProcessor(WindowMessageDispatcher::Processor processor) override {
+        core.chainProcessor(processor);
     }
 
     void onPaint() noexcept override {

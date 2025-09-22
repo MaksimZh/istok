@@ -130,6 +130,7 @@ struct WindowMessage {
     LPARAM lParam;
 };
 
+using WindowMessageDispatcher = Tools::ReturningDispatcher<LRESULT, WindowMessage>;
 
 template <typename ID>
 class WindowCloseHandler {
@@ -216,7 +217,7 @@ private:
         windows.create(command.id, command.params);
         handlers.push_back(std::make_unique<WindowCloseHandler<ID>>(
                 command.id, outQueue));
-        windows.getWindow(command.id).setHandler(*handlers.back());
+        windows.getWindow(command.id).chainProcessor(*handlers.back());
     }
 
     void handle(const PlatformCommands::DestroyWindow<ID>& command) {

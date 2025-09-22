@@ -134,7 +134,7 @@ private:
 };
 
 
-class HWndWindow: public SysMessageHandler {
+class HWndWindow: public SysMessageHandler, public WindowMessageDispatcher {
 public:
     HWndWindow(const WindowParams& params, MessageHandler& handler)
     : window(params, this), handler(handler) {
@@ -146,19 +146,19 @@ public:
         return window.getHandle();
     }
 
-    void setHandler(Tools::ReturningDispatcher<LRESULT, WindowMessage>::Processor handler) {
-        handlerChain.chainProcessor(handler);
+    void chainProcessor(WindowMessageDispatcher::Processor processor) override {
+        dispatcher.chainProcessor(processor);
     }
 
 private:
     BasicWindow window;
     MessageHandler& handler;
-    Tools::ReturningDispatcher<LRESULT, WindowMessage> handlerChain;
+    WindowMessageDispatcher dispatcher;
 
     LRESULT handleMessage(
         HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) noexcept override
     {
-        if (auto r = handlerChain(WindowMessage(hWnd, msg, wParam, lParam))) {
+        if (auto r = dispatcher(WindowMessage(hWnd, msg, wParam, lParam))) {
             return r.value();
         }
         switch (msg) {
