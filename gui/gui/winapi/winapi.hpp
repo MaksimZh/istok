@@ -134,7 +134,7 @@ private:
 };
 
 
-class HWndWindow: public SysMessageHandler, public WindowMessageDispatcher {
+class HWndWindow: public SysMessageHandler {
 public:
     HWndWindow(const WindowParams& params, MessageHandler& handler)
     : window(params, this), handler(handler) {
@@ -146,7 +146,7 @@ public:
         return window.getHandle();
     }
 
-    void chainProcessor(WindowMessageDispatcher::Processor processor) override {
+    void chainProcessor(WindowMessageDispatcher::Processor processor) {
         dispatcher.chainProcessor(processor);
     }
 

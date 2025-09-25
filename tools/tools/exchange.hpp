@@ -22,6 +22,7 @@ public:
     virtual T take() = 0;
 };
 
+
 template <typename T>
 class Broadcaster {
 public:
@@ -36,14 +37,6 @@ public:
     using Consumer = std::function<std::optional<T>(T&&)>;
     virtual ~ConsumerChain() = default;
     virtual void chainConsumer(Consumer consumer) = 0;
-};
-
-template <typename R, typename T>
-class ProcessorChain {
-public:
-    using Processor = std::function<std::optional<R>(const T&)>;
-    virtual ~ProcessorChain() = default;
-    virtual void chainProcessor(Processor processor) = 0;
 };
 
 
@@ -106,9 +99,48 @@ private:
 
 
 template <typename R, typename T>
-class ReturningDispatcher: public ProcessorChain<R, T> {
+class Processor {
 public:
-    using Processor = typename ProcessorChain<R, T>::Processor;
+    virtual ~Processor() = default;
+    Processor(const Processor&) = delete;
+    Processor& operator=(const Processor&) = delete;
+
+    virtual std::optional<R> operator()(const T& value) = 0;
+};
+
+
+template <typename R, typename T>
+class ProcessorChain {
+public:
+    ProcessorChain() = default;
+    
+    ProcessorChain(const ProcessorChain&) = delete;
+    ProcessorChain& operator=(const ProcessorChain&) = delete;
+    ProcessorChain(ProcessorChain&&) = default;
+    ProcessorChain& operator=(ProcessorChain&&) = default;
+
+    void chainProcessor(Processor<R, T>&& processor) override {
+        processors.push_back(std::move(processor));
+    }
+
+    std::optional<R> operator()(const T& x) const {
+        for (auto& h : processors) {
+            if (auto r = h(x)) {
+                return r;
+            }
+        }
+        return std::nullopt;
+    }
+
+private:
+    std::vector<Processor<R, T>> processors;
+};
+
+
+template <typename R, typename T>
+class ReturningDispatcher {
+public:
+    using Processor = std::function<std::optional<R>(const T&)>;
     
     ReturningDispatcher() = default;
     ReturningDispatcher(const ReturningDispatcher&) = delete;
@@ -116,7 +148,7 @@ public:
     ReturningDispatcher(ReturningDispatcher&&) = default;
     ReturningDispatcher& operator=(ReturningDispatcher&&) = default;
 
-    void chainProcessor(Processor processor) override {
+    void chainProcessor(Processor processor) {
         processors.push_back(processor);
     }
 

@@ -44,7 +44,7 @@ public:
 
 
 template <typename SysWindow, typename Scene_>
-class Window: public MessageHandler, public WindowMessageDispatcher {
+class Window: public MessageHandler {
 public:
     using Scene = Scene_;
     
@@ -63,7 +63,7 @@ public:
         }
     }
 
-    void chainProcessor(WindowMessageDispatcher::Processor processor) override {
+    void chainProcessor(WindowMessageDispatcher::Processor processor) {
         core.chainProcessor(processor);
     }
 
