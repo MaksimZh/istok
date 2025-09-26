@@ -7,6 +7,12 @@
 
 using namespace Istok::Tools;
 
+TEST_CASE("Tools - wrapping function", "[unit][tools]") {
+    auto f = WrappingFunction<int, int>([](int x) { return x + 10; });
+    REQUIRE(f(5) == 15);
+}
+
+
 TEST_CASE("Tools - queue", "[unit][tools]") {
     Queue<int> queue;
     

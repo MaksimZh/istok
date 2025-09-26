@@ -5,6 +5,7 @@
 #include <queue>
 #include <optional>
 #include <vector>
+#include <memory>
 
 namespace Istok::Tools {
 
@@ -95,6 +96,64 @@ public:
 
 private:
     std::vector<Consumer> consumers;
+};
+
+
+template <typename Y, typename X>
+class Function {
+public:
+    Function() = default;
+    virtual ~Function() = default;
+    Function(const Function&) = delete;
+    Function& operator=(const Function&) = delete;
+    
+    virtual Y operator()(X x) = 0;
+    virtual operator bool() const noexcept = 0;
+};
+
+
+template <typename Y, typename X>
+class WrappingFunction: public Function<Y, X> {
+private:
+    struct Callable {
+        virtual ~Callable() = default;
+        virtual Y operator()(X x) = 0;
+    };
+
+    template <typename F>
+    struct Wrapper: Callable {
+        F func;
+        
+        Wrapper(F&& f) : func(std::forward<F>(f)) {}
+        
+        Y operator()(X x) override {
+            return func(std::forward<X>(x));
+        }
+    };
+
+    std::unique_ptr<Callable> callable;
+
+public:
+    template <typename F>
+    WrappingFunction(F&& f)
+    : callable(std::make_unique<Wrapper<std::decay_t<F>>>(std::forward<F>(f)))
+    {}
+
+    WrappingFunction(const WrappingFunction&) = delete;
+    WrappingFunction& operator=(const WrappingFunction&) = delete;
+    WrappingFunction(WrappingFunction&&) = default;
+    WrappingFunction& operator=(WrappingFunction&&) = default;
+
+    Y operator()(X x) override {
+        if (!callable) {
+            throw std::runtime_error("Call of empty function container");
+        }
+        return (*callable)(std::forward<X>(x));
+    }
+
+    operator bool() const noexcept override {
+        return callable != nullptr;
+    }
 };
 
 
