@@ -9,7 +9,12 @@ using namespace Istok::Tools;
 
 TEST_CASE("Tools - wrapping function", "[unit][tools]") {
     auto f = WrappingFunction<int, int>([](int x) { return x + 10; });
+    REQUIRE(bool(f) == true);
     REQUIRE(f(5) == 15);
+    auto g = std::move(f);
+    REQUIRE(bool(f) == false);
+    REQUIRE(bool(g) == true);
+    REQUIRE(g(5) == 15);
 }
 
 

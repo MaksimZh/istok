@@ -134,14 +134,19 @@ private:
     std::unique_ptr<Callable> callable;
 
 public:
+    WrappingFunction() = default;
+
     template <typename F>
     WrappingFunction(F&& f)
     : callable(std::make_unique<Wrapper<std::decay_t<F>>>(std::forward<F>(f)))
     {}
-
+    
     WrappingFunction(const WrappingFunction&) = delete;
     WrappingFunction& operator=(const WrappingFunction&) = delete;
-    WrappingFunction(WrappingFunction&&) = default;
+    
+    WrappingFunction(WrappingFunction&& other)
+    : callable(std::move(other.callable)) {}
+    
     WrappingFunction& operator=(WrappingFunction&&) = default;
 
     Y operator()(X x) override {
