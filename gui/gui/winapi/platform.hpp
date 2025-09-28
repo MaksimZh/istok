@@ -130,7 +130,8 @@ struct WindowMessage {
     LPARAM lParam;
 };
 
-using WindowMessageDispatcher = Tools::ReturningDispatcher<LRESULT, WindowMessage>;
+using WindowResult = LRESULT;
+
 
 template <typename ID>
 class WindowCloseHandler {

@@ -7,52 +7,6 @@
 
 using namespace Istok::Tools;
 
-TEST_CASE("Tools - copying function", "[unit][tools]") {
-    auto f = CopyingFunction<int, int>([](int x) { return x + 10; });
-    
-    SECTION("eval") {
-        REQUIRE(bool(f) == true);
-        REQUIRE(f(5) == 15);
-    }
-
-    SECTION("move") {
-        auto g = std::move(f);
-        REQUIRE(bool(f) == true);
-        REQUIRE(bool(g) == true);
-        REQUIRE(f(5) == 15);
-        REQUIRE(g(5) == 15);
-    }
-}
-
-
-TEST_CASE("Tools - moving function", "[unit][tools]") {
-    auto f = MovingFunction<int, int>([](int x) { return x + 10; });
-    
-    SECTION("eval") {
-        REQUIRE(bool(f) == true);
-        REQUIRE(f(5) == 15);
-    }
-    
-    SECTION("move") {
-        auto g = std::move(f);
-        REQUIRE(bool(f) == false);
-        REQUIRE(bool(g) == true);
-        REQUIRE(g(5) == 15);
-        MovingFunction<int, int> h;
-        h = std::move(g);
-        REQUIRE(bool(g) == false);
-        REQUIRE(bool(h) == true);
-        REQUIRE(h(5) == 15);
-    }
-
-    SECTION("fail") {
-        MovingFunction<int, int> h;
-        REQUIRE_THROWS(h(5));
-        h = std::move(f);
-        REQUIRE_THROWS(f(5));
-    }
-}
-
 
 TEST_CASE("Tools - queue", "[unit][tools]") {
     Queue<int> queue;
@@ -172,8 +126,8 @@ TEST_CASE("Tools - consuming dispatcher", "[unit][tools]") {
 }
 
 
-TEST_CASE("Tools - returning dispatcher", "[unit][tools]") {
-    ReturningDispatcher<int, int> dispatcher;
+TEST_CASE("Tools - processor chain", "[unit][tools]") {
+    ProcessorChain<int, int> dispatcher;
     
     SECTION("empty") {
         REQUIRE(dispatcher(1) == std::nullopt);

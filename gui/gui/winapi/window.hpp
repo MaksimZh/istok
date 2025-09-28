@@ -63,7 +63,7 @@ public:
         }
     }
 
-    void chainProcessor(WindowMessageDispatcher::Processor processor) {
+    void chainProcessor(Tools::Processor<WindowResult, WindowMessage> processor) {
         core.chainProcessor(processor);
     }
 

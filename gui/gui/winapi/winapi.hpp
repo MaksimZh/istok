@@ -146,14 +146,14 @@ public:
         return window.getHandle();
     }
 
-    void chainProcessor(WindowMessageDispatcher::Processor processor) {
+    void chainProcessor(Tools::Processor<WindowResult, WindowMessage> processor) {
         dispatcher.chainProcessor(processor);
     }
 
 private:
     BasicWindow window;
     MessageHandler& handler;
-    WindowMessageDispatcher dispatcher;
+    Tools::ProcessorChain<WindowResult, WindowMessage> dispatcher;
 
     LRESULT handleMessage(
         HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) noexcept override

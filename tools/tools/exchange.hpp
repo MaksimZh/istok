@@ -99,156 +99,20 @@ private:
 };
 
 
-template <typename Y, typename X>
-class Function {
-public:
-    Function() = default;
-    virtual ~Function() = default;
-    Function(const Function&) = delete;
-    Function& operator=(const Function&) = delete;
-    
-    virtual Y operator()(X x) = 0;
-    virtual operator bool() const noexcept = 0;
-};
-
-
-template <typename Y, typename X>
-class CopyingFunction: public Function<Y, X> {
-public:
-    template <typename F>
-    CopyingFunction(F&& f) : callable(std::forward<F>(f)) {}
-
-    CopyingFunction(const CopyingFunction&) = delete;
-    CopyingFunction& operator=(const CopyingFunction&) = delete;
-
-    CopyingFunction(CopyingFunction&& other) : callable(other.callable) {}
-    
-    CopyingFunction& operator=(CopyingFunction&& other) {
-        if (this != &other) {
-            callable = other.callable;
-        }
-        return *this;
-    }
-
-    Y operator()(X x) override {
-        return callable(std::forward<X>(x));
-    }
-
-    operator bool() const noexcept override {
-        return true;
-    }
-
-private:
-    std::function<Y(X)> callable;
-};
-
-
-template <typename Y, typename X>
-class MovingFunction: public Function<Y, X> {
-private:
-    struct Callable {
-        virtual ~Callable() = default;
-        virtual Y operator()(X x) = 0;
-    };
-
-    template <typename F>
-    struct Wrapper: Callable {
-        F func;
-        
-        Wrapper(F&& f) : func(std::forward<F>(f)) {}
-        
-        Y operator()(X x) override {
-            return func(std::forward<X>(x));
-        }
-    };
-
-    std::unique_ptr<Callable> callable;
-
-public:
-    MovingFunction() = default;
-
-    template <typename F>
-    MovingFunction(F&& f)
-    : callable(std::make_unique<Wrapper<std::decay_t<F>>>(std::forward<F>(f)))
-    {}
-    
-    MovingFunction(const MovingFunction&) = delete;
-    MovingFunction& operator=(const MovingFunction&) = delete;
-    
-    MovingFunction(MovingFunction&& other)
-    : callable(std::move(other.callable)) {}
-    
-    MovingFunction& operator=(MovingFunction&& other) {
-        if (this != &other) {
-            callable = std::move(other.callable);
-        }
-        return *this;
-    }
-
-    Y operator()(X x) override {
-        if (!callable) {
-            throw std::runtime_error("Call of empty function container");
-        }
-        return (*callable)(std::forward<X>(x));
-    }
-
-    operator bool() const noexcept override {
-        return callable != nullptr;
-    }
-};
-
-
 template <typename R, typename T>
-class Processor {
-public:
-    virtual ~Processor() = default;
-    Processor(const Processor&) = delete;
-    Processor& operator=(const Processor&) = delete;
-
-    virtual std::optional<R> operator()(const T& value) = 0;
-};
+using Processor = std::function<std::optional<R>(const T&)>;
 
 
 template <typename R, typename T>
 class ProcessorChain {
 public:
     ProcessorChain() = default;
-    
     ProcessorChain(const ProcessorChain&) = delete;
     ProcessorChain& operator=(const ProcessorChain&) = delete;
     ProcessorChain(ProcessorChain&&) = default;
     ProcessorChain& operator=(ProcessorChain&&) = default;
 
-    void chainProcessor(Processor<R, T>&& processor) override {
-        processors.push_back(std::move(processor));
-    }
-
-    std::optional<R> operator()(const T& x) const {
-        for (auto& h : processors) {
-            if (auto r = h(x)) {
-                return r;
-            }
-        }
-        return std::nullopt;
-    }
-
-private:
-    std::vector<Processor<R, T>> processors;
-};
-
-
-template <typename R, typename T>
-class ReturningDispatcher {
-public:
-    using Processor = std::function<std::optional<R>(const T&)>;
-    
-    ReturningDispatcher() = default;
-    ReturningDispatcher(const ReturningDispatcher&) = delete;
-    ReturningDispatcher& operator=(const ReturningDispatcher&) = delete;
-    ReturningDispatcher(ReturningDispatcher&&) = default;
-    ReturningDispatcher& operator=(ReturningDispatcher&&) = default;
-
-    void chainProcessor(Processor processor) {
+    void chainProcessor(Processor<R, T> processor) {
         processors.push_back(processor);
     }
 
@@ -262,7 +126,7 @@ public:
     }
 
 private:
-    std::vector<Processor> processors;
+    std::vector<Processor<R, T>> processors;
 };
 
 
