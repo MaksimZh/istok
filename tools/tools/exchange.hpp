@@ -113,7 +113,38 @@ public:
 
 
 template <typename Y, typename X>
-class WrappingFunction: public Function<Y, X> {
+class CopyingFunction: public Function<Y, X> {
+public:
+    template <typename F>
+    CopyingFunction(F&& f) : callable(std::forward<F>(f)) {}
+
+    CopyingFunction(const CopyingFunction&) = delete;
+    CopyingFunction& operator=(const CopyingFunction&) = delete;
+
+    CopyingFunction(CopyingFunction&& other) : callable(other.callable) {}
+    
+    CopyingFunction& operator=(CopyingFunction&& other) {
+        if (this != &other) {
+            callable = other.callable;
+        }
+        return *this;
+    }
+
+    Y operator()(X x) override {
+        return callable(std::forward<X>(x));
+    }
+
+    operator bool() const noexcept override {
+        return true;
+    }
+
+private:
+    std::function<Y(X)> callable;
+};
+
+
+template <typename Y, typename X>
+class MovingFunction: public Function<Y, X> {
 private:
     struct Callable {
         virtual ~Callable() = default;
@@ -134,20 +165,20 @@ private:
     std::unique_ptr<Callable> callable;
 
 public:
-    WrappingFunction() = default;
+    MovingFunction() = default;
 
     template <typename F>
-    WrappingFunction(F&& f)
+    MovingFunction(F&& f)
     : callable(std::make_unique<Wrapper<std::decay_t<F>>>(std::forward<F>(f)))
     {}
     
-    WrappingFunction(const WrappingFunction&) = delete;
-    WrappingFunction& operator=(const WrappingFunction&) = delete;
+    MovingFunction(const MovingFunction&) = delete;
+    MovingFunction& operator=(const MovingFunction&) = delete;
     
-    WrappingFunction(WrappingFunction&& other)
+    MovingFunction(MovingFunction&& other)
     : callable(std::move(other.callable)) {}
     
-    WrappingFunction& operator=(WrappingFunction&& other) {
+    MovingFunction& operator=(MovingFunction&& other) {
         if (this != &other) {
             callable = std::move(other.callable);
         }
