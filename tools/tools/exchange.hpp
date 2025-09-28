@@ -147,7 +147,12 @@ public:
     WrappingFunction(WrappingFunction&& other)
     : callable(std::move(other.callable)) {}
     
-    WrappingFunction& operator=(WrappingFunction&&) = default;
+    WrappingFunction& operator=(WrappingFunction&& other) {
+        if (this != &other) {
+            callable = std::move(other.callable);
+        }
+        return *this;
+    }
 
     Y operator()(X x) override {
         if (!callable) {
