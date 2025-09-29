@@ -32,14 +32,6 @@ public:
     virtual void subscribe(Subscriber subscriber) = 0;
 };
 
-template <typename T>
-class ConsumerChain {
-public:
-    using Consumer = std::function<std::optional<T>(T&&)>;
-    virtual ~ConsumerChain() = default;
-    virtual void chainConsumer(Consumer consumer) = 0;
-};
-
 
 template <typename T>
 class Queue: public Sink<T>, public Source<std::optional<T>> {
@@ -69,17 +61,18 @@ private:
 
 
 template <typename T>
-class ConsumingDispatcher: public ConsumerChain<T> {
-public:
-    using Consumer = typename ConsumerChain<T>::Consumer;
-    
-    ConsumingDispatcher() = default;
-    ConsumingDispatcher(const ConsumingDispatcher&) = delete;
-    ConsumingDispatcher& operator=(const ConsumingDispatcher&) = delete;
-    ConsumingDispatcher(ConsumingDispatcher&&) = default;
-    ConsumingDispatcher& operator=(ConsumingDispatcher&&) = default;
+using Consumer = std::function<std::optional<T>(T&&)>;
 
-    void chainConsumer(Consumer consumer) override {
+template <typename T>
+class ConsumerChain {
+public:
+    ConsumerChain() = default;
+    ConsumerChain(const ConsumerChain&) = delete;
+    ConsumerChain& operator=(const ConsumerChain&) = delete;
+    ConsumerChain(ConsumerChain&&) = default;
+    ConsumerChain& operator=(ConsumerChain&&) = default;
+
+    void chainConsumer(Consumer<T> consumer) {
         consumers.push_back(consumer);
     }
 
@@ -95,13 +88,12 @@ public:
     }
 
 private:
-    std::vector<Consumer> consumers;
+    std::vector<Consumer<T>> consumers;
 };
 
 
 template <typename R, typename T>
 using Processor = std::function<std::optional<R>(const T&)>;
-
 
 template <typename R, typename T>
 class ProcessorChain {

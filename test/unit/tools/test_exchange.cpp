@@ -47,8 +47,8 @@ TEST_CASE("Tools - queue", "[unit][tools]") {
 }
 
 
-TEST_CASE("Tools - consuming dispatcher", "[unit][tools]") {
-    ConsumingDispatcher<int> dispatcher;
+TEST_CASE("Tools - consumer chain", "[unit][tools]") {
+    ConsumerChain<int> dispatcher;
     
     SECTION("empty") {
         REQUIRE(dispatcher(1) == 1);
