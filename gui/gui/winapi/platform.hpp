@@ -239,9 +239,7 @@ public:
 
     Platform(std::unique_ptr<WindowFactoryBuilder<Window>> windowFactoryBuilder)
     : windows(std::move(buildWindowFactory(std::move(windowFactoryBuilder)))) {
-        handlers.push_back(std::make_unique<WindowHandler<ID, Window>>(
-            windows, outQueue));
-        auto ptr = handlers.back().get();
+        auto ptr = std::make_shared<WindowHandler<ID, Window>>(windows, outQueue);
         commandDispatcher.chainConsumer(
             [ptr](PlatformCommand<ID>&& command) -> std::optional<PlatformCommand<ID>> {
                 if (
@@ -303,7 +301,6 @@ public:
     }
     
 private:
-    std::vector<std::unique_ptr<PlatformCommandHandler<ID>>> handlers;
     WindowManager<ID, Window> windows;
     Tools::Queue<PlatformEvent<ID>> outQueue;
     Tools::ConsumerChain<PlatformCommand<ID>> commandDispatcher;
