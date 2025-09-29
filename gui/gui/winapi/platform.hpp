@@ -241,6 +241,18 @@ public:
     : windows(std::move(buildWindowFactory(std::move(windowFactoryBuilder)))) {
         handlers.push_back(std::make_unique<WindowHandler<ID, Window>>(
             windows, outQueue));
+        auto ptr = handlers.back().get();
+        commandDispatcher.chainConsumer(
+            [ptr](PlatformCommand<ID>&& command) -> std::optional<PlatformCommand<ID>> {
+                if (
+                    std::holds_alternative<PlatformCommands::CreateWindow<ID>>(command)
+                    || std::holds_alternative<PlatformCommands::DestroyWindow<ID>>(command)
+                ) {
+                    ptr->handlePlatformCommand(command);
+                    return std::nullopt;
+                }
+                return std::move(command);
+            });
     }
 
     PlatformEvent<ID> getMessage() noexcept {
@@ -258,12 +270,9 @@ public:
         }
     }
 
-    void sendCommand(PlatformCommand<ID> command) {
+    void sendCommand(PlatformCommand<ID>&& command) {
         try {
-            for (auto& handler : handlers) {
-                assert(handler);
-                handler->handlePlatformCommand(command);
-            }
+            commandDispatcher(std::move(command));
         } catch(...) {
             onException(std::current_exception());
         }
@@ -297,6 +306,7 @@ private:
     std::vector<std::unique_ptr<PlatformCommandHandler<ID>>> handlers;
     WindowManager<ID, Window> windows;
     Tools::Queue<PlatformEvent<ID>> outQueue;
+    Tools::ConsumerChain<PlatformCommand<ID>> commandDispatcher;
 
     std::unique_ptr<WindowFactory<Window>> buildWindowFactory(
         std::unique_ptr<WindowFactoryBuilder<Window>>&& windowFactoryBuilder
