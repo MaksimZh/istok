@@ -239,9 +239,13 @@ public:
 
     Platform(std::unique_ptr<WindowFactoryBuilder<Window>> windowFactoryBuilder)
     : windows(std::move(buildWindowFactory(std::move(windowFactoryBuilder)))) {
-        auto ptr = std::make_shared<WindowHandler<ID, Window>>(windows, outQueue);
         commandDispatcher.chainConsumer(
-            [ptr](PlatformCommand<ID>&& command) -> std::optional<PlatformCommand<ID>> {
+            [
+                ptr = std::make_shared<WindowHandler<ID, Window>>(
+                    windows, outQueue)
+            ](
+                PlatformCommand<ID>&& command
+            ) -> std::optional<PlatformCommand<ID>> {
                 if (
                     std::holds_alternative<PlatformCommands::CreateWindow<ID>>(command)
                     || std::holds_alternative<PlatformCommands::DestroyWindow<ID>>(command)
