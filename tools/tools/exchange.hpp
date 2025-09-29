@@ -61,6 +61,33 @@ private:
 
 
 template <typename T>
+using Acceptor = std::function<void(const T&)>;
+
+template <typename T>
+class AcceptorChain {
+public:
+    AcceptorChain() = default;
+    AcceptorChain(const AcceptorChain&) = delete;
+    AcceptorChain& operator=(const AcceptorChain&) = delete;
+    AcceptorChain(AcceptorChain&&) = default;
+    AcceptorChain& operator=(AcceptorChain&&) = default;
+
+    void chainAcceptor(Acceptor<T> acceptor) {
+        acceptors.push_back(acceptor);
+    }
+
+    void operator()(const T& x) const {
+        for (auto& f : acceptors) {
+            f(x);
+        }
+    }
+
+private:
+    std::vector<Acceptor<T>> acceptors;
+};
+
+
+template <typename T>
 using Consumer = std::function<std::optional<T>(T&&)>;
 
 template <typename T>
