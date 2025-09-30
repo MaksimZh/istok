@@ -159,15 +159,15 @@ TEST_CASE("Tools - processor chain", "[unit][tools]") {
     ProcessorChain<int, int> chain;
     
     SECTION("empty") {
-        REQUIRE(chain(1) == std::nullopt);
+        REQUIRE(chain.dispatch(1) == std::nullopt);
     }
 
     SECTION("single") {
         chain.chainProcessor([](int x) {
             return (x % 2 == 0) ? std::optional<int>(x * 10) : std::nullopt;
         });
-        REQUIRE(chain(1) == std::nullopt);
-        REQUIRE(chain(2) == 20);
+        REQUIRE(chain.dispatch(1) == std::nullopt);
+        REQUIRE(chain.dispatch(2) == 20);
     }
 
     SECTION("multi") {
@@ -180,13 +180,13 @@ TEST_CASE("Tools - processor chain", "[unit][tools]") {
         chain.chainProcessor([](int x) {
             return (x % 5 == 0) ? std::optional<int>(x * 1000) : std::nullopt;
         });
-        REQUIRE(chain(1) == std::nullopt);
-        REQUIRE(chain(2) == 20);
-        REQUIRE(chain(3) == 300);
-        REQUIRE(chain(4) == 40);
-        REQUIRE(chain(5) == 5000);
-        REQUIRE(chain(6) == 60);
-        REQUIRE(chain(7) == std::nullopt);
+        REQUIRE(chain.dispatch(1) == std::nullopt);
+        REQUIRE(chain.dispatch(2) == 20);
+        REQUIRE(chain.dispatch(3) == 300);
+        REQUIRE(chain.dispatch(4) == 40);
+        REQUIRE(chain.dispatch(5) == 5000);
+        REQUIRE(chain.dispatch(6) == 60);
+        REQUIRE(chain.dispatch(7) == std::nullopt);
     }
 }
 

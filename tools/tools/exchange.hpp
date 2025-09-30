@@ -135,9 +135,9 @@ public:
         processors.push_back(processor);
     }
 
-    std::optional<R> operator()(const T& x) const {
-        for (auto& h : processors) {
-            if (auto r = h(x)) {
+    std::optional<R> dispatch(const T& x) const {
+        for (auto& f : processors) {
+            if (auto r = f(x)) {
                 return r;
             }
         }

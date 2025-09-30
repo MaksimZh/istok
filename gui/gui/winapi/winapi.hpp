@@ -158,7 +158,7 @@ private:
     LRESULT handleMessage(
         HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) noexcept override
     {
-        if (auto r = dispatcher(WindowMessage(hWnd, msg, wParam, lParam))) {
+        if (auto r = dispatcher.dispatch(WindowMessage(hWnd, msg, wParam, lParam))) {
             return r.value();
         }
         switch (msg) {
