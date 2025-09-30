@@ -80,7 +80,7 @@ TEST_CASE("Tools - consumer chain", "[unit][tools]") {
     ConsumerChain<int> chain;
     
     SECTION("empty") {
-        REQUIRE(chain(1) == 1);
+        REQUIRE(chain.dispatch(1) == 1);
     }
 
     SECTION("single") {
@@ -92,9 +92,9 @@ TEST_CASE("Tools - consumer chain", "[unit][tools]") {
             a = x;
             return std::optional<int>();
         });
-        REQUIRE(chain(1) == 1);
+        REQUIRE(chain.dispatch(1) == 1);
         REQUIRE(a == 0);
-        REQUIRE(chain(2) == std::nullopt);
+        REQUIRE(chain.dispatch(2) == std::nullopt);
         REQUIRE(a == 2);
     }
 
@@ -123,31 +123,31 @@ TEST_CASE("Tools - consumer chain", "[unit][tools]") {
             c = x;
             return std::optional<int>();
         });
-        REQUIRE(chain(1) == 1);
+        REQUIRE(chain.dispatch(1) == 1);
         REQUIRE(a == 0);
         REQUIRE(b == 0);
         REQUIRE(c == 0);
-        REQUIRE(chain(2) == std::nullopt);
+        REQUIRE(chain.dispatch(2) == std::nullopt);
         REQUIRE(a == 2);
         REQUIRE(b == 0);
         REQUIRE(c == 0);
-        REQUIRE(chain(3) == std::nullopt);
+        REQUIRE(chain.dispatch(3) == std::nullopt);
         REQUIRE(a == 2);
         REQUIRE(b == 3);
         REQUIRE(c == 0);
-        REQUIRE(chain(4) == std::nullopt);
+        REQUIRE(chain.dispatch(4) == std::nullopt);
         REQUIRE(a == 4);
         REQUIRE(b == 3);
         REQUIRE(c == 0);
-        REQUIRE(chain(5) == std::nullopt);
+        REQUIRE(chain.dispatch(5) == std::nullopt);
         REQUIRE(a == 4);
         REQUIRE(b == 3);
         REQUIRE(c == 5);
-        REQUIRE(chain(6) == std::nullopt);
+        REQUIRE(chain.dispatch(6) == std::nullopt);
         REQUIRE(a == 6);
         REQUIRE(b == 3);
         REQUIRE(c == 5);
-        REQUIRE(chain(7) == 7);
+        REQUIRE(chain.dispatch(7) == 7);
         REQUIRE(a == 6);
         REQUIRE(b == 3);
         REQUIRE(c == 5);

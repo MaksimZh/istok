@@ -103,15 +103,15 @@ public:
         consumers.push_back(consumer);
     }
 
-    std::optional<T> operator()(T&& x) const {
+    std::optional<T> dispatch(T&& x) const {
+        std::optional<T> optX = std::move(x);
         for (auto& f : consumers) {
-            auto r = f(std::move(x));
-            if (!r) {
-                return std::nullopt;
+            if (!optX) {
+                break;
             }
-            x = std::move(r.value());
+            optX = f(std::move(optX.value()));
         }
-        return std::move(x);
+        return std::move(optX);
     }
 
 private:

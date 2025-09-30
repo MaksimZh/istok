@@ -274,7 +274,7 @@ public:
 
     void sendCommand(PlatformCommand<ID>&& command) {
         try {
-            commandDispatcher(std::move(command));
+            commandDispatcher.dispatch(std::move(command));
         } catch(...) {
             onException(std::current_exception());
         }
