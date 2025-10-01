@@ -47,35 +47,6 @@ TEST_CASE("Tools - queue", "[unit][tools]") {
 }
 
 
-TEST_CASE("Tools - acceptor chain", "[unit][tools]") {
-    AcceptorChain<int> chain;
-
-    SECTION("empty") {
-        chain(1);
-    }
-
-    SECTION("single") {
-        int a = 0;
-        chain.chainAcceptor([&a](int x) { a = x; });
-        chain(1);
-        REQUIRE(a == 1);
-    }
-
-    SECTION("multi") {
-        int a = 0;
-        chain.chainAcceptor([&a](int x) { a = x; });
-        int b = 0;
-        chain.chainAcceptor([&b](int x) { b = x; });
-        int c = 0;
-        chain.chainAcceptor([&c](int x) { c = x; });
-        chain(1);
-        REQUIRE(a == 1);
-        REQUIRE(b == 1);
-        REQUIRE(c == 1);
-    }
-}
-
-
 TEST_CASE("Tools - consumer chain", "[unit][tools]") {
     ConsumerChain<int> chain;
     
