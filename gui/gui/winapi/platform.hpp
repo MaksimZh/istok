@@ -271,12 +271,16 @@ public:
         bus.addSubscriber(
             [
                 ptr = std::make_shared<WindowHandler<ID, Window>>(
-                    windows, outQueue)
+                    windows, outQueue),
+                &bus = this->bus
             ](
                 PlatformMessage<ID>&& command
             ) -> std::optional<PlatformMessage<ID>> {
                 if (std::holds_alternative<PlatformCommands::CreateWindow<ID>>(command)) {
                     ptr->handlePlatformCommand(command);
+                    bus.push(PlatformMessages::WindowCreated<ID>(
+                        std::get<PlatformCommands::CreateWindow<ID>>(command).id
+                    ));
                     return std::nullopt;
                 }
                 if (std::holds_alternative<PlatformCommands::DestroyWindow<ID>>(command)) {
