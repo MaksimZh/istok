@@ -164,31 +164,106 @@ TEST_CASE("Tools - processor chain", "[unit][tools]") {
 
 TEST_CASE("Tools - message bus", "[unit][tools]") {
     MessageBus<int> bus;
+    std::vector<int> log;
 
-    SECTION("subscription") {
+    SECTION("broadcasting") {
+        bus.addSubscriber([&](int&& x) {
+            log.push_back(100 + x);
+            return x;
+        });
+        bus.addSubscriber([&](int&& x) {
+            log.push_back(200 + x);
+            return x;
+        });
+        bus.addSubscriber([&](int&& x) {
+            log.push_back(300 + x);
+            return x;
+        });
+        REQUIRE(log == std::vector<int>{});
         bus.push(1);
-        int a = 0;
-        bus.subscribe([&a](const int& x) { a = x; });
-        REQUIRE(a == 0);
+        REQUIRE(log == std::vector<int>{101, 201, 301});
         bus.push(2);
-        REQUIRE(a == 2);
-        int b = 0;
-        bus.subscribe([&b](const int& x) { b = x; });
-        REQUIRE(b == 0);
-        bus.push(3);
-        REQUIRE(a == 3);
-        REQUIRE(b == 3);
+        REQUIRE(log == std::vector<int>{101, 201, 301, 102, 202, 302});
+    }
+
+    SECTION("consuming") {
+        bus.addSubscriber([&](int&& x) -> std::optional<int> {
+            if (x < 30) {
+                return x;
+            }
+            log.push_back(100 + x);
+            return std::nullopt;
+        });
+        bus.addSubscriber([&](int&& x) -> std::optional<int> {
+            if (x < 20) {
+                return x;
+            }
+            log.push_back(200 + x);
+            return std::nullopt;
+        });
+        bus.addSubscriber([&](int&& x) -> std::optional<int> {
+            if (x < 10) {
+                return x;
+            }
+            log.push_back(300 + x);
+            return std::nullopt;
+        });
+        REQUIRE(log == std::vector<int>{});
+        bus.push(1);
+        REQUIRE(log == std::vector<int>{});
+        bus.push(11);
+        REQUIRE(log == std::vector<int>{311});
+        bus.push(21);
+        REQUIRE(log == std::vector<int>{311, 221});
+        bus.push(31);
+        REQUIRE(log == std::vector<int>{311, 221, 131});
     }
 
     SECTION("inner messaging") {
-        std::vector<int> a;
-        bus.subscribe([&a](const int& x) { a.push_back(x); });
-        bus.subscribe([&bus](const int& x) {
-            if (x > 0) {
-                bus.push(x - 1);
+        bus.addSubscriber([&](int&& x) -> std::optional<int> {
+            if (x <= 0) {
+                return x;
             }
+            log.push_back(100 + x);
+            bus.push(x - 1);
+            return std::nullopt;
         });
-        bus.push(3);
-        REQUIRE(a == std::vector<int>{3, 2, 1, 0});
+        REQUIRE(log == std::vector<int>{});
+        bus.push(4);
+        REQUIRE(log == std::vector<int>{104, 103, 102, 101});
+    }
+
+    SECTION("inner exchange") {
+        bus.addSubscriber([&](int&& x) -> std::optional<int> {
+            if (x <= 0) {
+                return x;
+            }
+            log.push_back(100 + x);
+            bus.push(x - 10);
+            if (x >= 20) {
+                return x;
+            }
+            return std::nullopt;
+        });
+        bus.addSubscriber([&](int&& x) -> std::optional<int> {
+            if (x <= 0) {
+                return x;
+            }
+            log.push_back(200 + x);
+            bus.push(x - 11);
+            return std::nullopt;
+        });
+        REQUIRE(log == std::vector<int>{});
+        bus.push(39);
+        REQUIRE(log == std::vector<int>{
+            139, 239, // send: 29, 28
+            129, 229, // send: 19, 18
+            128, 228, // send: 18, 17
+            119,      // send: 9
+            118,      // send: 8
+            118,      // send: 8
+            117,      // send: 7
+            109, 108, 108, 107
+        });
     }
 }

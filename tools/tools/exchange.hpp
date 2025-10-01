@@ -123,7 +123,7 @@ private:
 
 
 template <typename T>
-class MessageBus: public Sink<T>, public Broadcaster<T> {
+class MessageBus: public Sink<T> {
 public:
     using Subscriber = typename Broadcaster<T>::Subscriber;
 
@@ -135,24 +135,31 @@ public:
     
     void push(T&& value) override {
         queue.push(std::move(value));
+        if (!running) {
+            processQueue();
+        }
+    }
+
+    void addSubscriber(Consumer<T> subscriber) {
+        dispatcher.chainConsumer(subscriber);
+    }
+
+private:
+    bool running = false;
+    Queue<T> queue;
+    ConsumerChain<T> dispatcher;
+
+    void processQueue() {
+        running = true;
         while (true) {
             auto optMessage = queue.take();
             if (!optMessage) {
                 break;
             }
-            for (auto& h : subscribers) {
-                h(optMessage.value());
-            }
+            dispatcher.dispatch(std::move(optMessage.value()));
         }
+        running = false;
     }
-
-    void subscribe(Subscriber subscriber) override {
-        subscribers.push_back(subscriber);
-    }
-
-private:
-    Queue<T> queue;
-    std::vector<Subscriber> subscribers;
 };
 
 
