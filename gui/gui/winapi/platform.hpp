@@ -189,11 +189,40 @@ private:
 };
 
 
+namespace PlatformMessages {
+    template <typename ID>
+    struct WindowCreated {
+        ID id;
+    };
+
+    template <typename ID>
+    struct WindowDestroyed {
+        ID id;
+    };
+
+    template <typename ID>
+    struct AddWindowProcessor {
+        ID id;
+        Tools::Processor<WindowResult, WindowMessage> processor;
+    };
+}
+
+template <typename ID>
+using PlatformMessage = std::variant<
+    PlatformCommands::HeartbeatRequest,
+    PlatformCommands::CreateWindow<ID>,
+    PlatformCommands::DestroyWindow<ID>,
+    PlatformMessages::WindowCreated<ID>,
+    PlatformMessages::WindowDestroyed<ID>,
+    PlatformMessages::AddWindowProcessor<ID>
+>;
+
+
 template <typename ID>
 class PlatformCommandHandler {
 public:
     virtual ~PlatformCommandHandler() = default;
-    virtual void handlePlatformCommand(PlatformCommand<ID> command) = 0;
+    virtual void handlePlatformCommand(PlatformMessage<ID> command) = 0;
 };
 
 
@@ -205,7 +234,7 @@ public:
         Tools::Queue<PlatformEvent<ID>>& outQueue
     ) : windows(windows), outQueue(outQueue) {}
 
-    void handlePlatformCommand(PlatformCommand<ID> command) override {
+    void handlePlatformCommand(PlatformMessage<ID> command) override {
         std::visit([this](const auto& x) { this->handle(x); }, command);
     }
 
@@ -239,17 +268,18 @@ public:
 
     Platform(std::unique_ptr<WindowFactoryBuilder<Window>> windowFactoryBuilder)
     : windows(std::move(buildWindowFactory(std::move(windowFactoryBuilder)))) {
-        commandDispatcher.chainConsumer(
+        bus.addSubscriber(
             [
                 ptr = std::make_shared<WindowHandler<ID, Window>>(
                     windows, outQueue)
             ](
-                PlatformCommand<ID>&& command
-            ) -> std::optional<PlatformCommand<ID>> {
-                if (
-                    std::holds_alternative<PlatformCommands::CreateWindow<ID>>(command)
-                    || std::holds_alternative<PlatformCommands::DestroyWindow<ID>>(command)
-                ) {
+                PlatformMessage<ID>&& command
+            ) -> std::optional<PlatformMessage<ID>> {
+                if (std::holds_alternative<PlatformCommands::CreateWindow<ID>>(command)) {
+                    ptr->handlePlatformCommand(command);
+                    return std::nullopt;
+                }
+                if (std::holds_alternative<PlatformCommands::DestroyWindow<ID>>(command)) {
                     ptr->handlePlatformCommand(command);
                     return std::nullopt;
                 }
@@ -274,7 +304,11 @@ public:
 
     void sendCommand(PlatformCommand<ID>&& command) {
         try {
-            commandDispatcher.dispatch(std::move(command));
+            bus.push(
+                std::visit([](auto&& x) -> PlatformMessage<ID> {
+                    return std::move(x);
+                },
+                command));
         } catch(...) {
             onException(std::current_exception());
         }
@@ -307,7 +341,7 @@ public:
 private:
     WindowManager<ID, Window> windows;
     Tools::Queue<PlatformEvent<ID>> outQueue;
-    Tools::ConsumerChain<PlatformCommand<ID>> commandDispatcher;
+    Tools::MessageBus<PlatformMessage<ID>> bus;
 
     std::unique_ptr<WindowFactory<Window>> buildWindowFactory(
         std::unique_ptr<WindowFactoryBuilder<Window>>&& windowFactoryBuilder
