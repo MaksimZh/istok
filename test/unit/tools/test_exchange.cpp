@@ -8,6 +8,40 @@
 using namespace Istok::Tools;
 
 
+TEST_CASE("Tools - HandlerResult void", "[unit][tools]") {
+    SECTION("default") {
+        HandlerResult<int> r;
+        REQUIRE(r.consumed() == true);
+        REQUIRE_THROWS(r.argument());
+        REQUIRE_NOTHROW(r.result());
+    }
+
+    SECTION("arg") {
+        HandlerResult<int> r(100);
+        REQUIRE(r.consumed() == false);
+        REQUIRE(r.argument() == 100);
+        REQUIRE_THROWS(r.result());
+    }
+}
+
+
+TEST_CASE("Tools - HandlerResult result", "[unit][tools]") {
+    SECTION("arg") {
+        auto r = HandlerResult<int, int>::fromArgument(100);
+        REQUIRE(r.consumed() == false);
+        REQUIRE(r.argument() == 100);
+        REQUIRE_THROWS(r.result());
+    }
+
+    SECTION("result") {
+        auto r = HandlerResult<int, int>::fromResult(100);
+        REQUIRE(r.consumed() == true);
+        REQUIRE_THROWS(r.argument());
+        REQUIRE(r.result() == 100);
+    }
+}
+
+
 TEST_CASE("Tools - queue", "[unit][tools]") {
     Queue<int> queue;
     

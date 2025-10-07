@@ -1,9 +1,11 @@
 // Copyright 2025 Maksim Sergeevich Zholudev. All rights reserved
 #pragma once
 
-#include <functional>
-#include <queue>
+#include <stdexcept>
+#include <variant>
 #include <optional>
+#include <queue>
+#include <functional>
 #include <vector>
 #include <memory>
 
@@ -21,6 +23,80 @@ class Source {
 public:
     virtual ~Source() = default;
     virtual T take() = 0;
+};
+
+
+template<typename A, typename R = void>
+class HandlerResult {
+    static_assert(!std::is_void_v<R>, "R must not be void in primary template");
+
+    struct Arg {
+        A value;
+    };
+
+    struct Res {
+        R value;
+    };
+
+    using Data = std::variant<Arg, Res>;
+    Data data;
+    
+    explicit HandlerResult(Data&& value) : data(std::move(value)) {}
+
+public:
+    static HandlerResult fromArgument(A&& value) {
+        return HandlerResult(Arg(std::move(value)));
+    }
+    
+    static HandlerResult fromResult(R&& value){
+        return HandlerResult(Res(std::move(value)));
+    }
+
+    bool consumed() const noexcept {
+        return std::holds_alternative<Res>(data);
+    }
+
+    A& argument() {
+        if (consumed()) {
+            throw std::logic_error("HandlerResult: argument is consumed");
+        }
+        return std::get<Arg>(data).value;
+    }
+
+    R& result() {
+        if (!consumed()) {
+            throw std::logic_error("HandlerResult: result not evaluated");
+        }
+        return std::get<Res>(data).value;
+    }
+};
+
+
+template<typename A>
+class HandlerResult<A, void> {
+    std::optional<A> data;
+
+public:
+    explicit HandlerResult(A&& value) : data(std::move(value)) {}
+
+    HandlerResult() : data(std::nullopt) {}
+
+    bool consumed() const noexcept {
+        return !data.has_value();
+    }
+
+    A& argument() {
+        if (!data.has_value()) {
+            throw std::logic_error("HandlerResult: argument is consumed");
+        }
+        return data.value();
+    }
+
+    void result() const {
+        if (data.has_value()) {
+            throw std::logic_error("HandlerResult: result not evaluated");
+        }
+    }
 };
 
 
