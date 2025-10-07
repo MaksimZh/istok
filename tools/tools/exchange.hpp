@@ -32,10 +32,12 @@ class HandlerResult {
 
     struct Arg {
         A value;
+        bool operator==(const Arg&) const = default;
     };
 
     struct Res {
         R value;
+        bool operator==(const Res&) const = default;
     };
 
     using Data = std::variant<Arg, Res>;
@@ -52,20 +54,22 @@ public:
         return HandlerResult(Res(std::move(value)));
     }
 
-    bool consumed() const noexcept {
+    bool operator==(const HandlerResult&) const = default;
+
+    bool complete() const noexcept {
         return std::holds_alternative<Res>(data);
     }
 
     A& argument() {
-        if (consumed()) {
-            throw std::logic_error("HandlerResult: argument is consumed");
+        if (complete()) {
+            throw std::logic_error("HandlerResult: no argument");
         }
         return std::get<Arg>(data).value;
     }
 
     R& result() {
-        if (!consumed()) {
-            throw std::logic_error("HandlerResult: result not evaluated");
+        if (!complete()) {
+            throw std::logic_error("HandlerResult: no result");
         }
         return std::get<Res>(data).value;
     }
@@ -77,26 +81,64 @@ class HandlerResult<A, void> {
     std::optional<A> data;
 
 public:
-    explicit HandlerResult(A&& value) : data(std::move(value)) {}
-
     HandlerResult() : data(std::nullopt) {}
-
-    bool consumed() const noexcept {
+    explicit HandlerResult(A&& value) : data(std::move(value)) {}
+    
+    static HandlerResult fromArgument(A&& value) {
+        return HandlerResult(std::move(value));
+    }
+    
+    bool operator==(const HandlerResult&) const = default;
+    
+    bool complete() const noexcept {
         return !data.has_value();
     }
 
     A& argument() {
         if (!data.has_value()) {
-            throw std::logic_error("HandlerResult: argument is consumed");
+            throw std::logic_error("HandlerResult: no argument");
         }
         return data.value();
     }
 
     void result() const {
         if (data.has_value()) {
-            throw std::logic_error("HandlerResult: result not evaluated");
+            throw std::logic_error("HandlerResult: no result");
         }
     }
+};
+
+
+template <typename A, typename R>
+using Handler = std::function<HandlerResult<A, R>(A&&)>;
+
+
+template <typename A, typename R = void>
+class HandlerChain {
+public:
+    HandlerChain() = default;
+    HandlerChain(const HandlerChain&) = delete;
+    HandlerChain& operator=(const HandlerChain&) = delete;
+    HandlerChain(HandlerChain&&) = default;
+    HandlerChain& operator=(HandlerChain&&) = default;
+
+    void append(Handler<A, R> handler) {
+        handlers.push_back(handler);
+    }
+
+    HandlerResult<A, R> operator()(A&& arg) const {
+        auto result = HandlerResult<A, R>::fromArgument(std::move(arg));
+        for (auto& h : handlers) {
+            if (result.complete()) {
+                return result;
+            }
+            result = h(std::move(result.argument()));
+        }
+        return result;
+    }
+
+private:
+    std::vector<Handler<A, R>> handlers;
 };
 
 
