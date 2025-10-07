@@ -109,7 +109,7 @@ public:
 };
 
 
-template <typename A, typename R>
+template <typename A, typename R = void>
 using Handler = std::function<HandlerResult<A, R>(A&&)>;
 
 
@@ -243,8 +243,6 @@ private:
 template <typename T>
 class MessageBus: public Sink<T> {
 public:
-    using Subscriber = typename Broadcaster<T>::Subscriber;
-
     MessageBus() = default;
     MessageBus(const MessageBus&) = delete;
     MessageBus& operator=(const MessageBus&) = delete;
@@ -258,14 +256,14 @@ public:
         }
     }
 
-    void addSubscriber(Consumer<T> subscriber) {
-        dispatcher.chainConsumer(subscriber);
+    void addSubscriber(Handler<T> subscriber) {
+        dispatcher.append(subscriber);
     }
 
 private:
     bool running = false;
     Queue<T> queue;
-    ConsumerChain<T> dispatcher;
+    HandlerChain<T> dispatcher;
 
     void processQueue() {
         running = true;
@@ -274,7 +272,7 @@ private:
             if (!optMessage) {
                 break;
             }
-            dispatcher.dispatch(std::move(optMessage.value()));
+            dispatcher(std::move(optMessage.value()));
         }
         running = false;
     }
