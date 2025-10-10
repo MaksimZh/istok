@@ -133,11 +133,41 @@ struct WindowMessage {
 using WindowResult = LRESULT;
 
 
+namespace PlatformMessages {
+    template <typename ID>
+    struct WindowCreated {
+        ID id;
+    };
+
+    template <typename ID>
+    struct WindowDestroyed {
+        ID id;
+    };
+
+    template <typename ID>
+    struct AddWindowHandler {
+        ID id;
+        Tools::Handler<WindowMessage, WindowResult> handler;
+    };
+}
+
+template <typename ID>
+using PlatformMessage = std::variant<
+    PlatformCommands::HeartbeatRequest,
+    PlatformCommands::CreateWindow<ID>,
+    PlatformCommands::DestroyWindow<ID>,
+    PlatformEvents::WindowClose<ID>,
+    PlatformMessages::WindowCreated<ID>,
+    PlatformMessages::WindowDestroyed<ID>,
+    PlatformMessages::AddWindowHandler<ID>
+>;
+
+
 template <typename ID>
 class WindowCloseHandler {
 public:
-    WindowCloseHandler(ID id, Tools::Queue<PlatformEvent<ID>>& outQueue)
-    : id(id), outQueue(outQueue) {}
+    WindowCloseHandler(ID id, Tools::Sink<PlatformMessage<ID>>& output)
+    : id(id), output(output) {}
 
     Tools::HandlerResult<WindowMessage, WindowResult> operator()(
         WindowMessage&& message
@@ -146,14 +176,14 @@ public:
             return Tools::HandlerResult<WindowMessage, WindowResult>::
                 fromArgument(std::move(message));
         }
-        outQueue.push(PlatformEvents::WindowClose(id));
+        output.push(PlatformEvents::WindowClose(id));
         return Tools::HandlerResult<WindowMessage, WindowResult>::
                 fromResult(0);
     }
 
 private:
     ID id;
-    Tools::Queue<PlatformEvent<ID>>& outQueue;
+    Tools::Sink<PlatformMessage<ID>>& output;
 };
 
 
@@ -193,34 +223,6 @@ private:
 };
 
 
-namespace PlatformMessages {
-    template <typename ID>
-    struct WindowCreated {
-        ID id;
-    };
-
-    template <typename ID>
-    struct WindowDestroyed {
-        ID id;
-    };
-
-    template <typename ID>
-    struct AddWindowHandler {
-        ID id;
-        Tools::Handler<WindowMessage, WindowResult> handler;
-    };
-}
-
-template <typename ID>
-using PlatformMessage = std::variant<
-    PlatformCommands::HeartbeatRequest,
-    PlatformCommands::CreateWindow<ID>,
-    PlatformCommands::DestroyWindow<ID>,
-    PlatformMessages::WindowCreated<ID>,
-    PlatformMessages::WindowDestroyed<ID>,
-    PlatformMessages::AddWindowHandler<ID>
->;
-
 
 template <typename ID>
 class PlatformCommandHandler {
@@ -235,8 +237,8 @@ class WindowHandler {
 public:
     WindowHandler(
         WindowManager<ID, Window>& windows,
-        Tools::Queue<PlatformEvent<ID>>& outQueue
-    ) : windows(windows), outQueue(outQueue) {}
+        Tools::Sink<PlatformMessage<ID>>& output
+    ) : windows(windows), output(output) {}
 
     Tools::HandlerResult<PlatformMessage<ID>> operator()(
         PlatformMessage<ID>&& command
@@ -248,7 +250,7 @@ public:
 
 private:
     WindowManager<ID, Window>& windows;
-    Tools::Queue<PlatformEvent<ID>>& outQueue;
+    Tools::Sink<PlatformMessage<ID>>& output;
     std::vector<std::unique_ptr<WindowCloseHandler<ID>>> handlers;
     
     Tools::HandlerResult<PlatformMessage<ID>> handle(
@@ -256,7 +258,7 @@ private:
     ) {
         windows.create(command.id, command.params);
         handlers.push_back(std::make_unique<WindowCloseHandler<ID>>(
-                command.id, outQueue));
+                command.id, output));
         windows.getWindow(command.id).appendHandler(*handlers.back());
         return Tools::HandlerResult<PlatformMessage<ID>>();
     }
@@ -265,6 +267,37 @@ private:
         PlatformCommands::DestroyWindow<ID>&& command
     ) {
         windows.destroy(command.id);
+        return Tools::HandlerResult<PlatformMessage<ID>>();
+    }
+
+    template <typename T>
+    Tools::HandlerResult<PlatformMessage<ID>> handle(T&& command) {
+        return Tools::HandlerResult<PlatformMessage<ID>>(std::move(command));
+    }
+};
+
+
+template <typename ID>
+class WindowCloseListener {
+public:
+    WindowCloseListener(Tools::Sink<PlatformEvent<ID>>& output)
+    : output(output) {}
+
+    Tools::HandlerResult<PlatformMessage<ID>> operator()(
+        PlatformMessage<ID>&& command
+    ) {
+        return std::visit(
+            [this](auto&& x) { return this->handle(std::move(x)); },
+            std::move(command));
+    }
+
+private:
+    Tools::Sink<PlatformEvent<ID>>& output;
+    
+    Tools::HandlerResult<PlatformMessage<ID>> handle(
+        PlatformEvents::WindowClose<ID>&& command
+    ) {
+        output.push(std::move(command));
         return Tools::HandlerResult<PlatformMessage<ID>>();
     }
 
@@ -286,7 +319,10 @@ public:
         bus.addSubscriber(
             Tools::makeSharedHandler<
                 WindowHandler<ID, Window>, PlatformMessage<ID>>(
-                    windows, outQueue));
+                    windows, bus));
+        bus.addSubscriber(
+            Tools::makeSharedHandler<
+                WindowCloseListener<ID>, PlatformMessage<ID>>(outQueue));
     }
 
     PlatformEvent<ID> getMessage() noexcept {
