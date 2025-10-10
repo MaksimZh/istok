@@ -113,6 +113,16 @@ template <typename A, typename R = void>
 using Handler = std::function<HandlerResult<A, R>(A&&)>;
 
 
+template<typename H, typename A, typename... Args>
+auto makeSharedHandler(Args&&... args) {
+    return [
+        handler = std::make_shared<H>(std::forward<Args>(args)...)
+    ](A&& arg) mutable {
+        return (*handler)(std::forward<A>(arg));
+    };
+}
+
+
 template <typename A, typename R = void>
 class HandlerChain {
 public:

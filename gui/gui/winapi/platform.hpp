@@ -284,12 +284,9 @@ public:
     Platform(std::unique_ptr<WindowFactoryBuilder<Window>> windowFactoryBuilder)
     : windows(std::move(buildWindowFactory(std::move(windowFactoryBuilder)))) {
         bus.addSubscriber(
-            [
-                handler = std::make_shared<WindowHandler<ID, Window>>(
-                    windows, outQueue)
-            ](PlatformMessage<ID>&& command) {
-                return (*handler)(std::move(command));
-            });
+            Tools::makeSharedHandler<
+                WindowHandler<ID, Window>, PlatformMessage<ID>>(
+                    windows, outQueue));
     }
 
     PlatformEvent<ID> getMessage() noexcept {

@@ -42,6 +42,27 @@ TEST_CASE("Tools - HandlerResult result", "[unit][tools]") {
 }
 
 
+TEST_CASE("Tools - makeSharedHandler", "[unit][tools]") {
+    using Result = HandlerResult<int>;
+    
+    struct H {
+        int& target;
+        
+        H(int& target) : target(target) {}
+        
+        Result operator()(int x) {
+            target = x;
+            return Result();
+        }
+    };
+
+    int a = 0;
+    auto h = makeSharedHandler<H, int>(a);
+    h(1);
+    REQUIRE(a == 1);
+}
+
+
 TEST_CASE("Tools - HandlerChain void", "[unit][tools]") {
     HandlerChain<int> chain;
     using Result = HandlerResult<int>;
