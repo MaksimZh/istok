@@ -63,8 +63,8 @@ public:
         }
     }
 
-    void chainProcessor(Tools::Processor<WindowResult, WindowMessage> processor) {
-        core.chainProcessor(processor);
+    void appendHandler(Tools::Handler<WindowMessage, WindowResult> handler) {
+        core.appendHandler(handler);
     }
 
     void onPaint() noexcept override {

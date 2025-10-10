@@ -143,15 +143,6 @@ private:
 
 
 template <typename T>
-class Broadcaster {
-public:
-    using Subscriber = std::function<void(const T&)>;
-    virtual ~Broadcaster() = default;
-    virtual void subscribe(Subscriber subscriber) = 0;
-};
-
-
-template <typename T>
 class Queue: public Sink<T>, public Source<std::optional<T>> {
 public:
     Queue() = default;
@@ -175,68 +166,6 @@ public:
 
 private:
     std::queue<T> container;
-};
-
-
-template <typename T>
-using Consumer = std::function<std::optional<T>(T&&)>;
-
-template <typename T>
-class ConsumerChain {
-public:
-    ConsumerChain() = default;
-    ConsumerChain(const ConsumerChain&) = delete;
-    ConsumerChain& operator=(const ConsumerChain&) = delete;
-    ConsumerChain(ConsumerChain&&) = default;
-    ConsumerChain& operator=(ConsumerChain&&) = default;
-
-    void chainConsumer(Consumer<T> consumer) {
-        consumers.push_back(consumer);
-    }
-
-    std::optional<T> dispatch(T&& x) const {
-        std::optional<T> optX = std::move(x);
-        for (auto& f : consumers) {
-            if (!optX) {
-                break;
-            }
-            optX = f(std::move(optX.value()));
-        }
-        return std::move(optX);
-    }
-
-private:
-    std::vector<Consumer<T>> consumers;
-};
-
-
-template <typename R, typename T>
-using Processor = std::function<std::optional<R>(const T&)>;
-
-template <typename R, typename T>
-class ProcessorChain {
-public:
-    ProcessorChain() = default;
-    ProcessorChain(const ProcessorChain&) = delete;
-    ProcessorChain& operator=(const ProcessorChain&) = delete;
-    ProcessorChain(ProcessorChain&&) = default;
-    ProcessorChain& operator=(ProcessorChain&&) = default;
-
-    void chainProcessor(Processor<R, T> processor) {
-        processors.push_back(processor);
-    }
-
-    std::optional<R> dispatch(const T& x) const {
-        for (auto& f : processors) {
-            if (auto r = f(x)) {
-                return r;
-            }
-        }
-        return std::nullopt;
-    }
-
-private:
-    std::vector<Processor<R, T>> processors;
 };
 
 

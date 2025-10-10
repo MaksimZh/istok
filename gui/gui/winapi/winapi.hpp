@@ -146,20 +146,21 @@ public:
         return window.getHandle();
     }
 
-    void chainProcessor(Tools::Processor<WindowResult, WindowMessage> processor) {
-        dispatcher.chainProcessor(processor);
+    void appendHandler(Tools::Handler<WindowMessage, WindowResult> handler) {
+        dispatcher.append(handler);
     }
 
 private:
     BasicWindow window;
     MessageHandler& handler;
-    Tools::ProcessorChain<WindowResult, WindowMessage> dispatcher;
+    Tools::HandlerChain<WindowMessage, WindowResult> dispatcher;
 
     LRESULT handleMessage(
         HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) noexcept override
     {
-        if (auto r = dispatcher.dispatch(WindowMessage(hWnd, msg, wParam, lParam))) {
-            return r.value();
+        auto result = dispatcher(WindowMessage(hWnd, msg, wParam, lParam));
+        if (result.complete()) {
+            return result.result();
         }
         switch (msg) {
         case WM_PAINT: {

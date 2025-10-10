@@ -139,12 +139,16 @@ public:
     WindowCloseHandler(ID id, Tools::Queue<PlatformEvent<ID>>& outQueue)
     : id(id), outQueue(outQueue) {}
 
-    std::optional<LRESULT> operator()(WindowMessage message) noexcept {
+    Tools::HandlerResult<WindowMessage, WindowResult> operator()(
+        WindowMessage&& message
+    ) noexcept {
         if (message.msg != WM_CLOSE) {
-            return std::nullopt;
+            return Tools::HandlerResult<WindowMessage, WindowResult>::
+                fromArgument(std::move(message));
         }
         outQueue.push(PlatformEvents::WindowClose(id));
-        return 0;
+        return Tools::HandlerResult<WindowMessage, WindowResult>::
+                fromResult(0);
     }
 
 private:
@@ -201,9 +205,9 @@ namespace PlatformMessages {
     };
 
     template <typename ID>
-    struct AddWindowProcessor {
+    struct AddWindowHandler {
         ID id;
-        Tools::Processor<WindowResult, WindowMessage> processor;
+        Tools::Handler<WindowMessage, WindowResult> handler;
     };
 }
 
@@ -214,7 +218,7 @@ using PlatformMessage = std::variant<
     PlatformCommands::DestroyWindow<ID>,
     PlatformMessages::WindowCreated<ID>,
     PlatformMessages::WindowDestroyed<ID>,
-    PlatformMessages::AddWindowProcessor<ID>
+    PlatformMessages::AddWindowHandler<ID>
 >;
 
 
@@ -247,7 +251,7 @@ private:
         windows.create(command.id, command.params);
         handlers.push_back(std::make_unique<WindowCloseHandler<ID>>(
                 command.id, outQueue));
-        windows.getWindow(command.id).chainProcessor(*handlers.back());
+        windows.getWindow(command.id).appendHandler(*handlers.back());
     }
 
     void handle(const PlatformCommands::DestroyWindow<ID>& command) {
