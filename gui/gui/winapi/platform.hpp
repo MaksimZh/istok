@@ -275,19 +275,20 @@ public:
                 &bus = this->bus
             ](
                 PlatformMessage<ID>&& command
-            ) -> std::optional<PlatformMessage<ID>> {
+            ) {
                 if (std::holds_alternative<PlatformCommands::CreateWindow<ID>>(command)) {
                     ptr->handlePlatformCommand(command);
                     bus.push(PlatformMessages::WindowCreated<ID>(
                         std::get<PlatformCommands::CreateWindow<ID>>(command).id
                     ));
-                    return std::nullopt;
+                    return Tools::HandlerResult<PlatformMessage<ID>>();
                 }
                 if (std::holds_alternative<PlatformCommands::DestroyWindow<ID>>(command)) {
                     ptr->handlePlatformCommand(command);
-                    return std::nullopt;
+                    return Tools::HandlerResult<PlatformMessage<ID>>();
                 }
-                return std::move(command);
+                return Tools::HandlerResult<PlatformMessage<ID>>::fromArgument(
+                    std::move(command));
             });
     }
 
