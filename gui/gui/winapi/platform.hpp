@@ -231,15 +231,19 @@ public:
 
 
 template <typename ID, typename Window>
-class WindowHandler: public PlatformCommandHandler<ID> {
+class WindowHandler {
 public:
     WindowHandler(
         WindowManager<ID, Window>& windows,
         Tools::Queue<PlatformEvent<ID>>& outQueue
     ) : windows(windows), outQueue(outQueue) {}
 
-    void handlePlatformCommand(PlatformMessage<ID> command) override {
-        std::visit([this](const auto& x) { this->handle(x); }, command);
+    Tools::HandlerResult<PlatformMessage<ID>> operator()(
+        PlatformMessage<ID>&& command
+    ) {
+        return std::visit(
+            [this](auto&& x) { return this->handle(std::move(x)); },
+            std::move(command));
     }
 
 private:
@@ -247,20 +251,27 @@ private:
     Tools::Queue<PlatformEvent<ID>>& outQueue;
     std::vector<std::unique_ptr<WindowCloseHandler<ID>>> handlers;
     
-    void handle(const PlatformCommands::CreateWindow<ID>& command) {
+    Tools::HandlerResult<PlatformMessage<ID>> handle(
+        PlatformCommands::CreateWindow<ID>&& command
+    ) {
         windows.create(command.id, command.params);
         handlers.push_back(std::make_unique<WindowCloseHandler<ID>>(
                 command.id, outQueue));
         windows.getWindow(command.id).appendHandler(*handlers.back());
+        return Tools::HandlerResult<PlatformMessage<ID>>();
     }
 
-    void handle(const PlatformCommands::DestroyWindow<ID>& command) {
+    Tools::HandlerResult<PlatformMessage<ID>> handle(
+        PlatformCommands::DestroyWindow<ID>&& command
+    ) {
         windows.destroy(command.id);
+        return Tools::HandlerResult<PlatformMessage<ID>>();
     }
 
-    // Fallback for commands we don't care
     template <typename T>
-    void handle(const T& command) {}
+    Tools::HandlerResult<PlatformMessage<ID>> handle(T&& command) {
+        return Tools::HandlerResult<PlatformMessage<ID>>(std::move(command));
+    }
 };
 
 
@@ -274,25 +285,10 @@ public:
     : windows(std::move(buildWindowFactory(std::move(windowFactoryBuilder)))) {
         bus.addSubscriber(
             [
-                ptr = std::make_shared<WindowHandler<ID, Window>>(
-                    windows, outQueue),
-                &bus = this->bus
-            ](
-                PlatformMessage<ID>&& command
-            ) {
-                if (std::holds_alternative<PlatformCommands::CreateWindow<ID>>(command)) {
-                    ptr->handlePlatformCommand(command);
-                    bus.push(PlatformMessages::WindowCreated<ID>(
-                        std::get<PlatformCommands::CreateWindow<ID>>(command).id
-                    ));
-                    return Tools::HandlerResult<PlatformMessage<ID>>();
-                }
-                if (std::holds_alternative<PlatformCommands::DestroyWindow<ID>>(command)) {
-                    ptr->handlePlatformCommand(command);
-                    return Tools::HandlerResult<PlatformMessage<ID>>();
-                }
-                return Tools::HandlerResult<PlatformMessage<ID>>::fromArgument(
-                    std::move(command));
+                handler = std::make_shared<WindowHandler<ID, Window>>(
+                    windows, outQueue)
+            ](PlatformMessage<ID>&& command) {
+                return (*handler)(std::move(command));
             });
     }
 
