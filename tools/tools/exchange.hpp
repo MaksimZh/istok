@@ -112,14 +112,17 @@ public:
 template <typename A, typename R = void>
 using Handler = std::function<HandlerResult<A, R>(A&&)>;
 
+template<typename A, typename H>
+auto wrapSharedHandler(std::shared_ptr<H> handler) {
+    return [handler](A&& arg) mutable {
+        return (*handler)(std::forward<A>(arg));
+    };
+}
 
 template<typename H, typename A, typename... Args>
 auto makeSharedHandler(Args&&... args) {
-    return [
-        handler = std::make_shared<H>(std::forward<Args>(args)...)
-    ](A&& arg) mutable {
-        return (*handler)(std::forward<A>(arg));
-    };
+    return wrapSharedHandler<A>(
+        std::make_shared<H>(std::forward<Args>(args)...));
 }
 
 

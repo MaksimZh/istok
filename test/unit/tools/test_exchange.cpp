@@ -42,7 +42,7 @@ TEST_CASE("Tools - HandlerResult result", "[unit][tools]") {
 }
 
 
-TEST_CASE("Tools - makeSharedHandler", "[unit][tools]") {
+TEST_CASE("Tools - shared handler", "[unit][tools]") {
     using Result = HandlerResult<int>;
     
     struct H {
@@ -56,10 +56,20 @@ TEST_CASE("Tools - makeSharedHandler", "[unit][tools]") {
         }
     };
 
-    int a = 0;
-    auto h = makeSharedHandler<H, int>(a);
-    h(1);
-    REQUIRE(a == 1);
+    SECTION("wrap") {
+        int a = 0;
+        auto sh = std::make_shared<H>(a);
+        auto h = wrapSharedHandler<int>(sh);
+        h(1);
+        REQUIRE(a == 1);
+    }
+
+    SECTION("make") {
+        int a = 0;
+        auto h = makeSharedHandler<H, int>(a);
+        h(1);
+        REQUIRE(a == 1);
+    }
 }
 
 
