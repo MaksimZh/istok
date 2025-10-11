@@ -421,13 +421,6 @@ public:
         }
     }
 
-    void setAreaTester(
-        ID id, std::unique_ptr<WindowAreaTester>&& tester) noexcept
-    {
-        sendCommand(
-                PlatformCommands::SetAreaTester<ID>(id, std::move(tester)));
-    }
-
     void loadScene(
         ID id, std::unique_ptr<Scene>&& scene) noexcept
     {

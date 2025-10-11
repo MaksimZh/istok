@@ -286,7 +286,8 @@ int main() {
         Rect<float>{16 * px, 1 - 16 * px, 9 * 16 * px, 1 - 6 * 16 * px},
         Rect<float>{4 * 16 * px, 1 - (16 + 25) * px, 5 * 16 * px, 1 - (6 * 16 - 8) * px}
     ));
-    gui.setAreaTester(window, std::make_unique<Caption>(24));
+    gui.sendCommand(PlatformCommands::SetAreaTester(
+        window, std::make_unique<Caption>(24)));
     while (true) {
         PlatformEvent<Entity> msg = gui.getMessage();
         if (std::holds_alternative<PlatformEvents::Exception>(msg)) {
