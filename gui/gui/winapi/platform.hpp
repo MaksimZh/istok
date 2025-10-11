@@ -156,6 +156,7 @@ using PlatformMessage = std::variant<
     PlatformCommands::HeartbeatRequest,
     PlatformCommands::CreateWindow<ID>,
     PlatformCommands::DestroyWindow<ID>,
+    PlatformCommands::SetAreaTester<ID>,
     PlatformEvents::WindowClose<ID>,
     PlatformMessages::WindowCreated<ID>,
     PlatformMessages::WindowDestroyed<ID>,
@@ -215,7 +216,7 @@ private:
             Tools::makeSharedHandler<
                 WindowCloseMessageHandler<ID>, WindowMessage>(
                     message.id, output)));
-        return Tools::HandlerResult<PlatformMessage<ID>>();
+        return Tools::HandlerResult<PlatformMessage<ID>>(std::move(message));
     }
 
     template <typename T>
@@ -225,11 +226,15 @@ private:
 };
 
 
-class WindowAreaTestHandler {
+class WindowAreaTestMessageHandler {
 public:
-    std::optional<LRESULT> operator()(WindowMessage message) noexcept {
-        if (!tester) {
-            return HTCLIENT;
+    using Result = Tools::HandlerResult<WindowMessage, WindowResult>;
+    
+    Result operator()(
+        WindowMessage&& message
+    ) noexcept {
+        if (message.msg != WM_NCHITTEST || !tester) {
+            return Result::fromArgument(std::move(message));
         }
         RECT rect;
         GetWindowRect(message.hWnd, &rect);
@@ -237,18 +242,18 @@ public:
             GET_X_LPARAM(message.lParam) - rect.left,
             GET_Y_LPARAM(message.lParam) - rect.top);
         switch (tester->testWindowArea(position)) {
-        case WindowArea::hole: return HTTRANSPARENT;
-        case WindowArea::client: return HTCLIENT;
-        case WindowArea::moving: return HTCAPTION;
-        case WindowArea::sizingTL: return HTTOPLEFT;
-        case WindowArea::sizingT: return HTTOP;
-        case WindowArea::sizingTR: return HTTOPRIGHT;
-        case WindowArea::sizingR: return HTRIGHT;
-        case WindowArea::sizingBR: return HTBOTTOMRIGHT;
-        case WindowArea::sizingB: return HTBOTTOM;
-        case WindowArea::sizingBL: return HTBOTTOMLEFT;
-        case WindowArea::sizingL: return HTLEFT;
-        default: return HTCLIENT;
+        case WindowArea::hole: return Result::fromResult(HTTRANSPARENT);
+        case WindowArea::client: return Result::fromResult(HTCLIENT);
+        case WindowArea::moving: return Result::fromResult(HTCAPTION);
+        case WindowArea::sizingTL: return Result::fromResult(HTTOPLEFT);
+        case WindowArea::sizingT: return Result::fromResult(HTTOP);
+        case WindowArea::sizingTR: return Result::fromResult(HTTOPRIGHT);
+        case WindowArea::sizingR: return Result::fromResult(HTRIGHT);
+        case WindowArea::sizingBR: return Result::fromResult(HTBOTTOMRIGHT);
+        case WindowArea::sizingB: return Result::fromResult(HTBOTTOM);
+        case WindowArea::sizingBL: return Result::fromResult(HTBOTTOMLEFT);
+        case WindowArea::sizingL: return Result::fromResult(HTLEFT);
+        default: return Result::fromResult(HTCLIENT);
         }
     }
 
@@ -260,6 +265,59 @@ private:
     std::unique_ptr<WindowAreaTester> tester;
 };
 
+
+template <typename ID>
+class WindowAreaTestHandler {
+public:
+    WindowAreaTestHandler(Tools::Sink<PlatformMessage<ID>>& bus)
+    : bus(bus) {}
+
+    Tools::HandlerResult<PlatformMessage<ID>> operator()(
+        PlatformMessage<ID>&& message
+    ) {
+        return std::visit(
+            [this](auto&& x) { return this->handle(std::move(x)); },
+            std::move(message));
+    }
+
+private:
+    Tools::Sink<PlatformMessage<ID>>& bus;
+    std::unordered_map<
+        ID,
+        std::shared_ptr<WindowAreaTestMessageHandler>,
+        Tools::hash<ID>
+    > handlers;
+
+    Tools::HandlerResult<PlatformMessage<ID>> handle(
+        PlatformMessages::WindowCreated<ID>&& message
+    ) {
+        handlers[message.id] =
+            std::make_shared<WindowAreaTestMessageHandler>();
+        bus.push(PlatformMessages::AddWindowHandler(
+            message.id,
+            Tools::wrapSharedHandler<WindowMessage>(handlers[message.id])));
+        return Tools::HandlerResult<PlatformMessage<ID>>(std::move(message));
+    }
+
+    Tools::HandlerResult<PlatformMessage<ID>> handle(
+        PlatformMessages::WindowDestroyed<ID>&& message
+    ) {
+        handlers.erase(message.id);
+        return Tools::HandlerResult<PlatformMessage<ID>>(std::move(message));
+    }
+
+    Tools::HandlerResult<PlatformMessage<ID>> handle(
+        PlatformCommands::SetAreaTester<ID>&& message
+    ) {
+        handlers.at(message.id)->setAreaTester(std::move(message.tester));
+        return Tools::HandlerResult<PlatformMessage<ID>>();
+    }
+
+    template <typename T>
+    Tools::HandlerResult<PlatformMessage<ID>> handle(T&& message) {
+        return Tools::HandlerResult<PlatformMessage<ID>>(std::move(message));
+    }
+};
 
 
 template <typename ID>
@@ -302,6 +360,7 @@ private:
         PlatformCommands::DestroyWindow<ID>&& message
     ) {
         windows.destroy(message.id);
+        bus.push(PlatformMessages::WindowDestroyed<ID>(message.id));
         return Tools::HandlerResult<PlatformMessage<ID>>();
     }
 
@@ -331,6 +390,8 @@ public:
             WindowHandler<ID, Window>, PlatformMessage<ID>>(windows, bus));
         bus.addSubscriber(Tools::makeSharedHandler<
             WindowCloseHandler<ID>, PlatformMessage<ID>>(bus, outQueue));
+        bus.addSubscriber(Tools::makeSharedHandler<
+            WindowAreaTestHandler<ID>, PlatformMessage<ID>>(bus));
     }
 
     PlatformEvent<ID> getMessage() noexcept {
@@ -363,11 +424,8 @@ public:
     void setAreaTester(
         ID id, std::unique_ptr<WindowAreaTester>&& tester) noexcept
     {
-        try {
-            windows.getWindow(id).setAreaTester(std::move(tester));
-        } catch(...) {
-            onException(std::current_exception());
-        }
+        sendCommand(
+                PlatformCommands::SetAreaTester<ID>(id, std::move(tester)));
     }
 
     void loadScene(

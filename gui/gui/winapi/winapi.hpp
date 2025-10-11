@@ -170,27 +170,6 @@ private:
             EndPaint(hWnd, &ps);
             return 0;
         }
-        case WM_NCHITTEST: {
-            RECT rect;
-            GetWindowRect(hWnd, &rect);
-            Position<int> position(
-                GET_X_LPARAM(lParam) - rect.left,
-                GET_Y_LPARAM(lParam) - rect.top);
-            switch (handler.onAreaTest(position)) {
-            case WindowArea::hole: return HTTRANSPARENT;
-            case WindowArea::client: return HTCLIENT;
-            case WindowArea::moving: return HTCAPTION;
-            case WindowArea::sizingTL: return HTTOPLEFT;
-            case WindowArea::sizingT: return HTTOP;
-            case WindowArea::sizingTR: return HTTOPRIGHT;
-            case WindowArea::sizingR: return HTRIGHT;
-            case WindowArea::sizingBR: return HTBOTTOMRIGHT;
-            case WindowArea::sizingB: return HTBOTTOM;
-            case WindowArea::sizingBL: return HTBOTTOMLEFT;
-            case WindowArea::sizingL: return HTLEFT;
-            default: return HTCLIENT;
-            }
-        }
         }
         return DefWindowProc(hWnd, msg, wParam, lParam);
     }

@@ -37,6 +37,28 @@ struct WindowParams {
     // primary (taskbar) and auxiliary windows
 };
 
+
+enum class WindowArea {
+    hole,
+    client,
+    moving,
+    sizingTL,
+    sizingT,
+    sizingTR,
+    sizingR,
+    sizingBR,
+    sizingB,
+    sizingBL,
+    sizingL
+};
+
+class WindowAreaTester {
+public:
+    virtual ~WindowAreaTester() = default;
+    virtual WindowArea testWindowArea(Position<int> position) const noexcept = 0;
+};
+
+
 namespace PlatformCommands {
     /// @brief Heartbeat request, checking if platform is alive
     struct HeartbeatRequest {};
@@ -54,6 +76,14 @@ namespace PlatformCommands {
     template <typename ID>
     struct DestroyWindow {
         ID id;
+    };
+
+    /// @brief Set area tester for window
+    /// @tparam ID Window identifier type
+    template <typename ID>
+    struct SetAreaTester {
+        ID id;
+        std::unique_ptr<WindowAreaTester> tester;
     };
 }
 
@@ -80,7 +110,8 @@ template <typename ID>
 using PlatformCommand = std::variant<
     PlatformCommands::HeartbeatRequest,
     PlatformCommands::CreateWindow<ID>,
-    PlatformCommands::DestroyWindow<ID>
+    PlatformCommands::DestroyWindow<ID>,
+    PlatformCommands::SetAreaTester<ID>
 >;
 
 
@@ -90,26 +121,6 @@ using PlatformEvent = std::variant<
     PlatformEvents::Shutdown,
     PlatformEvents::WindowClose<ID>
 >;
-
-enum class WindowArea {
-    hole,
-    client,
-    moving,
-    sizingTL,
-    sizingT,
-    sizingTR,
-    sizingR,
-    sizingBR,
-    sizingB,
-    sizingBL,
-    sizingL
-};
-
-class WindowAreaTester {
-public:
-    virtual ~WindowAreaTester() = default;
-    virtual WindowArea testWindowArea(Position<int> position) const noexcept = 0;
-};
 
 
 template <typename Platform>
