@@ -275,9 +275,8 @@ class WindowHandler {
 public:
     WindowHandler(
         WindowManager<ID, Window>& windows,
-        Tools::Sink<PlatformMessage<ID>>& bus,
-        Tools::Sink<PlatformEvent<ID>>& output
-    ) : windows(windows), bus(bus), output(output) {}
+        Tools::Sink<PlatformMessage<ID>>& bus
+    ) : windows(windows), bus(bus) {}
 
     Tools::HandlerResult<PlatformMessage<ID>> operator()(
         PlatformMessage<ID>&& message
@@ -290,7 +289,6 @@ public:
 private:
     WindowManager<ID, Window>& windows;
     Tools::Sink<PlatformMessage<ID>>& bus;
-    Tools::Sink<PlatformEvent<ID>>& output;
     
     Tools::HandlerResult<PlatformMessage<ID>> handle(
         PlatformCommands::CreateWindow<ID>&& message
@@ -329,13 +327,10 @@ public:
 
     Platform(std::unique_ptr<WindowFactoryBuilder<Window>> windowFactoryBuilder)
     : windows(std::move(buildWindowFactory(std::move(windowFactoryBuilder)))) {
-        bus.addSubscriber(
-            Tools::makeSharedHandler<
-                WindowHandler<ID, Window>, PlatformMessage<ID>>(
-                    windows, bus, outQueue));
-        bus.addSubscriber(
-            Tools::makeSharedHandler<
-                WindowCloseHandler<ID>, PlatformMessage<ID>>(bus, outQueue));
+        bus.addSubscriber(Tools::makeSharedHandler<
+            WindowHandler<ID, Window>, PlatformMessage<ID>>(windows, bus));
+        bus.addSubscriber(Tools::makeSharedHandler<
+            WindowCloseHandler<ID>, PlatformMessage<ID>>(bus, outQueue));
     }
 
     PlatformEvent<ID> getMessage() noexcept {
