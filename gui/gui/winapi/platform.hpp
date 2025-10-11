@@ -166,7 +166,7 @@ using PlatformMessage = std::variant<
 template <typename ID>
 class WindowCloseHandler {
 public:
-    WindowCloseHandler(ID id, Tools::Sink<PlatformMessage<ID>>& output)
+    WindowCloseHandler(ID id, Tools::Sink<PlatformEvent<ID>>& output)
     : id(id), output(output) {}
 
     Tools::HandlerResult<WindowMessage, WindowResult> operator()(
@@ -183,7 +183,7 @@ public:
 
 private:
     ID id;
-    Tools::Sink<PlatformMessage<ID>>& output;
+    Tools::Sink<PlatformEvent<ID>>& output;
 };
 
 
@@ -237,8 +237,9 @@ class WindowHandler {
 public:
     WindowHandler(
         WindowManager<ID, Window>& windows,
-        Tools::Sink<PlatformMessage<ID>>& output
-    ) : windows(windows), output(output) {}
+        Tools::Sink<PlatformMessage<ID>>& bus,
+        Tools::Sink<PlatformEvent<ID>>& output
+    ) : windows(windows), bus(bus), output(output) {}
 
     Tools::HandlerResult<PlatformMessage<ID>> operator()(
         PlatformMessage<ID>&& command
@@ -250,7 +251,8 @@ public:
 
 private:
     WindowManager<ID, Window>& windows;
-    Tools::Sink<PlatformMessage<ID>>& output;
+    Tools::Sink<PlatformMessage<ID>>& bus;
+    Tools::Sink<PlatformEvent<ID>>& output;
     std::vector<std::unique_ptr<WindowCloseHandler<ID>>> handlers;
     
     Tools::HandlerResult<PlatformMessage<ID>> handle(
@@ -277,37 +279,6 @@ private:
 };
 
 
-template <typename ID>
-class WindowCloseListener {
-public:
-    WindowCloseListener(Tools::Sink<PlatformEvent<ID>>& output)
-    : output(output) {}
-
-    Tools::HandlerResult<PlatformMessage<ID>> operator()(
-        PlatformMessage<ID>&& command
-    ) {
-        return std::visit(
-            [this](auto&& x) { return this->handle(std::move(x)); },
-            std::move(command));
-    }
-
-private:
-    Tools::Sink<PlatformEvent<ID>>& output;
-    
-    Tools::HandlerResult<PlatformMessage<ID>> handle(
-        PlatformEvents::WindowClose<ID>&& command
-    ) {
-        output.push(std::move(command));
-        return Tools::HandlerResult<PlatformMessage<ID>>();
-    }
-
-    template <typename T>
-    Tools::HandlerResult<PlatformMessage<ID>> handle(T&& command) {
-        return Tools::HandlerResult<PlatformMessage<ID>>(std::move(command));
-    }
-};
-
-
 template <typename ID_, GUIWindow Window>
 class Platform: public EventHandler<Window> {
 public:
@@ -319,10 +290,7 @@ public:
         bus.addSubscriber(
             Tools::makeSharedHandler<
                 WindowHandler<ID, Window>, PlatformMessage<ID>>(
-                    windows, bus));
-        bus.addSubscriber(
-            Tools::makeSharedHandler<
-                WindowCloseListener<ID>, PlatformMessage<ID>>(outQueue));
+                    windows, bus, outQueue));
     }
 
     PlatformEvent<ID> getMessage() noexcept {
