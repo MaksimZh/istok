@@ -48,7 +48,7 @@ public:
     }
     
     void insert(Entity e, Component&& component) {
-        container.insert(e, component);
+        container.insert(e, std::move(component));
     }
 
     Component& get(Entity e) {

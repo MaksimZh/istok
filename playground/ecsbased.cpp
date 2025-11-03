@@ -2,6 +2,7 @@
 
 #include <windows.h>
 #include <iostream>
+#include <unordered_set>
 
 using namespace Istok::ECS;
 
@@ -61,14 +62,11 @@ private:
 };
 
 struct ScreenLocation {
-    Rect<float> value;
+    Rect<int> value;
 };
 
 struct NewWindow {};
 
-struct Window {
-    HWND hWnd;
-};
 
 LRESULT CALLBACK windowProc(
     HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) noexcept
@@ -80,21 +78,13 @@ LRESULT CALLBACK windowProc(
     return DefWindowProc(hWnd, msg, wParam, lParam);
 }
 
-int main() {
-    EntityComponentManager ecm;
-    Entity window = ecm.createEntity();
-    ecm.set(window, NewWindow{});
-    ecm.set(window, ScreenLocation{{200, 100, 600, 400}});
-    Entity menu = ecm.createEntity();
-    ecm.set(menu, NewWindow{});
-    ecm.set(menu, ScreenLocation{{300, 200, 500, 500}});
-    WindowClass wc(windowProc, L"Istok");
-    for (auto& w : ecm.view<NewWindow, ScreenLocation>()) {
-        std::cout << "Creating window for entity " << w.value << std::endl;
-        Rect<float>& location = ecm.get<ScreenLocation>(w).value;
+
+class Window {
+public:
+    Window(const Rect<int>& location) {
         HWND hWnd = CreateWindowEx(
             NULL,
-            wc.get(),
+            getWindowClass(),
             L"Istok",
             WS_OVERLAPPEDWINDOW,
             location.left, location.top,
@@ -104,12 +94,48 @@ int main() {
         if (!hWnd) {
             throw std::runtime_error("Cannot create window");
         }
-        //ecm.remove<NewWindow>(w);
-        ecm.set(w, Window{hWnd});
-    }
-    for (auto& w : ecm.view<Window>()) {
-        HWND hWnd = ecm.get<Window>(w).hWnd;
         ShowWindow(hWnd, SW_SHOW);
+    }
+    
+    ~Window() {
+        if (hWnd) {
+            DestroyWindow(hWnd);
+        }
+    }
+
+    Window(const Window&) = delete;
+    Window& operator=(const Window&) = delete;
+    Window(Window&&) = default;
+    Window& operator=(Window&&) = default;
+
+private:
+    HWND hWnd;
+
+    static LPCWSTR getWindowClass() {
+        static WindowClass wc(windowProc, L"Istok");
+        return wc.get();
+    }
+};
+
+
+int main() {
+    EntityComponentManager ecm;
+    Entity window = ecm.createEntity();
+    ecm.set(window, NewWindow{});
+    ecm.set(window, ScreenLocation{{200, 100, 600, 400}});
+    Entity menu = ecm.createEntity();
+    ecm.set(menu, NewWindow{});
+    ecm.set(menu, ScreenLocation{{300, 200, 500, 500}});
+    {
+        std::unordered_set<Entity, Entity::Hasher> removalSet;
+        for (auto& w : ecm.view<NewWindow, ScreenLocation>()) {
+            std::cout << "Creating window for entity " << w.value << std::endl;
+            ecm.set(w, std::move(Window(ecm.get<ScreenLocation>(w).value)));
+            removalSet.insert(w);
+        }
+        for (auto& e : removalSet) {
+            ecm.remove<NewWindow>(e);
+        }
     }
     while (true) {
         MSG msg;
@@ -120,13 +146,15 @@ int main() {
         TranslateMessage(&msg);
         DispatchMessage(&msg);
     }
-    for (auto& w : ecm.view<Window>()) {
-        std::cout << "Destroying window for entity " << w.value << std::endl;
-        HWND hWnd = ecm.get<Window>(w).hWnd;
-        if (hWnd) {
-            DestroyWindow(hWnd);
+    {
+        std::unordered_set<Entity, Entity::Hasher> removalSet;
+        for (auto& w : ecm.view<Window>()) {
+            removalSet.insert(w);
         }
-        //ecm.remove<Window>(w);
+        for (auto& e : removalSet) {
+            std::cout << "Destroying window for entity " << e.value << std::endl;
+            ecm.remove<Window>(e);
+        }
     }
     return 0;
 }
