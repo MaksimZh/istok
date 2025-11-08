@@ -307,11 +307,6 @@ public:
         std::vector<std::reference_wrapper<ComponentStorage>> found{
             storages.getOrCreateStorage<Components>()...};
         assert(found.size() > 0);
-        std::sort(
-            found.begin(), found.end(),
-            [](const ComponentStorage& a, const ComponentStorage& b) {
-                return a.size() < b.size();
-            });
         return EntityView(
             storages,
             EntityStorageRange(
