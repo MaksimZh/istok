@@ -26,6 +26,7 @@ public:
     virtual size_t size() const = 0;
     virtual bool has(Entity e) const = 0;
     virtual void remove(Entity e) = 0;
+    virtual void removeAll() = 0;
     virtual DenseRange<Entity> byEntity() = 0;
 };
 
@@ -59,6 +60,10 @@ public:
     void remove(Entity e) override {
         assert(has(e));
         container.erase(e);
+    }
+
+    void removeAll() override {
+        container.clear();
     }
 
     DenseRange<Entity> byEntity() override {
@@ -278,6 +283,14 @@ public:
             storages.getStorage<Component>();
         assert(storage.has(e));
         storage.remove(e);
+    }
+
+    template<typename Component>
+    void removeAll() {
+        if (!storages.hasStorage<Component>()) {
+            return;
+        }
+        storages.getStorage<Component>().removeAll();
     }
 
     void clean(Entity e) {

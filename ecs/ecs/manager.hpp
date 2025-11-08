@@ -60,6 +60,11 @@ public:
         components.remove<Component>(e);
     }
 
+    template <typename Component>
+    void removeAll() {
+        components.removeAll<Component>();
+    }
+
     template<typename... Components>
     EntityView view() {
         return components.view<Components...>();

@@ -135,6 +135,10 @@ public:
         container.pop_back();
     }
 
+    void clear() {
+        container.clear();
+    }
+
     DenseRange<T> byElement() noexcept {
         T* start = container.data();
         return DenseRange<T>(start, start + container.size());
@@ -211,6 +215,11 @@ public:
         container2.erase(index);
     }
 
+    void clear() {
+        container1.clear();
+        container2.clear();
+    }
+
     DenseRange< T1> firstElements() noexcept {
         return container1.byElement();
     }
@@ -262,6 +271,10 @@ public:
     void erase(const T& key) {
         assert(contains(key));
         container.erase(key);
+    }
+
+    void clear() {
+        container.clear();
     }
 
 private:
@@ -322,6 +335,11 @@ public:
         if (index < size()) {
             indices.insert(values.first(index), index);
         }
+    }
+
+    void clear() {
+        indices.clear();
+        values.clear();
     }
 
     DenseRange< ID> byKey() noexcept {

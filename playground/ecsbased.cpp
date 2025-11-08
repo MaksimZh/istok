@@ -126,17 +126,11 @@ int main() {
     Entity menu = ecm.createEntity();
     ecm.set(menu, NewWindow{});
     ecm.set(menu, ScreenLocation{{300, 200, 500, 500}});
-    {
-        std::unordered_set<Entity, Entity::Hasher> removalSet;
-        for (auto& w : ecm.view<NewWindow, ScreenLocation>()) {
-            std::cout << "Creating window for entity " << w.value << std::endl;
-            ecm.set(w, std::move(Window(ecm.get<ScreenLocation>(w).value)));
-            removalSet.insert(w);
-        }
-        for (auto& e : removalSet) {
-            ecm.remove<NewWindow>(e);
-        }
+    for (auto& w : ecm.view<NewWindow, ScreenLocation>()) {
+        std::cout << "Creating window for entity " << w.value << std::endl;
+        ecm.set(w, std::move(Window(ecm.get<ScreenLocation>(w).value)));
     }
+    ecm.removeAll<NewWindow>();
     while (true) {
         MSG msg;
         GetMessage(&msg, NULL, 0, 0);
@@ -146,15 +140,6 @@ int main() {
         TranslateMessage(&msg);
         DispatchMessage(&msg);
     }
-    {
-        std::unordered_set<Entity, Entity::Hasher> removalSet;
-        for (auto& w : ecm.view<Window>()) {
-            removalSet.insert(w);
-        }
-        for (auto& e : removalSet) {
-            std::cout << "Destroying window for entity " << e.value << std::endl;
-            ecm.remove<Window>(e);
-        }
-    }
+    ecm.removeAll<Window>();
     return 0;
 }
