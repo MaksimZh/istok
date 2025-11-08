@@ -46,7 +46,7 @@ public:
 
     void destroyEntity(Entity e) {
         assert(isValidEntity(e));
-        components.clean(e);
+        components.clear(e);
         entities.destroy(e);
     }
 

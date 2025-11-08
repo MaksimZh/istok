@@ -293,7 +293,7 @@ public:
         storages.getStorage<Component>().removeAll();
     }
 
-    void clean(Entity e) {
+    void clear(Entity e) {
         for (auto& s : storages.byStorage()) {
             if (s.has(e)) {
                 s.remove(e);
