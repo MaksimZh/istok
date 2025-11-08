@@ -32,6 +32,11 @@ TEST_CASE("ECS - manager", "[unit][ecs]") {
     EntityComponentManager manager(3);
     REQUIRE(isSameEntitySet(manager.view<A>(), EntityUSet{}));
 
+    SECTION("remove all") {
+        manager.removeAll<A>();
+        REQUIRE(isSameEntitySet(manager.view<A>(), EntityUSet{}));
+    }
+
     SECTION("single entity") {
         Entity e0 = manager.createEntity();
         REQUIRE(manager.isValidEntity(e0) == true);
@@ -75,6 +80,11 @@ TEST_CASE("ECS - manager", "[unit][ecs]") {
             REQUIRE(manager.has<C>(e0) == false);
             REQUIRE(isSameEntitySet(manager.view<A>(), EntityUSet{}));
             REQUIRE(isSameEntitySet(manager.view<B>(), EntityUSet{}));
+        }
+
+        SECTION("remove all") {
+            manager.removeAll<A>();
+            REQUIRE(isSameEntitySet(manager.view<A>(), EntityUSet{}));
         }
 
         SECTION("destroy entity") {
@@ -170,6 +180,11 @@ TEST_CASE("ECS - manager", "[unit][ecs]") {
             REQUIRE(manager.get<A>(e2) == A{2});
         }
 
+        SECTION("remove all") {
+            manager.removeAll<A>();
+            REQUIRE(isSameEntitySet(manager.view<A>(), EntityUSet{}));
+        }
+
         SECTION("destroy entity") {
             manager.destroyEntity(e0);
             manager.destroyEntity(e1);
@@ -239,6 +254,5 @@ TEST_CASE("ECS - manager", "[unit][ecs]") {
         REQUIRE(isSameEntitySet(
             manager.view<A>().exclude<B>(),
             EntityUSet{a, ac}));
-
     }
 }

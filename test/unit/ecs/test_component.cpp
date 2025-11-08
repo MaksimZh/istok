@@ -50,6 +50,12 @@ TEST_CASE("ECS - component storage", "[unit][ecs]") {
     ComponentStorageOf<A> storage;
     REQUIRE(storage.size() == 0);
     REQUIRE(isSameEntitySet(storage.byEntity(), EntityUSet{}));
+    
+    SECTION("remove all") {
+        storage.removeAll();
+        REQUIRE(storage.size() == 0);
+        REQUIRE(isSameEntitySet(storage.byEntity(), EntityUSet{}));
+    }
 
     SECTION("single entity") {
         Entity e = fakeEntity(0);
@@ -76,8 +82,13 @@ TEST_CASE("ECS - component storage", "[unit][ecs]") {
             REQUIRE(storage.size() == 0);
             REQUIRE(isSameEntitySet(storage.byEntity(), EntityUSet{}));
         }
-    }
 
+        SECTION("remove all") {
+            storage.removeAll();
+            REQUIRE(storage.size() == 0);
+            REQUIRE(isSameEntitySet(storage.byEntity(), EntityUSet{}));
+        }
+    }
 
     SECTION("many entities") {
         Entity e0 = fakeEntity(0);
@@ -125,6 +136,12 @@ TEST_CASE("ECS - component storage", "[unit][ecs]") {
             REQUIRE(storage.get(e0) == A{0});
             REQUIRE(storage.size() == 1);
             REQUIRE(isSameEntitySet(storage.byEntity(), EntityUSet{e0}));
+        }
+
+        SECTION("remove all") {
+            storage.removeAll();
+            REQUIRE(storage.size() == 0);
+            REQUIRE(isSameEntitySet(storage.byEntity(), EntityUSet{}));
         }
     }
 }
@@ -195,6 +212,14 @@ TEST_CASE("ECS - component manager", "[unit][ecs]") {
             REQUIRE(manager.get<B>(e0) == B{0});
         }
 
+        SECTION("remove all") {
+            manager.removeAll<A>();
+            REQUIRE(manager.has<A>(e0) == false);
+            REQUIRE(manager.has<B>(e0) == true);
+            REQUIRE(manager.has<C>(e0) == false);
+            REQUIRE(manager.get<B>(e0) == B{0});
+        }
+
         SECTION("clean") {
             manager.clean(e0);
             REQUIRE(manager.has<A>(e0) == false);
@@ -253,6 +278,23 @@ TEST_CASE("ECS - component manager", "[unit][ecs]") {
             REQUIRE(manager.get<B>(e0) == B{0});
             REQUIRE(manager.get<C>(e1) == C{1});
             REQUIRE(manager.get<A>(e2) == A{2});
+        }
+
+        SECTION("removeAll") {
+            manager.removeAll<A>();
+            REQUIRE(manager.has<A>(e0) == false);
+            REQUIRE(manager.has<B>(e0) == true);
+            REQUIRE(manager.has<C>(e0) == false);
+            REQUIRE(manager.has<A>(e1) == false);
+            REQUIRE(manager.has<B>(e1) == true);
+            REQUIRE(manager.has<C>(e1) == true);
+            REQUIRE(manager.has<A>(e2) == false);
+            REQUIRE(manager.has<B>(e2) == false);
+            REQUIRE(manager.has<C>(e2) == true);
+            REQUIRE(manager.get<B>(e0) == B{0});
+            REQUIRE(manager.get<B>(e1) == B{1});
+            REQUIRE(manager.get<C>(e1) == C{1});
+            REQUIRE(manager.get<C>(e2) == C{2});
         }
 
         SECTION("clean") {
