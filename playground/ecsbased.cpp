@@ -66,8 +66,6 @@ struct ScreenLocation {
     Rect<int> value;
 };
 
-struct NewWindow {};
-
 namespace WindowHandler {
 
 struct Close {
@@ -152,24 +150,24 @@ private:
     }
 };
 
-
-int main() {
-    EntityComponentManager ecm;
-    Entity window = ecm.createEntity();
-    ecm.set(window, NewWindow{});
-    ecm.set(window, ScreenLocation{{200, 100, 600, 400}});
-    ecm.set(window, WindowHandler::Close{[&](){ PostQuitMessage(0); }});
-    Entity menu = ecm.createEntity();
-    ecm.set(menu, NewWindow{});
-    ecm.set(menu, ScreenLocation{{300, 200, 500, 500}});
-    ecm.set(menu, WindowHandler::Close{[&](){ ecm.destroyEntity(menu); }});
-    for (auto& w : ecm.view<NewWindow, ScreenLocation>()) {
+void createMissingWindows(EntityComponentManager& ecm) {
+    for (auto& w : ecm.view<ScreenLocation>().exclude<Window>()) {
         std::cout << "Creating window for entity " << w.value << std::endl;
         ecm.set(w, std::move(
             Window(ecm, w, ecm.get<ScreenLocation>(w).value)));
     }
-    ecm.removeAll<NewWindow>();
+}
+
+int main() {
+    EntityComponentManager ecm;
+    Entity window = ecm.createEntity();
+    ecm.set(window, ScreenLocation{{200, 100, 600, 400}});
+    ecm.set(window, WindowHandler::Close{[&](){ PostQuitMessage(0); }});
+    Entity menu = ecm.createEntity();
+    ecm.set(menu, ScreenLocation{{300, 200, 500, 500}});
+    ecm.set(menu, WindowHandler::Close{[&](){ ecm.destroyEntity(menu); }});
     while (true) {
+        createMissingWindows(ecm);
         MSG msg;
         GetMessage(&msg, NULL, 0, 0);
         if (msg.message == WM_QUIT) {
