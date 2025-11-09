@@ -3,6 +3,7 @@
 #include <windows.h>
 #include <iostream>
 #include <unordered_set>
+#include <functional>
 
 using namespace Istok::ECS;
 
@@ -67,13 +68,33 @@ struct ScreenLocation {
 
 struct NewWindow {};
 
+namespace WindowHandler {
+
+struct Close {
+    std::function<void()> func;
+};
+
+} // namespace WindowHandler
+
+
+struct ECSBinding {
+    EntityComponentManager* ecm;
+    Entity entity;
+};
+
 
 LRESULT CALLBACK windowProc(
     HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) noexcept
 {
     if (msg == WM_CLOSE) {
-        PostQuitMessage(0);
-        return 0;
+        if (ECSBinding* binding = reinterpret_cast<ECSBinding*>(
+            GetWindowLongPtr(hWnd, GWLP_USERDATA))
+        ) {
+            if (binding->ecm->has<WindowHandler::Close>(binding->entity)) {
+                binding->ecm->get<WindowHandler::Close>(binding->entity).func();
+                return 0;
+            }
+        }
     }
     return DefWindowProc(hWnd, msg, wParam, lParam);
 }
@@ -81,7 +102,11 @@ LRESULT CALLBACK windowProc(
 
 class Window {
 public:
-    Window(const Rect<int>& location) {
+    Window(
+        EntityComponentManager& ecm,
+        Entity entity,
+        const Rect<int>& location
+    ) : binding(std::make_unique<ECSBinding>(&ecm, entity)) {
         HWND hWnd = CreateWindowEx(
             NULL,
             getWindowClass(),
@@ -94,6 +119,8 @@ public:
         if (!hWnd) {
             throw std::runtime_error("Cannot create window");
         }
+        SetWindowLongPtr(
+            hWnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(binding.get()));
         ShowWindow(hWnd, SW_SHOW);
     }
     
@@ -108,7 +135,12 @@ public:
     Window(Window&&) = default;
     Window& operator=(Window&&) = default;
 
+    HWND getHWnd() const {
+        return hWnd;
+    }
+
 private:
+    std::unique_ptr<ECSBinding> binding;
     HWND hWnd;
 
     static LPCWSTR getWindowClass() {
@@ -123,12 +155,14 @@ int main() {
     Entity window = ecm.createEntity();
     ecm.set(window, NewWindow{});
     ecm.set(window, ScreenLocation{{200, 100, 600, 400}});
+    ecm.set(window, WindowHandler::Close{[&](){ PostQuitMessage(0); }});
     Entity menu = ecm.createEntity();
     ecm.set(menu, NewWindow{});
     ecm.set(menu, ScreenLocation{{300, 200, 500, 500}});
     for (auto& w : ecm.view<NewWindow, ScreenLocation>()) {
         std::cout << "Creating window for entity " << w.value << std::endl;
-        ecm.set(w, std::move(Window(ecm.get<ScreenLocation>(w).value)));
+        ecm.set(w, std::move(
+            Window(ecm, w, ecm.get<ScreenLocation>(w).value)));
     }
     ecm.removeAll<NewWindow>();
     while (true) {
