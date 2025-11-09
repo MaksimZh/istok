@@ -162,6 +162,7 @@ int main() {
     Entity menu = ecm.createEntity();
     ecm.set(menu, NewWindow{});
     ecm.set(menu, ScreenLocation{{300, 200, 500, 500}});
+    ecm.set(menu, WindowHandler::Close{[&](){ ecm.destroyEntity(menu); }});
     for (auto& w : ecm.view<NewWindow, ScreenLocation>()) {
         std::cout << "Creating window for entity " << w.value << std::endl;
         ecm.set(w, std::move(
