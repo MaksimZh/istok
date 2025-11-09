@@ -122,11 +122,14 @@ public:
         SetWindowLongPtr(
             hWnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(binding.get()));
         ShowWindow(hWnd, SW_SHOW);
+        std::cout << "Create window " << hWnd << std::endl;
+        this->hWnd = std::make_unique<HWND>(hWnd);
     }
     
     ~Window() {
-        if (hWnd) {
-            DestroyWindow(hWnd);
+        if (hWnd && *hWnd) {
+            std::cout << "Destroy window " << *hWnd << std::endl;
+            DestroyWindow(*hWnd);
         }
     }
 
@@ -136,12 +139,12 @@ public:
     Window& operator=(Window&&) = default;
 
     HWND getHWnd() const {
-        return hWnd;
+        return *hWnd;
     }
 
 private:
     std::unique_ptr<ECSBinding> binding;
-    HWND hWnd;
+    std::unique_ptr<HWND> hWnd;
 
     static LPCWSTR getWindowClass() {
         static WindowClass wc(windowProc, L"Istok");
@@ -174,6 +177,5 @@ int main() {
         TranslateMessage(&msg);
         DispatchMessage(&msg);
     }
-    ecm.removeAll<Window>();
     return 0;
 }
