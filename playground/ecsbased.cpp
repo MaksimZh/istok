@@ -75,21 +75,15 @@ struct Close {
 } // namespace WindowHandler
 
 
-struct ECSBinding {
-    EntityComponentManager* ecm;
-    Entity entity;
-};
-
-
 LRESULT CALLBACK windowProc(
     HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) noexcept
 {
     if (msg == WM_CLOSE) {
-        if (ECSBinding* binding = reinterpret_cast<ECSBinding*>(
+        if (BoundEntity* entity = reinterpret_cast<BoundEntity*>(
             GetWindowLongPtr(hWnd, GWLP_USERDATA))
         ) {
-            if (binding->ecm->has<WindowHandler::Close>(binding->entity)) {
-                binding->ecm->get<WindowHandler::Close>(binding->entity).func();
+            if (entity->has<WindowHandler::Close>()) {
+                entity->get<WindowHandler::Close>().func();
                 return 0;
             }
         }
@@ -104,7 +98,7 @@ public:
         EntityComponentManager& ecm,
         Entity entity,
         const Rect<int>& location
-    ) : binding(std::make_unique<ECSBinding>(&ecm, entity)) {
+    ) : boundEntity(std::make_unique<BoundEntity>(ecm, entity)) {
         HWND hWnd = CreateWindowEx(
             NULL,
             getWindowClass(),
@@ -118,7 +112,8 @@ public:
             throw std::runtime_error("Cannot create window");
         }
         SetWindowLongPtr(
-            hWnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(binding.get()));
+            hWnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(
+                boundEntity.get()));
         ShowWindow(hWnd, SW_SHOW);
         std::cout << "Create window " << hWnd << std::endl;
         this->hWnd = std::make_unique<HWND>(hWnd);
@@ -141,7 +136,7 @@ public:
     }
 
 private:
-    std::unique_ptr<ECSBinding> binding;
+    std::unique_ptr<BoundEntity> boundEntity;
     std::unique_ptr<HWND> hWnd;
 
     static LPCWSTR getWindowClass() {
