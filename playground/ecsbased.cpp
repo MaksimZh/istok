@@ -94,11 +94,8 @@ LRESULT CALLBACK windowProc(
 
 class Window {
 public:
-    Window(
-        EntityComponentManager& ecm,
-        Entity entity,
-        const Rect<int>& location
-    ) : boundEntity(std::make_unique<BoundEntity>(ecm, entity)) {
+    Window(BoundEntity entity, const Rect<int>& location)
+    : entity(std::make_unique<BoundEntity>(entity)) {
         HWND hWnd = CreateWindowEx(
             NULL,
             getWindowClass(),
@@ -113,7 +110,7 @@ public:
         }
         SetWindowLongPtr(
             hWnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(
-                boundEntity.get()));
+                this->entity.get()));
         ShowWindow(hWnd, SW_SHOW);
         std::cout << "Create window " << hWnd << std::endl;
         this->hWnd = std::make_unique<HWND>(hWnd);
@@ -136,7 +133,7 @@ public:
     }
 
 private:
-    std::unique_ptr<BoundEntity> boundEntity;
+    std::unique_ptr<BoundEntity> entity;
     std::unique_ptr<HWND> hWnd;
 
     static LPCWSTR getWindowClass() {
@@ -145,31 +142,143 @@ private:
     }
 };
 
-void createMissingWindows(EntityComponentManager& ecm) {
-    for (auto& w : ecm.view<ScreenLocation>().exclude<Window>()) {
+
+class ECSManager;
+
+using System = std::function<void(ECSManager&)>;
+
+class ECSManager {
+public:
+    ECSManager() = default;
+    ECSManager(const ECSManager&) = delete;
+    ECSManager& operator=(const ECSManager&) = delete;
+    ECSManager(ECSManager&&) = default;
+    ECSManager& operator=(ECSManager&&) = default;
+
+    void addSystem(System system) {
+        systems.push_back(system);
+    }
+
+    void run() {
+        if (running) {
+            return;
+        }
+        running = true;
+        while (running) {
+            for (auto& s : systems) {
+                s(*this);
+            }
+        }
+    }
+
+    void stop() {
+        running = false;
+    }
+
+    bool isValidEntity(Entity e) const {
+        return ecm.isValidEntity(e);
+    }
+
+    template <typename Component>
+    bool has(Entity e) const {
+        assert(isValidEntity(e));
+        return ecm.has<Component>(e);
+    }
+
+    template <typename Component>
+    Component& get(Entity e) {
+        assert(isValidEntity(e));
+        assert(has<Component>(e));
+        return ecm.get<Component>(e);
+    }
+
+    template <typename Component>
+    const Component& get(Entity e) const {
+        assert(isValidEntity(e));
+        assert(has<Component>(e));
+        return ecm.get<Component>(e);
+    }
+
+    Entity createEntity() {
+        return ecm.createEntity();
+    }
+
+    BoundEntity createBoundEntity() {
+        return BoundEntity(ecm, ecm.createEntity());
+    }
+
+    BoundEntity bind(Entity e) {
+        assert(isValidEntity(e));
+        return BoundEntity(ecm, e);
+    }
+
+    void destroyEntity(Entity e) {
+        assert(isValidEntity(e));
+        ecm.destroyEntity(e);
+    }
+
+    template <typename Component>
+    void set(Entity e, Component&& component) {
+        assert(isValidEntity(e));
+        ecm.set(e, std::move(component));
+    }
+
+    template <typename Component>
+    void remove(Entity e) {
+        assert(isValidEntity(e));
+        assert(has<Component>(e));
+        ecm.remove<Component>(e);
+    }
+
+    template <typename Component>
+    void removeAll() {
+        ecm.removeAll<Component>();
+    }
+
+    template<typename... Components>
+    EntityView view() {
+        return ecm.view<Components...>();
+    }
+
+private:
+    bool running = false;
+    EntityComponentManager ecm;
+    std::vector<System> systems;
+};
+
+
+void createMissingWindows(ECSManager& ecs) {
+    for (auto& w : ecs.view<ScreenLocation>().exclude<Window>()) {
         std::cout << "Creating window for entity " << w.value << std::endl;
-        ecm.set(w, std::move(
-            Window(ecm, w, ecm.get<ScreenLocation>(w).value)));
+        auto e = ecs.bind(w);
+        e.set(Window(e, e.get<ScreenLocation>().value));
     }
 }
 
-int main() {
-    EntityComponentManager ecm;
-    Entity window = ecm.createEntity();
-    ecm.set(window, ScreenLocation{{200, 100, 600, 400}});
-    ecm.set(window, WindowHandler::Close{[&](){ PostQuitMessage(0); }});
-    Entity menu = ecm.createEntity();
-    ecm.set(menu, ScreenLocation{{300, 200, 500, 500}});
-    ecm.set(menu, WindowHandler::Close{[&](){ ecm.destroyEntity(menu); }});
-    while (true) {
-        createMissingWindows(ecm);
-        MSG msg;
-        GetMessage(&msg, NULL, 0, 0);
-        if (msg.message == WM_QUIT) {
-            break;
-        }
-        TranslateMessage(&msg);
-        DispatchMessage(&msg);
+
+void processWindowsMessages(ECSManager& ecs) {
+    MSG msg;
+    GetMessage(&msg, NULL, 0, 0);
+    if (msg.message == WM_QUIT) {
+        ecs.stop();
+        return;
     }
+    TranslateMessage(&msg);
+    DispatchMessage(&msg);
+}
+
+
+int main() {
+    ECSManager ecs;
+    ecs.addSystem(System{createMissingWindows});
+    ecs.addSystem(System{processWindowsMessages});
+    auto window = ecs.createBoundEntity();
+    window.set(ScreenLocation{{200, 100, 600, 400}});
+    window.set(WindowHandler::Close{[&](){ ecs.stop(); }});
+    auto menu = ecs.createBoundEntity();
+    menu.set(ScreenLocation{{300, 200, 500, 500}});
+    menu.set(WindowHandler::Close{
+        [&](){ ecs.destroyEntity(menu.getEntity()); }});
+    ecs.run();
     return 0;
 }
