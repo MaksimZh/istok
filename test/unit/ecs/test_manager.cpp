@@ -90,9 +90,6 @@ TEST_CASE("ECS - manager", "[unit][ecs]") {
         SECTION("destroy entity") {
             manager.destroyEntity(e0);
             REQUIRE(manager.isValidEntity(e0) == false);
-            REQUIRE(manager.has<A>(e0) == false);
-            REQUIRE(manager.has<B>(e0) == false);
-            REQUIRE(manager.has<C>(e0) == false);
             REQUIRE(isSameEntitySet(manager.view<A>(), EntityUSet{}));
             REQUIRE(isSameEntitySet(manager.view<B>(), EntityUSet{}));
         }

@@ -26,17 +26,21 @@ public:
 
     template <typename Component>
     bool has(Entity e) const {
+        assert(isValidEntity(e));
         return components.has<Component>(e);
     }
 
     template <typename Component>
     Component& get(Entity e) {
+        assert(isValidEntity(e));
         assert(has<Component>(e));
         return components.get<Component>(e);
     }
 
     template <typename Component>
     const Component& get(Entity e) const {
+        assert(isValidEntity(e));
+        assert(has<Component>(e));
         return components.get<Component>(e);
     }
 
@@ -52,11 +56,14 @@ public:
 
     template <typename Component>
     void set(Entity e, Component&& component) {
+        assert(isValidEntity(e));
         components.insert(e, std::move(component));
     }
 
     template <typename Component>
     void remove(Entity e) {
+        assert(isValidEntity(e));
+        assert(has<Component>(e));
         components.remove<Component>(e);
     }
 
