@@ -4,6 +4,7 @@
 #include <iostream>
 #include <unordered_set>
 #include <functional>
+#include <initializer_list>
 
 using namespace Istok::ECS;
 
@@ -155,6 +156,8 @@ public:
     ECSManager(ECSManager&&) = default;
     ECSManager& operator=(ECSManager&&) = default;
 
+    ECSManager(std::initializer_list<System> args) : systems(args) {}
+
     void addSystem(System system) {
         systems.push_back(system);
     }
@@ -199,17 +202,22 @@ public:
         return ecm.get<Component>(e);
     }
 
-    Entity createEntity() {
-        return ecm.createEntity();
-    }
-
-    BoundEntity createBoundEntity() {
-        return BoundEntity(ecm, ecm.createEntity());
+    template<typename... Components>
+    Entity createEntity(Components&&... components) {
+        Entity e = ecm.createEntity();
+        (ecm.set(e, std::forward<Components>(components)), ...);
+        return e;
     }
 
     BoundEntity bind(Entity e) {
         assert(isValidEntity(e));
         return BoundEntity(ecm, e);
+    }
+    
+    template<typename... Components>
+    BoundEntity createBoundEntity(Components&&... components) {
+        Entity e = createEntity(std::forward<Components>(components)...);
+        return bind(e);
     }
 
     void destroyEntity(Entity e) {
@@ -269,14 +277,14 @@ void processWindowsMessages(ECSManager& ecs) {
 
 
 int main() {
-    ECSManager ecs;
-    ecs.addSystem(System{createMissingWindows});
-    ecs.addSystem(System{processWindowsMessages});
-    auto window = ecs.createBoundEntity();
-    window.set(ScreenLocation{{200, 100, 600, 400}});
-    window.set(WindowHandler::Close{[&](){ ecs.stop(); }});
-    auto menu = ecs.createBoundEntity();
-    menu.set(ScreenLocation{{300, 200, 500, 500}});
+    ECSManager ecs {
+        System{createMissingWindows},
+        System{processWindowsMessages},
+    };
+    ecs.createEntity(
+        ScreenLocation{{200, 100, 600, 400}},
+        WindowHandler::Close{[&](){ ecs.stop(); }});
+    auto menu = ecs.createBoundEntity(ScreenLocation{{300, 200, 500, 500}});
     menu.set(WindowHandler::Close{
         [&](){ ecs.destroyEntity(menu.getEntity()); }});
     ecs.run();
