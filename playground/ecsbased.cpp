@@ -283,10 +283,11 @@ int main() {
     };
     ecs.createEntity(
         ScreenLocation{{200, 100, 600, 400}},
-        WindowHandler::Close{[&](){ ecs.stop(); }});
-    auto menu = ecs.createBoundEntity(ScreenLocation{{300, 200, 500, 500}});
-    menu.set(WindowHandler::Close{
-        [&](){ ecs.destroyEntity(menu.getEntity()); }});
+        WindowHandler::Close{[&](){
+            ecs.createEntity(
+                ScreenLocation{{300, 200, 500, 500}},
+                WindowHandler::Close{[&](){ ecs.stop(); }});
+        }});
     ecs.run();
     return 0;
 }
