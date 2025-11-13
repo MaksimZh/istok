@@ -219,16 +219,17 @@ public:
         if (!hWnd) {
             throw std::runtime_error("Cannot create window");
         }
-        SetWindowLongPtr(
-            hWnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(
-                this->data.get()));
         ShowWindow(hWnd, SW_SHOW);
         std::cout << "Create window " << hWnd << std::endl;
         this->hWnd = std::make_unique<HWND>(hWnd);
+        SetWindowLongPtr(
+            hWnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(
+                this->data.get()));
     }
     
     ~Window() {
         if (hWnd && *hWnd) {
+            std::cout << "Destroying window: " << *hWnd << std::endl;
             SetWindowLongPtr(*hWnd, GWLP_USERDATA, NULL);
             DestroyWindow(*hWnd);
             std::cout << "Window destroyed: " << *hWnd << std::endl;
@@ -254,10 +255,8 @@ private:
     }
 };
 
-enum class WindowState {
-    IDLE,
-    PROCESSING,
-    CHANGED
+struct WindowState {
+    bool idle;
 };
 
 LRESULT CALLBACK windowProc(
@@ -273,9 +272,8 @@ LRESULT CALLBACK windowProc(
         return DefWindowProc(hWnd, msg, wParam, lParam);
     }
     auto global = data->ecs->bind(*stateView.begin());
-    global.set(WindowState::IDLE);
     if (msg == WM_CLOSE) {
-        global.set(WindowState::CHANGED);
+        global.set(WindowState{false});
         auto entity = data->ecs->bind(data->entity);
         if (entity.has<WindowHandler::Close>()) {
             std::cout << "handler: WM_CLOSE " <<
@@ -285,7 +283,7 @@ LRESULT CALLBACK windowProc(
         }
     }
     if (msg == WM_SIZE) {
-        global.set(WindowState::CHANGED);
+        global.set(WindowState{false});
         auto entity = data->ecs->bind(data->entity);
         if (entity.has<Window>()) {
             std::cout << "message: WM_SIZE " <<
@@ -310,10 +308,9 @@ void processWindowsMessages(ECSManager& ecs) {
     auto stateView = ecs.view<WindowState>();
     auto global = ecs.bind(
         (stateView.begin() == stateView.end())
-            ? ecs.createEntity(WindowState::IDLE)
+            ? ecs.createEntity(WindowState{true})
             : *stateView.begin());
-    while (global.get<WindowState>() == WindowState::IDLE) {
-        global.set(WindowState::PROCESSING);
+    while (global.get<WindowState>().idle) {
         MSG msg;
         GetMessage(&msg, NULL, 0, 0);
         if (msg.message == WM_QUIT) {
@@ -323,7 +320,7 @@ void processWindowsMessages(ECSManager& ecs) {
         TranslateMessage(&msg);
         DispatchMessage(&msg);
     }
-    global.set(WindowState::IDLE);
+    global.set(WindowState{true});
 }
 
 
