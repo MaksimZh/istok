@@ -229,8 +229,9 @@ public:
     
     ~Window() {
         if (hWnd && *hWnd) {
-            std::cout << "Destroy window " << *hWnd << std::endl;
+            SetWindowLongPtr(*hWnd, GWLP_USERDATA, NULL);
             DestroyWindow(*hWnd);
+            std::cout << "Window destroyed: " << *hWnd << std::endl;
         }
     }
 
@@ -277,6 +278,8 @@ LRESULT CALLBACK windowProc(
         global.set(WindowState::CHANGED);
         auto entity = data->ecs->bind(data->entity);
         if (entity.has<WindowHandler::Close>()) {
+            std::cout << "handler: WM_CLOSE " <<
+                entity.getEntity().value << std::endl;
             entity.get<WindowHandler::Close>().func();
             return 0;
         }
@@ -285,7 +288,8 @@ LRESULT CALLBACK windowProc(
         global.set(WindowState::CHANGED);
         auto entity = data->ecs->bind(data->entity);
         if (entity.has<Window>()) {
-            std::cout << "message: WM_SIZE" << std::endl;
+            std::cout << "message: WM_SIZE " <<
+                entity.getEntity().value << std::endl;
             data->ecs->iterate();
         }
         return 0;
