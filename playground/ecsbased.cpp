@@ -78,17 +78,6 @@ public:
         return e;
     }
 
-    BoundEntity bind(Entity e) {
-        assert(isValidEntity(e));
-        return BoundEntity(ecm, e);
-    }
-    
-    template<typename... Components>
-    BoundEntity createBoundEntity(Components&&... components) {
-        Entity e = createEntity(std::forward<Components>(components)...);
-        return bind(e);
-    }
-
     void destroyEntity(Entity e) {
         assert(isValidEntity(e));
         ecm.destroyEntity(e);
@@ -205,8 +194,7 @@ LRESULT CALLBACK windowProc(
 class Window {
 public:
     Window(WindowData data) : data(std::make_unique<WindowData>(data)) {
-        auto entity = data.ecs->bind(data.entity);
-        auto location = entity.get<ScreenLocation>().value;
+        auto location = data.ecs->get<ScreenLocation>(data.entity).value;
         HWND hWnd = CreateWindowEx(
             NULL,
             getWindowClass(),
@@ -271,23 +259,21 @@ LRESULT CALLBACK windowProc(
     if (stateView.begin() == stateView.end()) {
         return DefWindowProc(hWnd, msg, wParam, lParam);
     }
-    auto global = data->ecs->bind(*stateView.begin());
+    auto global = *stateView.begin();
     if (msg == WM_CLOSE) {
-        global.set(WindowState{false});
-        auto entity = data->ecs->bind(data->entity);
-        if (entity.has<WindowHandler::Close>()) {
+        data->ecs->set(global, WindowState{false});
+        if (data->ecs->has<WindowHandler::Close>(data->entity)) {
             std::cout << "handler: WM_CLOSE " <<
-                entity.getEntity().value << std::endl;
-            entity.get<WindowHandler::Close>().func();
+                data->entity.value << std::endl;
+            data->ecs->get<WindowHandler::Close>(data->entity).func();
             return 0;
         }
     }
     if (msg == WM_SIZE) {
-        global.set(WindowState{false});
-        auto entity = data->ecs->bind(data->entity);
-        if (entity.has<Window>()) {
+        data->ecs->set(global, WindowState{false});
+        if (data->ecs->has<Window>(data->entity)) {
             std::cout << "message: WM_SIZE " <<
-                entity.getEntity().value << std::endl;
+                data->entity.value << std::endl;
             data->ecs->iterate();
         }
         return 0;
@@ -306,11 +292,10 @@ void createMissingWindows(ECSManager& ecs) {
 
 void processWindowsMessages(ECSManager& ecs) {
     auto stateView = ecs.view<WindowState>();
-    auto global = ecs.bind(
-        (stateView.begin() == stateView.end())
-            ? ecs.createEntity(WindowState{true})
-            : *stateView.begin());
-    while (global.get<WindowState>().idle) {
+    auto global = (stateView.begin() == stateView.end())
+        ? ecs.createEntity(WindowState{true})
+        : *stateView.begin();
+    while (ecs.get<WindowState>(global).idle) {
         MSG msg;
         GetMessage(&msg, NULL, 0, 0);
         if (msg.message == WM_QUIT) {
@@ -320,7 +305,7 @@ void processWindowsMessages(ECSManager& ecs) {
         TranslateMessage(&msg);
         DispatchMessage(&msg);
     }
-    global.set(WindowState{true});
+    ecs.set(global, WindowState{true});
 }
 
 
