@@ -180,22 +180,59 @@ struct Close {
 
 } // namespace WindowHandler
 
+struct SysWindowMessage {
+    HWND hWnd;
+    UINT msg;
+    WPARAM wParam;
+    LPARAM lParam;
+};
 
-struct WindowData {
+
+LRESULT handleByDefault(SysWindowMessage message) {
+    return DefWindowProc(
+        message.hWnd,
+        message.msg,
+        message.wParam,
+        message.lParam);
+}
+
+
+struct ECSBinding {
     ECSManager* ecs;
     Entity entity;
 };
 
 
-LRESULT CALLBACK windowProc(
-    HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) noexcept;
+class WindowMessageHandler {
+public:
+    virtual ~WindowMessageHandler() = default;
+    virtual LRESULT handleWindowMessage(
+        SysWindowMessage message, ECSBinding binding) noexcept = 0;
+};
 
 
 class Window {
+private:
+    class HandlerProxy {
+    public:
+        HandlerProxy(WindowMessageHandler& handler, ECSBinding binding)
+        : handler(handler), binding(binding) {}
+
+        LRESULT handle(SysWindowMessage message) noexcept {
+            return handler.handleWindowMessage(message, binding);
+        }
+
+    private:
+        WindowMessageHandler& handler;
+        ECSBinding binding;
+    };
+
 public:
-    Window(WindowData data) : data(std::make_unique<WindowData>(data)) {
-        auto location = data.ecs->get<ScreenLocation>(data.entity).value;
-        HWND hWnd = CreateWindowEx(
+    Window(WindowMessageHandler& handler, ECSBinding binding)
+    : handler(handler, binding) {
+        Rect<int> location =
+            binding.ecs->get<ScreenLocation>(binding.entity).value;
+        hWnd = CreateWindowEx(
             NULL,
             getWindowClass(),
             L"Istok",
@@ -208,38 +245,47 @@ public:
             throw std::runtime_error("Cannot create window");
         }
         ShowWindow(hWnd, SW_SHOW);
-        std::cout << "Create window " << hWnd << std::endl;
-        this->hWnd = std::make_unique<HWND>(hWnd);
         SetWindowLongPtr(
-            hWnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(
-                this->data.get()));
+            hWnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(&this->handler));
+        std::cout << "Window created: " << hWnd << std::endl;
     }
     
     ~Window() {
-        if (hWnd && *hWnd) {
-            std::cout << "Destroying window: " << *hWnd << std::endl;
-            SetWindowLongPtr(*hWnd, GWLP_USERDATA, NULL);
-            DestroyWindow(*hWnd);
-            std::cout << "Window destroyed: " << *hWnd << std::endl;
+        if (hWnd) {
+            std::cout << "Destroying window: " << hWnd << std::endl;
+            SetWindowLongPtr(hWnd, GWLP_USERDATA, NULL);
+            DestroyWindow(hWnd);
+            std::cout << "Window destroyed: " << hWnd << std::endl;
         }
     }
 
     Window(const Window&) = delete;
     Window& operator=(const Window&) = delete;
-    Window(Window&&) = default;
-    Window& operator=(Window&&) = default;
+    Window(Window&& source) = delete;
+    Window& operator=(Window&& source) = delete;
 
     HWND getHWnd() const {
-        return *hWnd;
+        return hWnd;
     }
 
 private:
-    std::unique_ptr<WindowData> data;
-    std::unique_ptr<HWND> hWnd;
+    HWND hWnd = nullptr;
+    HandlerProxy handler;
 
     static LPCWSTR getWindowClass() {
         static WindowClass wc(windowProc, L"Istok");
         return wc.get();
+    }
+
+    static LRESULT CALLBACK windowProc(
+        HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam
+    ) noexcept {
+        if (HandlerProxy* handler = reinterpret_cast<HandlerProxy*>(
+            GetWindowLongPtr(hWnd, GWLP_USERDATA))
+        ) {
+            return handler->handle(SysWindowMessage(hWnd, msg, wParam, lParam));
+        }
+        return DefWindowProc(hWnd, msg, wParam, lParam);
     }
 };
 
@@ -247,45 +293,51 @@ struct WindowState {
     bool idle;
 };
 
-LRESULT CALLBACK windowProc(
-    HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) noexcept
-{
-    WindowData* data = reinterpret_cast<WindowData*>(
-        GetWindowLongPtr(hWnd, GWLP_USERDATA));
-    if (!data) {
-        return DefWindowProc(hWnd, msg, wParam, lParam);
-    }
-    auto stateView = data->ecs->view<WindowState>();
-    if (stateView.begin() == stateView.end()) {
-        return DefWindowProc(hWnd, msg, wParam, lParam);
-    }
-    auto global = *stateView.begin();
-    if (msg == WM_CLOSE) {
-        data->ecs->set(global, WindowState{false});
-        if (data->ecs->has<WindowHandler::Close>(data->entity)) {
-            std::cout << "handler: WM_CLOSE " <<
-                data->entity.value << std::endl;
-            data->ecs->get<WindowHandler::Close>(data->entity).func();
+
+class Handler : public WindowMessageHandler {
+public:
+    Handler() = default;
+    
+    LRESULT handleWindowMessage(
+        SysWindowMessage message, ECSBinding binding
+    ) noexcept override {
+        ECSManager& ecs = *binding.ecs;
+        Entity entity = binding.entity;
+        auto stateView = ecs.view<WindowState>();
+        if (stateView.begin() == stateView.end()) {
+            return handleByDefault(message);
+        }
+        auto global = *stateView.begin();
+        if (message.msg == WM_CLOSE) {
+            ecs.set(global, WindowState{false});
+            if (ecs.has<WindowHandler::Close>(entity)) {
+                std::cout << "handler: WM_CLOSE " <<
+                    entity.value << std::endl;
+                ecs.get<WindowHandler::Close>(entity).func();
+                return 0;
+            }
+        }
+        if (message.msg == WM_SIZE) {
+            ecs.set(global, WindowState{false});
+            if (ecs.has<std::unique_ptr<Window>>(entity)) {
+                std::cout << "message: WM_SIZE " <<
+                    entity.value << std::endl;
+                ecs.iterate();
+            }
             return 0;
         }
+        return handleByDefault(message);
     }
-    if (msg == WM_SIZE) {
-        data->ecs->set(global, WindowState{false});
-        if (data->ecs->has<Window>(data->entity)) {
-            std::cout << "message: WM_SIZE " <<
-                data->entity.value << std::endl;
-            data->ecs->iterate();
-        }
-        return 0;
-    }
-    return DefWindowProc(hWnd, msg, wParam, lParam);
-}
+};
 
-
-void createMissingWindows(ECSManager& ecs) {
-    for (auto& w : ecs.view<ScreenLocation>().exclude<Window>()) {
+void createWindows(ECSManager& ecs) {
+    static Handler handler;
+    for (auto& w : ecs.view<ScreenLocation>()
+            .exclude<std::unique_ptr<Window>>()
+    ) {
         std::cout << "Creating window for entity " << w.value << std::endl;
-        ecs.set(w, Window(WindowData{&ecs, w}));
+        Rect<int>& location = ecs.get<ScreenLocation>(w).value;
+        ecs.set(w, std::make_unique<Window>(handler, ECSBinding{&ecs, w}));
     }
 }
 
@@ -311,7 +363,7 @@ void processWindowsMessages(ECSManager& ecs) {
 
 int main() {
     ECSManager ecs {
-        System{createMissingWindows},
+        System{createWindows},
         System{processWindowsMessages},
     };
     ecs.createEntity(
