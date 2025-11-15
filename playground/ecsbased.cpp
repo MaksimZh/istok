@@ -294,41 +294,83 @@ struct WindowState {
 };
 
 
-class Handler : public WindowMessageHandler {
+class CloseHandler : public WindowMessageHandler {
 public:
-    Handler() = default;
+    CloseHandler() = default;
     
     LRESULT handleWindowMessage(
         SysWindowMessage message, ECSBinding binding
     ) noexcept override {
+        assert(message.msg == WM_CLOSE);
         ECSManager& ecs = *binding.ecs;
         Entity entity = binding.entity;
         auto stateView = ecs.view<WindowState>();
-        if (stateView.begin() == stateView.end()) {
-            return handleByDefault(message);
-        }
+        assert(stateView.begin() != stateView.end());
         auto global = *stateView.begin();
-        if (message.msg == WM_CLOSE) {
-            ecs.set(global, WindowState{false});
-            if (ecs.has<WindowHandler::Close>(entity)) {
-                std::cout << "handler: WM_CLOSE " <<
-                    entity.value << std::endl;
-                ecs.get<WindowHandler::Close>(entity).func();
-                return 0;
-            }
-        }
-        if (message.msg == WM_SIZE) {
-            ecs.set(global, WindowState{false});
-            if (ecs.has<std::unique_ptr<Window>>(entity)) {
-                std::cout << "message: WM_SIZE " <<
-                    entity.value << std::endl;
-                ecs.iterate();
-            }
+        ecs.set(global, WindowState{false});
+        if (ecs.has<WindowHandler::Close>(entity)) {
+            std::cout << "handler: WM_CLOSE " <<
+                entity.value << std::endl;
+            ecs.get<WindowHandler::Close>(entity).func();
             return 0;
         }
         return handleByDefault(message);
     }
 };
+
+
+class SizeHandler : public WindowMessageHandler {
+public:
+    SizeHandler() = default;
+    
+    LRESULT handleWindowMessage(
+        SysWindowMessage message, ECSBinding binding
+    ) noexcept override {
+        assert(message.msg == WM_SIZE);
+        ECSManager& ecs = *binding.ecs;
+        Entity entity = binding.entity;
+        auto stateView = ecs.view<WindowState>();
+        assert(stateView.begin() != stateView.end());
+        auto global = *stateView.begin();
+        ecs.set(global, WindowState{false});
+        if (ecs.has<std::unique_ptr<Window>>(entity)) {
+            std::cout << "message: WM_SIZE " <<
+                entity.value << std::endl;
+            ecs.iterate();
+        }
+        return 0;
+    }
+
+private:
+    std::unordered_map<UINT, std::unique_ptr<WindowMessageHandler>> handlers;
+};
+
+
+class Handler : public WindowMessageHandler {
+public:
+    Handler() {
+        handlers[WM_CLOSE] = std::make_unique<CloseHandler>();
+        handlers[WM_SIZE] = std::make_unique<SizeHandler>();
+    }
+    
+    LRESULT handleWindowMessage(
+        SysWindowMessage message, ECSBinding binding
+    ) noexcept override {
+        ECSManager& ecs = *binding.ecs;
+        auto stateView = ecs.view<WindowState>();
+        if (
+            stateView.begin() != stateView.end() &&
+            handlers.contains(message.msg)
+        ) {
+            return handlers[message.msg]->handleWindowMessage(message, binding);
+        }
+        return handleByDefault(message);
+    }
+
+private:
+    std::unordered_map<UINT, std::unique_ptr<WindowMessageHandler>> handlers;
+};
+
 
 void createWindows(ECSManager& ecs) {
     static Handler handler;
