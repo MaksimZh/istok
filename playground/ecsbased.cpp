@@ -8,13 +8,15 @@
 
 using namespace Istok::ECS;
 
-class ECSManager;
-
-using System = std::function<void(ECSManager&)>;
+class System {
+public:
+    virtual ~System() = default;
+    virtual void run() = 0;
+};
 
 class ECSManager {
 public:
-    ECSManager(std::initializer_list<System> args) : systems(args) {}
+    ECSManager() {}
 
     ECSManager(const ECSManager&) = delete;
     ECSManager& operator=(const ECSManager&) = delete;
@@ -31,14 +33,15 @@ public:
         std::cout << "Systems destroyed" << std::endl;
     }
 
-    void addSystem(System system) {
-        systems.push_back(system);
+    void addSystem(std::unique_ptr<System>&& system) {
+        systems.push_back(std::move(system));
     }
 
     void iterate() {
         std::cout << "ECS iteration" << std::endl;
         for (auto& s : systems) {
-            s(*this);
+            assert(s);
+            s->run();
         }
     }
 
@@ -118,7 +121,7 @@ public:
 private:
     bool running = false;
     EntityComponentManager ecm;
-    std::vector<System> systems;
+    std::vector<std::unique_ptr<System>> systems;
 };
 
 
@@ -381,42 +384,56 @@ private:
 };
 
 
-void createWindows(ECSManager& ecs) {
-    static Handler handler;
-    for (auto& w : ecs.view<ScreenLocation>()
+class CreateWindowsSystem: public System {
+public:
+    CreateWindowsSystem(ECSManager& ecs) : ecs(ecs) {}
+
+    void run() override {
+        for (auto& w : ecs.view<ScreenLocation>()
             .exclude<std::unique_ptr<Window>>()
-    ) {
-        std::cout << "Creating window for entity " << w.value << std::endl;
-        Rect<int>& location = ecs.get<ScreenLocation>(w).value;
-        ecs.set(w, std::make_unique<Window>(handler, ECSBinding{&ecs, w}));
-    }
-}
-
-
-void processWindowsMessages(ECSManager& ecs) {
-    auto stateView = ecs.view<WindowState>();
-    auto global = (stateView.begin() == stateView.end())
-        ? ecs.createEntity(WindowState{true})
-        : *stateView.begin();
-    while (ecs.get<WindowState>(global).idle) {
-        MSG msg;
-        GetMessage(&msg, NULL, 0, 0);
-        if (msg.message == WM_QUIT) {
-            ecs.stop();
-            return;
+        ) {
+            std::cout << "Creating window for entity " << w.value << std::endl;
+            Rect<int>& location = ecs.get<ScreenLocation>(w).value;
+            ecs.set(w, std::make_unique<Window>(handler, ECSBinding{&ecs, w}));
         }
-        TranslateMessage(&msg);
-        DispatchMessage(&msg);
     }
-    ecs.set(global, WindowState{true});
-}
+    
+private:
+    ECSManager& ecs;
+    Handler handler;
+};
+
+
+class WindowsMessageSystem: public System {
+public:
+    WindowsMessageSystem(ECSManager& ecs) : ecs(ecs) {
+        global = ecs.createEntity(WindowState{true});
+    }
+
+    void run() override {
+        while (ecs.get<WindowState>(global).idle) {
+            MSG msg;
+            GetMessage(&msg, NULL, 0, 0);
+            if (msg.message == WM_QUIT) {
+                ecs.stop();
+                return;
+            }
+            TranslateMessage(&msg);
+            DispatchMessage(&msg);
+        }
+        ecs.set(global, WindowState{true});
+    }
+
+private:
+    ECSManager& ecs;
+    Entity global;
+};
 
 
 int main() {
-    ECSManager ecs {
-        System{createWindows},
-        System{processWindowsMessages},
-    };
+    ECSManager ecs;
+    ecs.addSystem(std::make_unique<CreateWindowsSystem>(ecs));
+    ecs.addSystem(std::make_unique<WindowsMessageSystem>(ecs));
     ecs.createEntity(
         ScreenLocation{{200, 100, 600, 400}},
         WindowHandler::Close{[&](){
