@@ -14,8 +14,7 @@ using System = std::function<void(ECSManager&)>;
 
 class ECSManager {
 public:
-    ECSManager(std::initializer_list<System> args)
-    : ecm(std::make_unique<EntityComponentManager>()), systems(args) {}
+    ECSManager(std::initializer_list<System> args) : systems(args) {}
 
     ECSManager(const ECSManager&) = delete;
     ECSManager& operator=(const ECSManager&) = delete;
@@ -25,8 +24,11 @@ public:
     ~ECSManager() {
         // Systems and components may have references to ECS
         // They must be destroyed first
+        std::cout << "Destroying ECS" << std::endl;
+        ecm.clear();
+        std::cout << "Components destroyed" << std::endl;
         systems.clear();
-        ecm.reset();
+        std::cout << "Systems destroyed" << std::endl;
     }
 
     void addSystem(System system) {
@@ -55,67 +57,67 @@ public:
     }
 
     bool isValidEntity(Entity e) const {
-        return ecm->isValidEntity(e);
+        return ecm.isValidEntity(e);
     }
 
     template <typename Component>
     bool has(Entity e) const {
         assert(isValidEntity(e));
-        return ecm->has<Component>(e);
+        return ecm.has<Component>(e);
     }
 
     template <typename Component>
     Component& get(Entity e) {
         assert(isValidEntity(e));
         assert(has<Component>(e));
-        return ecm->get<Component>(e);
+        return ecm.get<Component>(e);
     }
 
     template <typename Component>
     const Component& get(Entity e) const {
         assert(isValidEntity(e));
         assert(has<Component>(e));
-        return ecm->get<Component>(e);
+        return ecm.get<Component>(e);
     }
 
     template<typename... Components>
     Entity createEntity(Components&&... components) {
-        Entity e = ecm->createEntity();
-        (ecm->set(e, std::forward<Components>(components)), ...);
+        Entity e = ecm.createEntity();
+        (ecm.set(e, std::forward<Components>(components)), ...);
         return e;
     }
 
     void destroyEntity(Entity e) {
         assert(isValidEntity(e));
-        ecm->destroyEntity(e);
+        ecm.destroyEntity(e);
     }
 
     template <typename Component>
     void set(Entity e, Component&& component) {
         assert(isValidEntity(e));
-        ecm->set(e, std::move(component));
+        ecm.set(e, std::move(component));
     }
 
     template <typename Component>
     void remove(Entity e) {
         assert(isValidEntity(e));
         assert(has<Component>(e));
-        ecm->remove<Component>(e);
+        ecm.remove<Component>(e);
     }
 
     template <typename Component>
     void removeAll() {
-        ecm->removeAll<Component>();
+        ecm.removeAll<Component>();
     }
 
     template<typename... Components>
     EntityView view() {
-        return ecm->view<Components...>();
+        return ecm.view<Components...>();
     }
 
 private:
     bool running = false;
-    std::unique_ptr<EntityComponentManager> ecm;
+    EntityComponentManager ecm;
     std::vector<System> systems;
 };
 

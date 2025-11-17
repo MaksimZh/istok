@@ -19,6 +19,10 @@ public:
 
     EntityComponentManager(size_t initialCapacity = 1024)
         : entities(initialCapacity) {}
+    
+    void clear() {
+        components.clear();
+    }
 
     bool isValidEntity(Entity e) const {
         return entities.isValid(e);
