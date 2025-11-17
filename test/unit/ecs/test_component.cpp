@@ -204,35 +204,36 @@ TEST_CASE("ECS - component manager", "[unit][ecs]") {
         REQUIRE(manager.get<A>(e0) == A{0});
         REQUIRE(manager.get<B>(e0) == B{0});
 
-        SECTION("remove") {
-            manager.remove<A>(e0);
-            REQUIRE(manager.has<A>(e0) == false);
-            REQUIRE(manager.has<B>(e0) == true);
-            REQUIRE(manager.has<C>(e0) == false);
-            REQUIRE(manager.get<B>(e0) == B{0});
-        }
-
-        SECTION("remove all") {
-            manager.removeAll<A>();
-            REQUIRE(manager.has<A>(e0) == false);
-            REQUIRE(manager.has<B>(e0) == true);
-            REQUIRE(manager.has<C>(e0) == false);
-            REQUIRE(manager.get<B>(e0) == B{0});
-        }
-
-        SECTION("clear") {
-            manager.clear(e0);
-            REQUIRE(manager.has<A>(e0) == false);
-            REQUIRE(manager.has<B>(e0) == false);
-            REQUIRE(manager.has<C>(e0) == false);
-        }
-
         SECTION("view") {
             REQUIRE(isSameEntitySet(manager.view<A>(), EntityUSet{e0}));
             REQUIRE(isSameEntitySet(manager.view<B>(), EntityUSet{e0}));
             REQUIRE(isSameEntitySet(manager.view<C>(), EntityUSet{}));
             REQUIRE(isSameEntitySet(manager.view<A, B>(), EntityUSet{e0}));
             REQUIRE(isSameEntitySet(manager.view<A, C>(), EntityUSet{}));
+        }
+
+        SECTION("remove") {
+            manager.remove<A>(e0);
+            REQUIRE(isSameEntitySet(manager.view<A>(), EntityUSet{}));
+            REQUIRE(isSameEntitySet(manager.view<B>(), EntityUSet{e0}));
+        }
+
+        SECTION("remove all") {
+            manager.removeAll<A>();
+            REQUIRE(isSameEntitySet(manager.view<A>(), EntityUSet{}));
+            REQUIRE(isSameEntitySet(manager.view<B>(), EntityUSet{e0}));
+        }
+
+        SECTION("clear") {
+            manager.clear(e0);
+            REQUIRE(isSameEntitySet(manager.view<A>(), EntityUSet{}));
+            REQUIRE(isSameEntitySet(manager.view<B>(), EntityUSet{e0}));
+        }
+
+        SECTION("clearAll") {
+            manager.clearAll();
+            REQUIRE(isSameEntitySet(manager.view<A>(), EntityUSet{}));
+            REQUIRE(isSameEntitySet(manager.view<B>(), EntityUSet{}));
         }
     }
 
@@ -262,76 +263,6 @@ TEST_CASE("ECS - component manager", "[unit][ecs]") {
         REQUIRE(manager.get<A>(e2) == A{2});
         REQUIRE(manager.get<C>(e2) == C{2});
 
-        SECTION("remove") {
-            manager.remove<A>(e0);
-            manager.remove<B>(e1);
-            manager.remove<C>(e2);
-            REQUIRE(manager.has<A>(e0) == false);
-            REQUIRE(manager.has<B>(e0) == true);
-            REQUIRE(manager.has<C>(e0) == false);
-            REQUIRE(manager.has<A>(e1) == false);
-            REQUIRE(manager.has<B>(e1) == false);
-            REQUIRE(manager.has<C>(e1) == true);
-            REQUIRE(manager.has<A>(e2) == true);
-            REQUIRE(manager.has<B>(e2) == false);
-            REQUIRE(manager.has<C>(e2) == false);
-            REQUIRE(manager.get<B>(e0) == B{0});
-            REQUIRE(manager.get<C>(e1) == C{1});
-            REQUIRE(manager.get<A>(e2) == A{2});
-        }
-
-        SECTION("removeAll") {
-            manager.removeAll<A>();
-            REQUIRE(manager.has<A>(e0) == false);
-            REQUIRE(manager.has<B>(e0) == true);
-            REQUIRE(manager.has<C>(e0) == false);
-            REQUIRE(manager.has<A>(e1) == false);
-            REQUIRE(manager.has<B>(e1) == true);
-            REQUIRE(manager.has<C>(e1) == true);
-            REQUIRE(manager.has<A>(e2) == false);
-            REQUIRE(manager.has<B>(e2) == false);
-            REQUIRE(manager.has<C>(e2) == true);
-            REQUIRE(manager.get<B>(e0) == B{0});
-            REQUIRE(manager.get<B>(e1) == B{1});
-            REQUIRE(manager.get<C>(e1) == C{1});
-            REQUIRE(manager.get<C>(e2) == C{2});
-        }
-
-        SECTION("clear") {
-            manager.clear(e0);
-            REQUIRE(manager.has<A>(e0) == false);
-            REQUIRE(manager.has<B>(e0) == false);
-            REQUIRE(manager.has<C>(e0) == false);
-            REQUIRE(manager.has<A>(e1) == false);
-            REQUIRE(manager.has<B>(e1) == true);
-            REQUIRE(manager.has<C>(e1) == true);
-            REQUIRE(manager.has<A>(e2) == true);
-            REQUIRE(manager.has<B>(e2) == false);
-            REQUIRE(manager.has<C>(e2) == true);
-
-            manager.clear(e1);
-            REQUIRE(manager.has<A>(e0) == false);
-            REQUIRE(manager.has<B>(e0) == false);
-            REQUIRE(manager.has<C>(e0) == false);
-            REQUIRE(manager.has<A>(e1) == false);
-            REQUIRE(manager.has<B>(e1) == false);
-            REQUIRE(manager.has<C>(e1) == false);
-            REQUIRE(manager.has<A>(e2) == true);
-            REQUIRE(manager.has<B>(e2) == false);
-            REQUIRE(manager.has<C>(e2) == true);
-
-            manager.clear(e2);
-            REQUIRE(manager.has<A>(e0) == false);
-            REQUIRE(manager.has<B>(e0) == false);
-            REQUIRE(manager.has<C>(e0) == false);
-            REQUIRE(manager.has<A>(e1) == false);
-            REQUIRE(manager.has<B>(e1) == false);
-            REQUIRE(manager.has<C>(e1) == false);
-            REQUIRE(manager.has<A>(e2) == false);
-            REQUIRE(manager.has<B>(e2) == false);
-            REQUIRE(manager.has<C>(e2) == false);
-        }
-
         SECTION("view") {
             REQUIRE(isSameEntitySet(manager.view<A>(), EntityUSet{e0, e2}));
             REQUIRE(isSameEntitySet(manager.view<B>(), EntityUSet{e0, e1}));
@@ -341,6 +272,53 @@ TEST_CASE("ECS - component manager", "[unit][ecs]") {
             REQUIRE(isSameEntitySet(manager.view<A, C>(), EntityUSet{e2}));
             REQUIRE(isSameEntitySet(manager.view<A, B, C>(), EntityUSet{}));
             REQUIRE(isSameEntitySet(manager.view<A>().exclude<C>(), EntityUSet{e0}));
+        }
+        
+        SECTION("remove") {
+            manager.remove<A>(e0);
+            manager.remove<B>(e1);
+            manager.remove<C>(e2);
+            REQUIRE(isSameEntitySet(manager.view<A>(), EntityUSet{e2}));
+            REQUIRE(isSameEntitySet(manager.view<B>(), EntityUSet{e0}));
+            REQUIRE(isSameEntitySet(manager.view<C>(), EntityUSet{e1}));
+            REQUIRE(manager.get<B>(e0) == B{0});
+            REQUIRE(manager.get<C>(e1) == C{1});
+            REQUIRE(manager.get<A>(e2) == A{2});
+        }
+
+        SECTION("removeAll") {
+            manager.removeAll<A>();
+            REQUIRE(isSameEntitySet(manager.view<A>(), EntityUSet{}));
+            REQUIRE(isSameEntitySet(manager.view<B>(), EntityUSet{e0, e1}));
+            REQUIRE(isSameEntitySet(manager.view<C>(), EntityUSet{e1, e2}));
+            REQUIRE(manager.get<B>(e0) == B{0});
+            REQUIRE(manager.get<B>(e1) == B{1});
+            REQUIRE(manager.get<C>(e1) == C{1});
+            REQUIRE(manager.get<C>(e2) == C{2});
+        }
+
+        SECTION("clear") {
+            manager.clear(e0);
+            REQUIRE(isSameEntitySet(manager.view<A>(), EntityUSet{e2}));
+            REQUIRE(isSameEntitySet(manager.view<B>(), EntityUSet{e1}));
+            REQUIRE(isSameEntitySet(manager.view<C>(), EntityUSet{e1, e2}));
+
+            manager.clear(e1);
+            REQUIRE(isSameEntitySet(manager.view<A>(), EntityUSet{e2}));
+            REQUIRE(isSameEntitySet(manager.view<B>(), EntityUSet{}));
+            REQUIRE(isSameEntitySet(manager.view<C>(), EntityUSet{e2}));
+
+            manager.clear(e2);
+            REQUIRE(isSameEntitySet(manager.view<A>(), EntityUSet{}));
+            REQUIRE(isSameEntitySet(manager.view<B>(), EntityUSet{}));
+            REQUIRE(isSameEntitySet(manager.view<C>(), EntityUSet{}));
+        }
+
+        SECTION("clearAll") {
+            manager.clearAll();
+            REQUIRE(isSameEntitySet(manager.view<A>(), EntityUSet{}));
+            REQUIRE(isSameEntitySet(manager.view<B>(), EntityUSet{}));
+            REQUIRE(isSameEntitySet(manager.view<C>(), EntityUSet{}));
         }
     }
 }

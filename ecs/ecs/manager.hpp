@@ -21,7 +21,7 @@ public:
         : entities(initialCapacity) {}
     
     void clear() {
-        components.clear();
+        components.clearAll();
     }
 
     bool isValidEntity(Entity e) const {

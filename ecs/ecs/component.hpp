@@ -83,12 +83,6 @@ public:
     ComponentStorageManager(ComponentStorageManager&&) noexcept = default;
     ComponentStorageManager& operator=(ComponentStorageManager&&) noexcept = default;
 
-    void clear() {
-        for (auto& [_, s] : storages) {
-            s->removeAll();
-        }
-    }
-
     template<typename Component>
     bool hasStorage() const {
         return storages.contains(key<Component>());
@@ -260,10 +254,6 @@ public:
     ComponentManager(ComponentManager&&) noexcept = default;
     ComponentManager& operator=(ComponentManager&&) noexcept = default;
 
-    void clear() {
-        storages.clear();
-    }
-
     template<typename Component>
     bool has(Entity e) const {
         return storages.hasStorage<Component>() &&
@@ -311,6 +301,11 @@ public:
         }
     }
 
+    void clearAll() {
+        for (auto& s : storages.byStorage()) {
+            s.removeAll();
+        }
+    }
 
     template<typename... Components>
     EntityView view() {
