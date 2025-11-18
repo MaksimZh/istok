@@ -240,10 +240,8 @@ private:
     };
 
 public:
-    Window(WindowMessageHandler& handler, ECSBinding binding)
+    Window(Rect<int> location, WindowMessageHandler& handler, ECSBinding binding)
     : handler(handler, binding) {
-        Rect<int> location =
-            binding.ecs->get<ScreenLocation>(binding.entity).value;
         hWnd = CreateWindowEx(
             NULL,
             getWindowClass(),
@@ -316,10 +314,6 @@ public:
         assert(message.msg == WM_CLOSE);
         ECSManager& ecs = *binding.ecs;
         Entity entity = binding.entity;
-        auto stateView = ecs.view<WindowState>();
-        assert(stateView.begin() != stateView.end());
-        auto global = *stateView.begin();
-        ecs.set(global, WindowState{false});
         if (ecs.has<WindowHandler::Close>(entity)) {
             std::cout << "handler: WM_CLOSE " <<
                 entity.value << std::endl;
@@ -341,10 +335,6 @@ public:
         assert(message.msg == WM_SIZE);
         ECSManager& ecs = *binding.ecs;
         Entity entity = binding.entity;
-        auto stateView = ecs.view<WindowState>();
-        assert(stateView.begin() != stateView.end());
-        auto global = *stateView.begin();
-        ecs.set(global, WindowState{false});
         if (ecs.has<std::unique_ptr<Window>>(entity)) {
             std::cout << "message: WM_SIZE " <<
                 entity.value << std::endl;
@@ -368,50 +358,53 @@ public:
     LRESULT handleWindowMessage(
         SysWindowMessage message, ECSBinding binding
     ) noexcept override {
-        ECSManager& ecs = *binding.ecs;
-        auto stateView = ecs.view<WindowState>();
-        if (
-            stateView.begin() != stateView.end() &&
-            handlers.contains(message.msg)
-        ) {
+        if (handlers.contains(message.msg)) {
+            idle = false;
             return handlers[message.msg]->handleWindowMessage(message, binding);
         }
         return handleByDefault(message);
     }
 
+    bool isIdle() const {
+        return idle;
+    }
+
+    void setIdle(bool value) {
+        idle = value;
+    }
+
 private:
     std::unordered_map<UINT, std::unique_ptr<WindowMessageHandler>> handlers;
+    bool idle;
 };
 
 
-class CreateWindowsSystem: public System {
+class WindowSystem: public System {
 public:
-    CreateWindowsSystem(ECSManager& ecs) : ecs(ecs) {}
+    WindowSystem(ECSManager& ecs) : ecs(ecs) {}
 
     void run() override {
+        createMissingWindows();
+        processMessages();
+    }
+
+private:
+    ECSManager& ecs;
+    Handler handler;
+
+    void createMissingWindows() {
         for (auto& w : ecs.view<ScreenLocation>()
             .exclude<std::unique_ptr<Window>>()
         ) {
             std::cout << "Creating window for entity " << w.value << std::endl;
             Rect<int>& location = ecs.get<ScreenLocation>(w).value;
-            ecs.set(w, std::make_unique<Window>(handler, ECSBinding{&ecs, w}));
+            ecs.set(w, std::make_unique<Window>(
+                location, handler, ECSBinding{&ecs, w}));
         }
     }
-    
-private:
-    ECSManager& ecs;
-    Handler handler;
-};
 
-
-class WindowsMessageSystem: public System {
-public:
-    WindowsMessageSystem(ECSManager& ecs) : ecs(ecs) {
-        global = ecs.createEntity(WindowState{true});
-    }
-
-    void run() override {
-        while (ecs.get<WindowState>(global).idle) {
+    void processMessages() {
+        while (handler.isIdle()) {
             MSG msg;
             GetMessage(&msg, NULL, 0, 0);
             if (msg.message == WM_QUIT) {
@@ -421,19 +414,14 @@ public:
             TranslateMessage(&msg);
             DispatchMessage(&msg);
         }
-        ecs.set(global, WindowState{true});
+        handler.setIdle(true);
     }
-
-private:
-    ECSManager& ecs;
-    Entity global;
 };
 
 
 int main() {
     ECSManager ecs;
-    ecs.addSystem(std::make_unique<CreateWindowsSystem>(ecs));
-    ecs.addSystem(std::make_unique<WindowsMessageSystem>(ecs));
+    ecs.addSystem(std::make_unique<WindowSystem>(ecs));
     ecs.createEntity(
         ScreenLocation{{200, 100, 600, 400}},
         WindowHandler::Close{[&](){
