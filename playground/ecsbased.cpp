@@ -209,17 +209,11 @@ LRESULT handleByDefault(SysWindowMessage message) {
 }
 
 
-struct ECSBinding {
-    ECSManager* ecs;
-    Entity entity;
-};
-
-
 class WindowMessageHandler {
 public:
     virtual ~WindowMessageHandler() = default;
     virtual LRESULT handleWindowMessage(
-        SysWindowMessage message, ECSBinding binding) noexcept = 0;
+        Entity entity, SysWindowMessage message) noexcept = 0;
 };
 
 
@@ -227,21 +221,21 @@ class Window {
 private:
     class HandlerProxy {
     public:
-        HandlerProxy(WindowMessageHandler& handler, ECSBinding binding)
-        : handler(handler), binding(binding) {}
+        HandlerProxy(Entity entity, WindowMessageHandler& handler)
+        : entity(entity), handler(handler) {}
 
         LRESULT handle(SysWindowMessage message) noexcept {
-            return handler.handleWindowMessage(message, binding);
+            return handler.handleWindowMessage(entity, message);
         }
 
     private:
+        Entity entity;
         WindowMessageHandler& handler;
-        ECSBinding binding;
     };
 
 public:
-    Window(Rect<int> location, WindowMessageHandler& handler, ECSBinding binding)
-    : handler(handler, binding) {
+    Window(Entity entity, Rect<int> location, WindowMessageHandler& handler)
+    : handler(entity, handler) {
         hWnd = CreateWindowEx(
             NULL,
             getWindowClass(),
@@ -299,21 +293,15 @@ private:
     }
 };
 
-struct WindowState {
-    bool idle;
-};
-
 
 class CloseHandler : public WindowMessageHandler {
 public:
-    CloseHandler() = default;
+    CloseHandler(ECSManager& ecs) : ecs(ecs) {}
     
     LRESULT handleWindowMessage(
-        SysWindowMessage message, ECSBinding binding
+        Entity entity, SysWindowMessage message
     ) noexcept override {
         assert(message.msg == WM_CLOSE);
-        ECSManager& ecs = *binding.ecs;
-        Entity entity = binding.entity;
         if (ecs.has<WindowHandler::Close>(entity)) {
             std::cout << "handler: WM_CLOSE " <<
                 entity.value << std::endl;
@@ -322,19 +310,20 @@ public:
         }
         return handleByDefault(message);
     }
+
+private:
+    ECSManager& ecs;
 };
 
 
 class SizeHandler : public WindowMessageHandler {
 public:
-    SizeHandler() = default;
+    SizeHandler(ECSManager& ecs) : ecs(ecs) {}
     
     LRESULT handleWindowMessage(
-        SysWindowMessage message, ECSBinding binding
+        Entity entity, SysWindowMessage message
     ) noexcept override {
         assert(message.msg == WM_SIZE);
-        ECSManager& ecs = *binding.ecs;
-        Entity entity = binding.entity;
         if (ecs.has<std::unique_ptr<Window>>(entity)) {
             std::cout << "message: WM_SIZE " <<
                 entity.value << std::endl;
@@ -344,23 +333,23 @@ public:
     }
 
 private:
-    std::unordered_map<UINT, std::unique_ptr<WindowMessageHandler>> handlers;
+    ECSManager& ecs;
 };
 
 
 class Handler : public WindowMessageHandler {
 public:
-    Handler() {
-        handlers[WM_CLOSE] = std::make_unique<CloseHandler>();
-        handlers[WM_SIZE] = std::make_unique<SizeHandler>();
+    Handler(ECSManager& ecs) {
+        handlers[WM_CLOSE] = std::make_unique<CloseHandler>(ecs);
+        handlers[WM_SIZE] = std::make_unique<SizeHandler>(ecs);
     }
     
     LRESULT handleWindowMessage(
-        SysWindowMessage message, ECSBinding binding
+        Entity entity, SysWindowMessage message
     ) noexcept override {
         if (handlers.contains(message.msg)) {
             idle = false;
-            return handlers[message.msg]->handleWindowMessage(message, binding);
+            return handlers[message.msg]->handleWindowMessage(entity, message);
         }
         return handleByDefault(message);
     }
@@ -381,7 +370,7 @@ private:
 
 class WindowSystem: public System {
 public:
-    WindowSystem(ECSManager& ecs) : ecs(ecs) {}
+    WindowSystem(ECSManager& ecs) : ecs(ecs), handler(ecs) {}
 
     void run() override {
         createMissingWindows();
@@ -398,8 +387,7 @@ private:
         ) {
             std::cout << "Creating window for entity " << w.value << std::endl;
             Rect<int>& location = ecs.get<ScreenLocation>(w).value;
-            ecs.set(w, std::make_unique<Window>(
-                location, handler, ECSBinding{&ecs, w}));
+            ecs.set(w, std::make_unique<Window>(w, location, handler));
         }
     }
 
