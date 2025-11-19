@@ -212,31 +212,15 @@ LRESULT handleByDefault(SysWindowMessage message) {
 class WindowMessageHandler {
 public:
     virtual ~WindowMessageHandler() = default;
-    virtual LRESULT handleWindowMessage(
-        Entity entity, SysWindowMessage message) noexcept = 0;
+    virtual LRESULT handleWindowMessage(SysWindowMessage message) noexcept = 0;
 };
 
 
 class Window {
-private:
-    class HandlerProxy {
-    public:
-        HandlerProxy(Entity entity, WindowMessageHandler& handler)
-        : entity(entity), handler(handler) {}
-
-        LRESULT handle(SysWindowMessage message) noexcept {
-            return handler.handleWindowMessage(entity, message);
-        }
-
-    private:
-        Entity entity;
-        WindowMessageHandler& handler;
-    };
-
 public:
-    Window(Entity entity, Rect<int> location, WindowMessageHandler& handler)
-    : handler(entity, handler) {
-        hWnd = CreateWindowEx(
+    Window(Rect<int> location, std::unique_ptr<WindowMessageHandler>&& handler)
+    : handler_(std::move(handler)) {
+        hWnd_ = CreateWindowEx(
             NULL,
             getWindowClass(),
             L"Istok",
@@ -245,21 +229,21 @@ public:
             location.right - location.left,
             location.bottom - location.top,
             NULL, NULL, getHInstance(), nullptr);
-        if (!hWnd) {
+        if (!hWnd_) {
             throw std::runtime_error("Cannot create window");
         }
-        ShowWindow(hWnd, SW_SHOW);
+        ShowWindow(hWnd_, SW_SHOW);
         SetWindowLongPtr(
-            hWnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(&this->handler));
-        std::cout << "Window created: " << hWnd << std::endl;
+            hWnd_, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(handler_.get()));
+        std::cout << "Window created: " << hWnd_ << std::endl;
     }
     
     ~Window() {
-        if (hWnd) {
-            std::cout << "Destroying window: " << hWnd << std::endl;
-            SetWindowLongPtr(hWnd, GWLP_USERDATA, NULL);
-            DestroyWindow(hWnd);
-            std::cout << "Window destroyed: " << hWnd << std::endl;
+        if (hWnd_) {
+            std::cout << "Destroying window: " << hWnd_ << std::endl;
+            SetWindowLongPtr(hWnd_, GWLP_USERDATA, NULL);
+            DestroyWindow(hWnd_);
+            std::cout << "Window destroyed: " << hWnd_ << std::endl;
         }
     }
 
@@ -269,12 +253,12 @@ public:
     Window& operator=(Window&& source) = delete;
 
     HWND getHWnd() const {
-        return hWnd;
+        return hWnd_;
     }
 
 private:
-    HWND hWnd = nullptr;
-    HandlerProxy handler;
+    HWND hWnd_ = nullptr;
+    std::unique_ptr<WindowMessageHandler> handler_;
 
     static LPCWSTR getWindowClass() {
         static WindowClass wc(windowProc, L"Istok");
@@ -284,17 +268,27 @@ private:
     static LRESULT CALLBACK windowProc(
         HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam
     ) noexcept {
-        if (HandlerProxy* handler = reinterpret_cast<HandlerProxy*>(
-            GetWindowLongPtr(hWnd, GWLP_USERDATA))
+        if (WindowMessageHandler* handler =
+                reinterpret_cast<WindowMessageHandler*>(
+                    GetWindowLongPtr(hWnd, GWLP_USERDATA))
         ) {
-            return handler->handle(SysWindowMessage(hWnd, msg, wParam, lParam));
+            return handler->handleWindowMessage(
+                SysWindowMessage(hWnd, msg, wParam, lParam));
         }
         return DefWindowProc(hWnd, msg, wParam, lParam);
     }
 };
 
 
-class CloseHandler : public WindowMessageHandler {
+class WindowEntityMessageHandler {
+public:
+    virtual ~WindowEntityMessageHandler() = default;
+    virtual LRESULT handleWindowMessage(
+        Entity entity, SysWindowMessage message) noexcept = 0;
+};
+
+
+class CloseHandler : public WindowEntityMessageHandler {
 public:
     CloseHandler(ECSManager& ecs) : ecs(ecs) {}
     
@@ -316,7 +310,7 @@ private:
 };
 
 
-class SizeHandler : public WindowMessageHandler {
+class SizeHandler : public WindowEntityMessageHandler {
 public:
     SizeHandler(ECSManager& ecs) : ecs(ecs) {}
     
@@ -337,7 +331,7 @@ private:
 };
 
 
-class Handler : public WindowMessageHandler {
+class Handler : public WindowEntityMessageHandler {
 public:
     Handler(ECSManager& ecs) {
         handlers[WM_CLOSE] = std::make_unique<CloseHandler>(ecs);
@@ -363,14 +357,34 @@ public:
     }
 
 private:
-    std::unordered_map<UINT, std::unique_ptr<WindowMessageHandler>> handlers;
+    std::unordered_map<
+        UINT,
+        std::unique_ptr<WindowEntityMessageHandler>
+    > handlers;
+    
     bool idle;
+};
+
+
+class WindowEntityMessageHandlerProxy : public WindowMessageHandler {
+public:
+    WindowEntityMessageHandlerProxy(
+        Entity entity, WindowEntityMessageHandler& handler
+    ) : entity_(entity), handler_(handler) {}
+    
+    LRESULT handleWindowMessage(SysWindowMessage message) noexcept override {
+        return handler_.handleWindowMessage(entity_, message);
+    }
+
+private:
+    Entity entity_;
+    WindowEntityMessageHandler& handler_;
 };
 
 
 class WindowSystem: public System {
 public:
-    WindowSystem(ECSManager& ecs) : ecs(ecs), handler(ecs) {}
+    WindowSystem(ECSManager& ecs) : ecs_(ecs), handler_(ecs) {}
 
     void run() override {
         createMissingWindows();
@@ -378,31 +392,34 @@ public:
     }
 
 private:
-    ECSManager& ecs;
-    Handler handler;
+    ECSManager& ecs_;
+    Handler handler_;
 
     void createMissingWindows() {
-        for (auto& w : ecs.view<ScreenLocation>()
+        for (auto& w : ecs_.view<ScreenLocation>()
             .exclude<std::unique_ptr<Window>>()
         ) {
             std::cout << "Creating window for entity " << w.value << std::endl;
-            Rect<int>& location = ecs.get<ScreenLocation>(w).value;
-            ecs.set(w, std::make_unique<Window>(w, location, handler));
+            Rect<int>& location = ecs_.get<ScreenLocation>(w).value;
+            ecs_.set(w, std::make_unique<Window>(
+                location,
+                std::make_unique<WindowEntityMessageHandlerProxy>(
+                    w, handler_)));
         }
     }
 
     void processMessages() {
-        while (handler.isIdle()) {
+        while (handler_.isIdle()) {
             MSG msg;
             GetMessage(&msg, NULL, 0, 0);
             if (msg.message == WM_QUIT) {
-                ecs.stop();
+                ecs_.stop();
                 return;
             }
             TranslateMessage(&msg);
             DispatchMessage(&msg);
         }
-        handler.setIdle(true);
+        handler_.setIdle(true);
     }
 };
 
