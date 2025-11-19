@@ -1,10 +1,10 @@
 #include <ecs.hpp>
+#include <gui/winapi/wgl.hpp>
 
 #include <windows.h>
 #include <iostream>
 #include <unordered_set>
 #include <functional>
-#include <initializer_list>
 
 using namespace Istok::ECS;
 
@@ -232,6 +232,7 @@ public:
         if (!hWnd_) {
             throw std::runtime_error("Cannot create window");
         }
+        Istok::GUI::WinAPI::prepareForGL(hWnd_);
         ShowWindow(hWnd_, SW_SHOW);
         SetWindowLongPtr(
             hWnd_, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(handler_.get()));
@@ -279,6 +280,7 @@ private:
     }
 };
 
+using WindowPtr = std::unique_ptr<Window>;
 
 class WindowEntityMessageHandler {
 public:
@@ -388,12 +390,14 @@ public:
 
     void run() override {
         createMissingWindows();
+        createGL();
         processMessages();
     }
 
 private:
     ECSManager& ecs_;
     Handler handler_;
+    Istok::GUI::WinAPI::GLContext gl_;
 
     void createMissingWindows() {
         for (auto& w : ecs_.view<ScreenLocation>()
@@ -406,6 +410,20 @@ private:
                 std::make_unique<WindowEntityMessageHandlerProxy>(
                     w, handler_)));
         }
+    }
+
+    bool createGL() {
+        if (gl_) {
+            return true;
+        }
+        auto windows = ecs_.view<WindowPtr>();
+        if (windows.begin() == windows.end()) {
+            return false;
+        }
+        Entity window = *windows.begin();
+        gl_ = Istok::GUI::WinAPI::GLContext(
+            ecs_.get<WindowPtr>(window)->getHWnd());
+        return true;
     }
 
     void processMessages() {
