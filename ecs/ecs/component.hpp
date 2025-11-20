@@ -260,6 +260,12 @@ public:
             storages.getStorage<Component>().has(e);
     }
 
+    template <typename Component>
+    bool hasAny() const {
+        return storages.hasStorage<Component>() &&
+            storages.getStorage<Component>().size() > 0;
+    }
+
     template<typename Component>
     void insert(Entity e, Component&& component) {
         ComponentStorageOf<Component>& storage =

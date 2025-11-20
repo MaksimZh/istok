@@ -31,6 +31,7 @@ namespace {
 TEST_CASE("ECS - manager", "[unit][ecs]") {
     EntityComponentManager manager(3);
     REQUIRE(isSameEntitySet(manager.view<A>(), EntityUSet{}));
+    REQUIRE(manager.hasAny<A>() == false);
 
     SECTION("remove all") {
         manager.removeAll<A>();
@@ -48,12 +49,18 @@ TEST_CASE("ECS - manager", "[unit][ecs]") {
         REQUIRE(manager.has<A>(e0) == false);
         REQUIRE(manager.has<B>(e0) == false);
         REQUIRE(manager.has<C>(e0) == false);
+        REQUIRE(manager.hasAny<A>() == false);
+        REQUIRE(manager.hasAny<B>() == false);
+        REQUIRE(manager.hasAny<C>() == false);
         REQUIRE(isSameEntitySet(manager.view<A>(), EntityUSet{}));
 
         manager.set(e0, A{0});
         REQUIRE(manager.has<A>(e0) == true);
         REQUIRE(manager.has<B>(e0) == false);
         REQUIRE(manager.has<C>(e0) == false);
+        REQUIRE(manager.hasAny<A>() == true);
+        REQUIRE(manager.hasAny<B>() == false);
+        REQUIRE(manager.hasAny<C>() == false);
         REQUIRE(isSameEntitySet(manager.view<A>(), EntityUSet{e0}));
         REQUIRE(isSameEntitySet(manager.view<A, B>(), EntityUSet{}));
         REQUIRE(manager.get<A>(e0) == A{0});
@@ -62,6 +69,9 @@ TEST_CASE("ECS - manager", "[unit][ecs]") {
         REQUIRE(manager.has<A>(e0) == true);
         REQUIRE(manager.has<B>(e0) == true);
         REQUIRE(manager.has<C>(e0) == false);
+        REQUIRE(manager.hasAny<A>() == true);
+        REQUIRE(manager.hasAny<B>() == true);
+        REQUIRE(manager.hasAny<C>() == false);
         REQUIRE(isSameEntitySet(manager.view<A, B>(), EntityUSet{e0}));
         REQUIRE(manager.get<A>(e0) == A{0});
         REQUIRE(manager.get<B>(e0) == B{0});
@@ -123,6 +133,9 @@ TEST_CASE("ECS - manager", "[unit][ecs]") {
         REQUIRE(manager.has<A>(e2) == false);
         REQUIRE(manager.has<B>(e2) == false);
         REQUIRE(manager.has<C>(e2) == false);
+        REQUIRE(manager.hasAny<A>() == false);
+        REQUIRE(manager.hasAny<B>() == false);
+        REQUIRE(manager.hasAny<C>() == false);
         manager.set(e0, A{0});
         manager.set(e0, B{0});
         manager.set(e1, B{1});
@@ -138,6 +151,9 @@ TEST_CASE("ECS - manager", "[unit][ecs]") {
         REQUIRE(manager.has<A>(e2) == true);
         REQUIRE(manager.has<B>(e2) == false);
         REQUIRE(manager.has<C>(e2) == true);
+        REQUIRE(manager.hasAny<A>() == true);
+        REQUIRE(manager.hasAny<B>() == true);
+        REQUIRE(manager.hasAny<C>() == true);
         REQUIRE(isSameEntitySet(manager.view<A>(), EntityUSet{e0, e2}));
         REQUIRE(isSameEntitySet(manager.view<B>(), EntityUSet{e0, e1}));
         REQUIRE(isSameEntitySet(manager.view<C>(), EntityUSet{e1, e2}));

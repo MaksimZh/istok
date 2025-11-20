@@ -35,6 +35,11 @@ public:
     }
 
     template <typename Component>
+    bool hasAny() const {
+        return components.hasAny<Component>();
+    }
+
+    template <typename Component>
     Component& get(Entity e) {
         assert(isValidEntity(e));
         assert(has<Component>(e));
