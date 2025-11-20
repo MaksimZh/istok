@@ -295,46 +295,67 @@ public:
 };
 
 
+template <typename Component>
+Component& requestUnique(ECSManager& ecs) {
+    Entity entity = ecs.hasAny<Component>()
+        ? *ecs.view<Component>().begin()
+        : ecs.createEntity(Component());
+    return ecs.get<Component>(entity);
+}
+
+
+struct WindowsIdle {
+    bool value;
+};
+
+
 class CloseHandler : public WindowEntityMessageHandler {
 public:
-    CloseHandler(ECSManager& ecs) : ecs(ecs) {}
+    CloseHandler(ECSManager& ecs) : ecs_(ecs) {}
     
     LRESULT handleWindowMessage(
         Entity entity, SysWindowMessage message
     ) noexcept override {
         assert(message.msg == WM_CLOSE);
-        if (ecs.has<WindowHandler::Close>(entity)) {
-            std::cout << "handler: WM_CLOSE " <<
-                entity.value << std::endl;
-            ecs.get<WindowHandler::Close>(entity).func();
-            return 0;
+        if (!ecs_.hasAny<WindowsIdle>() ||
+            !ecs_.has<WindowHandler::Close>(entity)
+        ) {
+            return handleByDefault(message);
         }
-        return handleByDefault(message);
+        requestUnique<WindowsIdle>(ecs_).value = false;
+        std::cout << "handler: WM_CLOSE " <<
+            entity.value << std::endl;
+        ecs_.get<WindowHandler::Close>(entity).func();
+        return 0;
     }
 
 private:
-    ECSManager& ecs;
+    ECSManager& ecs_;
 };
 
 
 class SizeHandler : public WindowEntityMessageHandler {
 public:
-    SizeHandler(ECSManager& ecs) : ecs(ecs) {}
+    SizeHandler(ECSManager& ecs) : ecs_(ecs) {}
     
     LRESULT handleWindowMessage(
         Entity entity, SysWindowMessage message
     ) noexcept override {
         assert(message.msg == WM_SIZE);
-        if (ecs.has<std::unique_ptr<Window>>(entity)) {
-            std::cout << "message: WM_SIZE " <<
-                entity.value << std::endl;
-            ecs.iterate();
+        if (!ecs_.hasAny<WindowsIdle>() ||
+            !ecs_.has<std::unique_ptr<Window>>(entity)
+        ) {
+            return handleByDefault(message);
         }
+        requestUnique<WindowsIdle>(ecs_).value = false;
+        std::cout << "message: WM_SIZE " <<
+            entity.value << std::endl;
+        ecs_.iterate();
         return 0;
     }
 
 private:
-    ECSManager& ecs;
+    ECSManager& ecs_;
 };
 
 
@@ -349,18 +370,9 @@ public:
         Entity entity, SysWindowMessage message
     ) noexcept override {
         if (handlers.contains(message.msg)) {
-            idle = false;
             return handlers[message.msg]->handleWindowMessage(entity, message);
         }
         return handleByDefault(message);
-    }
-
-    bool isIdle() const {
-        return idle;
-    }
-
-    void setIdle(bool value) {
-        idle = value;
     }
 
 private:
@@ -368,8 +380,6 @@ private:
         UINT,
         std::unique_ptr<WindowEntityMessageHandler>
     > handlers;
-    
-    bool idle;
 };
 
 
@@ -432,7 +442,10 @@ private:
     }
 
     void processMessages() {
-        while (handler_.isIdle()) {
+        if (!ecs_.hasAny<WindowsIdle>()) {
+            requestUnique<WindowsIdle>(ecs_).value = true;
+        }
+        while (requestUnique<WindowsIdle>(ecs_).value) {
             MSG msg;
             GetMessage(&msg, NULL, 0, 0);
             if (msg.message == WM_QUIT) {
@@ -442,7 +455,7 @@ private:
             TranslateMessage(&msg);
             DispatchMessage(&msg);
         }
-        handler_.setIdle(true);
+        requestUnique<WindowsIdle>(ecs_).value = true;
     }
 };
 
