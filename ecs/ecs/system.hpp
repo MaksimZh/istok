@@ -25,9 +25,7 @@ public:
     SystemStack& operator=(SystemStack&&) = delete;
 
     ~SystemStack() {
-        while (!empty()) {
-            pop();
-        }
+        clear();
     }
 
     bool empty() const {
@@ -35,17 +33,19 @@ public:
     }
 
     void push(std::unique_ptr<System>&& system) {
-        if (!system) {
-            throw std::runtime_error("Null system pointer");
-        }
+        assert(system);
         systems_.push_back(std::move(system));
     }
 
     void pop() {
-        if (systems_.empty()) {
-            throw std::runtime_error("No system to pop");
-        }
+        assert(!empty());
         systems_.pop_back();
+    }
+
+    void clear() {
+        while (!empty()) {
+            pop();
+        }
     }
 
     void run() {

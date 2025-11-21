@@ -145,4 +145,20 @@ TEST_CASE("ECS - system stack", "[unit][ecs]") {
             "destroy A",
         });
     }
+
+    SECTION("clear") {
+        SystemStack stack;
+        stack.push(std::make_unique<MockSystem>("A", log));
+        stack.push(std::make_unique<MockSystem>("B", log));
+        stack.push(std::make_unique<MockSystem>("C", log));
+        stack.clear();
+        REQUIRE(log == std::vector<std::string>{
+            "create A",
+            "create B",
+            "create C",
+            "destroy C",
+            "destroy B",
+            "destroy A",
+        });
+    }
 }
