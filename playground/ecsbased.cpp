@@ -8,12 +8,6 @@
 
 using namespace Istok::ECS;
 
-class System {
-public:
-    virtual ~System() = default;
-    virtual void run() = 0;
-};
-
 class ECSManager {
 public:
     ECSManager() {}
@@ -23,110 +17,126 @@ public:
     ECSManager(ECSManager&&) = default;
     ECSManager& operator=(ECSManager&&) = default;
 
+    /* Calls clear method to ensure the reference to ECSManager is valid
+     * until all systems and components are destroyed.
+     */
     ~ECSManager() {
-        // Systems and components may have references to ECS
-        // They must be destroyed first
-        std::cout << "Destroying ECS" << std::endl;
-        ecm.clear();
-        std::cout << "Components destroyed" << std::endl;
-        systems.clear();
-        std::cout << "Systems destroyed" << std::endl;
+        clear();
     }
 
-    void addSystem(std::unique_ptr<System>&& system) {
-        systems.push_back(std::move(system));
+    void pushSystem(std::unique_ptr<System>&& system) {
+        if (!system) {
+            throw std::runtime_error("Null system pointer");
+        }
+        systems_.push(std::move(system));
+    }
+
+    void popSystem() {
+        if (systems_.empty()) {
+            throw std::runtime_error("No system to pop");
+        }
+        systems_.pop();
+    }
+
+    bool hasSystems() const {
+        return systems_.empty();
+    }
+
+    /* The systems are destroyed first in reverse order (stack pop until empty).
+     * The components are destroyed after the systems in undefined order.
+     */
+    void clear() {
+        systems_.clear();
+        ecm_.clear();
     }
 
     void iterate() {
         std::cout << "ECS iteration" << std::endl;
-        for (auto& s : systems) {
-            assert(s);
-            s->run();
-        }
+        systems_.run();
     }
 
     void run() {
-        if (running) {
+        if (running_) {
             return;
         }
-        running = true;
-        while (running) {
+        running_ = true;
+        while (running_) {
             iterate();
         }
     }
 
     void stop() {
-        running = false;
+        running_ = false;
     }
 
     bool isValidEntity(Entity e) const {
-        return ecm.isValidEntity(e);
+        return ecm_.isValidEntity(e);
     }
 
     template <typename Component>
     bool has(Entity e) const {
         assert(isValidEntity(e));
-        return ecm.has<Component>(e);
+        return ecm_.has<Component>(e);
     }
 
     template <typename Component>
     bool hasAny() const {
-        return ecm.hasAny<Component>();
+        return ecm_.hasAny<Component>();
     }
 
     template <typename Component>
     Component& get(Entity e) {
         assert(isValidEntity(e));
         assert(has<Component>(e));
-        return ecm.get<Component>(e);
+        return ecm_.get<Component>(e);
     }
 
     template <typename Component>
     const Component& get(Entity e) const {
         assert(isValidEntity(e));
         assert(has<Component>(e));
-        return ecm.get<Component>(e);
+        return ecm_.get<Component>(e);
     }
 
     template<typename... Components>
     Entity createEntity(Components&&... components) {
-        Entity e = ecm.createEntity();
-        (ecm.set(e, std::forward<Components>(components)), ...);
+        Entity e = ecm_.createEntity();
+        (ecm_.set(e, std::forward<Components>(components)), ...);
         return e;
     }
 
     void destroyEntity(Entity e) {
         assert(isValidEntity(e));
-        ecm.destroyEntity(e);
+        ecm_.destroyEntity(e);
     }
 
     template <typename Component>
     void set(Entity e, Component&& component) {
         assert(isValidEntity(e));
-        ecm.set(e, std::move(component));
+        ecm_.set(e, std::move(component));
     }
 
     template <typename Component>
     void remove(Entity e) {
         assert(isValidEntity(e));
         assert(has<Component>(e));
-        ecm.remove<Component>(e);
+        ecm_.remove<Component>(e);
     }
 
     template <typename Component>
     void removeAll() {
-        ecm.removeAll<Component>();
+        ecm_.removeAll<Component>();
     }
 
     template<typename... Components>
     EntityView view() {
-        return ecm.view<Components...>();
+        return ecm_.view<Components...>();
     }
 
 private:
-    bool running = false;
-    EntityComponentManager ecm;
-    std::vector<std::unique_ptr<System>> systems;
+    bool running_ = false;
+    EntityComponentManager ecm_;
+    SystemStack systems_;
 };
 
 
@@ -402,6 +412,9 @@ private:
 class WindowSystem: public System {
 public:
     WindowSystem(ECSManager& ecs) : ecs_(ecs), handler_(ecs) {}
+    ~WindowSystem() {
+        ecs_.removeAll<std::unique_ptr<Window>>();
+    }
 
     void run() override {
         createMissingWindows();
@@ -462,7 +475,7 @@ private:
 
 int main() {
     ECSManager ecs;
-    ecs.addSystem(std::make_unique<WindowSystem>(ecs));
+    ecs.pushSystem(std::make_unique<WindowSystem>(ecs));
     ecs.createEntity(
         ScreenLocation{{200, 100, 600, 400}},
         WindowHandler::Close{[&](){
