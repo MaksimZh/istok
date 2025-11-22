@@ -231,54 +231,106 @@ public:
 };
 
 
-class Window {
+class WndHandle {
 public:
-    Window(Rect<int> location, std::unique_ptr<WindowMessageHandler>&& handler)
-    : handler_(std::move(handler)) {
-        hWnd_ = CreateWindowEx(
+    WndHandle() = default;
+    
+    WndHandle(HWND hWnd) : hWnd_(hWnd) {}
+
+    ~WndHandle() {
+        clear();
+    }
+
+    WndHandle(const WndHandle&) = delete;
+    WndHandle& operator=(const WndHandle&) = delete;
+    
+    WndHandle(WndHandle&& source) : hWnd_(source.hWnd_) {
+        source.drop();
+    }
+    
+    WndHandle& operator=(WndHandle&& source) {
+        if (this != &source) {
+            clear();
+            hWnd_ = source.hWnd_;
+            source.drop();
+        }
+        return *this;
+    }
+
+    operator bool() const noexcept {
+        return hWnd_;
+    }
+
+    HWND getHWnd() const {
+        return hWnd_;
+    }
+
+    void setHandler(WindowMessageHandler* handler) {
+        SetWindowLongPtr(
+            hWnd_, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(handler));
+    }
+
+private:
+    HWND hWnd_ = nullptr;
+
+    void drop() {
+        hWnd_ = nullptr;
+    }
+
+    void clear() {
+        if (hWnd_) {
+            setHandler(nullptr);
+            std::cout << "Destroying window: " << hWnd_ << std::endl;
+            DestroyWindow(hWnd_);
+            std::cout << "Window destroyed: " << hWnd_ << std::endl;
+            drop();
+        }
+    }
+};
+
+
+struct NewWindowFlag {};
+
+class CreateWindowsSystem : public System {
+public:
+    CreateWindowsSystem(ECSManager& ecs) : ecs_(ecs) {}
+    
+    ~CreateWindowsSystem() {
+        ecs_.removeAll<WndHandle>();
+    }
+
+    CreateWindowsSystem(const CreateWindowsSystem&) = delete;
+    CreateWindowsSystem& operator=(const CreateWindowsSystem&) = delete;
+    CreateWindowsSystem(CreateWindowsSystem&&) = delete;
+    CreateWindowsSystem& operator=(CreateWindowsSystem&&) = delete;
+
+    void run() override {
+        for (auto& w : ecs_.view<NewWindowFlag, ScreenLocation>()) {
+            std::cout << "Creating window for entity " << w.value << std::endl;
+            Rect<int>& location = ecs_.get<ScreenLocation>(w).value;
+            ecs_.set(w, WndHandle(createWindow(location)));
+        }
+    }
+
+private:
+    ECSManager& ecs_;
+
+    static HWND createWindow(Rect<int> location) {
+        static WindowClass windowClass(windowProc, L"Istok");
+        HWND hWnd = CreateWindowEx(
             NULL,
-            getWindowClass(),
+            windowClass.get(),
             L"Istok",
             WS_OVERLAPPEDWINDOW,
             location.left, location.top,
             location.right - location.left,
             location.bottom - location.top,
             NULL, NULL, getHInstance(), nullptr);
-        if (!hWnd_) {
+        if (!hWnd) {
             throw std::runtime_error("Cannot create window");
         }
-        Istok::GUI::WinAPI::prepareForGL(hWnd_);
-        ShowWindow(hWnd_, SW_SHOW);
-        SetWindowLongPtr(
-            hWnd_, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(handler_.get()));
-        std::cout << "Window created: " << hWnd_ << std::endl;
-    }
-    
-    ~Window() {
-        if (hWnd_) {
-            std::cout << "Destroying window: " << hWnd_ << std::endl;
-            SetWindowLongPtr(hWnd_, GWLP_USERDATA, NULL);
-            DestroyWindow(hWnd_);
-            std::cout << "Window destroyed: " << hWnd_ << std::endl;
-        }
-    }
-
-    Window(const Window&) = delete;
-    Window& operator=(const Window&) = delete;
-    Window(Window&& source) = delete;
-    Window& operator=(Window&& source) = delete;
-
-    HWND getHWnd() const {
-        return hWnd_;
-    }
-
-private:
-    HWND hWnd_ = nullptr;
-    std::unique_ptr<WindowMessageHandler> handler_;
-
-    static LPCWSTR getWindowClass() {
-        static WindowClass wc(windowProc, L"Istok");
-        return wc.get();
+        ShowWindow(hWnd, SW_SHOW);
+        return hWnd;
     }
 
     static LRESULT CALLBACK windowProc(
@@ -295,27 +347,12 @@ private:
     }
 };
 
-using WindowPtr = std::unique_ptr<Window>;
 
 class WindowEntityMessageHandler {
 public:
     virtual ~WindowEntityMessageHandler() = default;
     virtual LRESULT handleWindowMessage(
         Entity entity, SysWindowMessage message) noexcept = 0;
-};
-
-
-template <typename Component>
-Component& requestUnique(ECSManager& ecs) {
-    Entity entity = ecs.hasAny<Component>()
-        ? *ecs.view<Component>().begin()
-        : ecs.createEntity(Component());
-    return ecs.get<Component>(entity);
-}
-
-
-struct WindowsIdle {
-    bool value;
 };
 
 
@@ -327,12 +364,9 @@ public:
         Entity entity, SysWindowMessage message
     ) noexcept override {
         assert(message.msg == WM_CLOSE);
-        if (!ecs_.hasAny<WindowsIdle>() ||
-            !ecs_.has<WindowHandler::Close>(entity)
-        ) {
+        if (!ecs_.has<WindowHandler::Close>(entity)) {
             return handleByDefault(message);
         }
-        requestUnique<WindowsIdle>(ecs_).value = false;
         std::cout << "handler: WM_CLOSE " <<
             entity.value << std::endl;
         ecs_.get<WindowHandler::Close>(entity).func();
@@ -352,12 +386,9 @@ public:
         Entity entity, SysWindowMessage message
     ) noexcept override {
         assert(message.msg == WM_SIZE);
-        if (!ecs_.hasAny<WindowsIdle>() ||
-            !ecs_.has<std::unique_ptr<Window>>(entity)
-        ) {
+        if (!ecs_.has<WndHandle>(entity)) {
             return handleByDefault(message);
         }
-        requestUnique<WindowsIdle>(ecs_).value = false;
         std::cout << "message: WM_SIZE " <<
             entity.value << std::endl;
         ecs_.iterate();
@@ -380,9 +411,18 @@ public:
         Entity entity, SysWindowMessage message
     ) noexcept override {
         if (handlers.contains(message.msg)) {
+            idle_ = false;
             return handlers[message.msg]->handleWindowMessage(entity, message);
         }
         return handleByDefault(message);
+    }
+
+    bool isIdle() const noexcept {
+        return idle_;
+    }
+
+    void makeIdle() {
+        idle_ = true;
     }
 
 private:
@@ -390,6 +430,7 @@ private:
         UINT,
         std::unique_ptr<WindowEntityMessageHandler>
     > handlers;
+    bool idle_ = true;
 };
 
 
@@ -397,68 +438,42 @@ class WindowEntityMessageHandlerProxy : public WindowMessageHandler {
 public:
     WindowEntityMessageHandlerProxy(
         Entity entity, WindowEntityMessageHandler& handler
-    ) : entity_(entity), handler_(handler) {}
+    ) : entity_(entity), handler_(&handler) {}
     
     LRESULT handleWindowMessage(SysWindowMessage message) noexcept override {
-        return handler_.handleWindowMessage(entity_, message);
+        return handler_->handleWindowMessage(entity_, message);
     }
 
 private:
     Entity entity_;
-    WindowEntityMessageHandler& handler_;
+    WindowEntityMessageHandler* handler_;
 };
 
 
-class WindowSystem: public System {
+class WindowMessageSystem: public System {
 public:
-    WindowSystem(ECSManager& ecs) : ecs_(ecs), handler_(ecs) {}
-    ~WindowSystem() {
-        ecs_.removeAll<std::unique_ptr<Window>>();
+    WindowMessageSystem(ECSManager& ecs) : ecs_(ecs), handler_(ecs) {}
+
+    ~WindowMessageSystem() {
+        for (auto& w : ecs_.view<WndHandle>()) {
+            ecs_.get<WndHandle>(w).setHandler(nullptr);
+        }
     }
+
+    WindowMessageSystem(const WindowMessageSystem&) = delete;
+    WindowMessageSystem& operator=(const WindowMessageSystem&) = delete;
+    WindowMessageSystem(WindowMessageSystem&&) = delete;
+    WindowMessageSystem& operator=(WindowMessageSystem&&) = delete;
 
     void run() override {
-        createMissingWindows();
-        createGL();
-        processMessages();
-    }
-
-private:
-    ECSManager& ecs_;
-    Handler handler_;
-    Istok::GUI::WinAPI::GLContext gl_;
-
-    void createMissingWindows() {
-        for (auto& w : ecs_.view<ScreenLocation>()
-            .exclude<std::unique_ptr<Window>>()
-        ) {
-            std::cout << "Creating window for entity " << w.value << std::endl;
-            Rect<int>& location = ecs_.get<ScreenLocation>(w).value;
-            ecs_.set(w, std::make_unique<Window>(
-                location,
-                std::make_unique<WindowEntityMessageHandlerProxy>(
-                    w, handler_)));
+        for (auto& w : ecs_.view<NewWindowFlag, WndHandle>()) {
+            std::cout << "Set handler for window " << w.value << std::endl;
+            ecs_.set(w, std::make_unique<WindowEntityMessageHandlerProxy>(w, handler_));
+            ecs_.get<WndHandle>(w).setHandler(
+                ecs_.get<std::unique_ptr<WindowEntityMessageHandlerProxy>>(w).get());
         }
-    }
-
-    bool createGL() {
-        if (gl_) {
-            return true;
-        }
-        auto windows = ecs_.view<WindowPtr>();
-        if (windows.begin() == windows.end()) {
-            return false;
-        }
-        Entity window = *windows.begin();
-        gl_ = Istok::GUI::WinAPI::GLContext(
-            ecs_.get<WindowPtr>(window)->getHWnd());
-        return true;
-    }
-
-    void processMessages() {
-        if (!ecs_.hasAny<WindowsIdle>()) {
-            requestUnique<WindowsIdle>(ecs_).value = true;
-        }
-        while (requestUnique<WindowsIdle>(ecs_).value) {
+        ecs_.removeAll<NewWindowFlag>();
+        while (handler_.isIdle()) {
             MSG msg;
             GetMessage(&msg, NULL, 0, 0);
             if (msg.message == WM_QUIT) {
@@ -468,21 +483,32 @@ private:
             TranslateMessage(&msg);
             DispatchMessage(&msg);
         }
-        requestUnique<WindowsIdle>(ecs_).value = true;
+        handler_.makeIdle();
     }
+
+private:
+    ECSManager& ecs_;
+    Handler handler_;
 };
 
 
 int main() {
     ECSManager ecs;
-    ecs.pushSystem(std::make_unique<WindowSystem>(ecs));
+    ecs.pushSystem(std::make_unique<CreateWindowsSystem>(ecs));
+    ecs.pushSystem(std::make_unique<WindowMessageSystem>(ecs));
     ecs.createEntity(
+        NewWindowFlag{},
         ScreenLocation{{200, 100, 600, 400}},
         WindowHandler::Close{[&](){
             ecs.createEntity(
+                NewWindowFlag{},
                 ScreenLocation{{300, 200, 500, 500}},
                 WindowHandler::Close{[&](){ ecs.stop(); }});
         }});
+    std::cout << "Run" << std::endl;
     ecs.run();
+    std::cout << "Stopped" << std::endl;
+    ecs.clear();
+    std::cout << "Clean" << std::endl;
     return 0;
 }
