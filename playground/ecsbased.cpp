@@ -348,6 +348,37 @@ private:
 };
 
 
+using Istok::GUI::WinAPI::DCHandle;
+using Istok::GUI::WinAPI::GLContext;
+using Istok::GUI::WinAPI::WGL;
+
+
+class InitGLSystem: public System {
+public:
+    InitGLSystem(ECSManager& ecs) : ecs_(ecs) {}
+    
+    ~InitGLSystem() {}
+
+    InitGLSystem(const InitGLSystem&) = delete;
+    InitGLSystem& operator=(const InitGLSystem&) = delete;
+    InitGLSystem(InitGLSystem&&) = delete;
+    InitGLSystem& operator=(InitGLSystem&&) = delete;
+
+    void run() override {
+        for (auto& w : ecs_.view<NewWindowFlag, WndHandle>()) {
+            HWND hWnd = ecs_.get<WndHandle>(w).getHWnd();
+            Istok::GUI::WinAPI::prepareForGL(hWnd);
+            if (!ecs_.hasAny<GLContext>()) {
+                ecs_.createEntity(GLContext(hWnd));
+            }
+        }
+    }
+
+private:
+    ECSManager& ecs_;
+};
+
+
 class WindowEntityMessageHandler {
 public:
     virtual ~WindowEntityMessageHandler() = default;
@@ -400,11 +431,45 @@ private:
 };
 
 
+class PaintHandler : public WindowEntityMessageHandler {
+public:
+    PaintHandler(ECSManager& ecs) : ecs_(ecs) {}
+    
+    LRESULT handleWindowMessage(
+        Entity entity, SysWindowMessage message
+    ) noexcept override {
+        assert(message.msg == WM_PAINT);
+        if (!ecs_.hasAny<GLContext>()) {
+            return handleByDefault(message);
+        }
+        std::cout << "message: WM_PAINT " <<
+            entity.value << std::endl;
+        GLContext& gl = ecs_.get<GLContext>(*ecs_.view<GLContext>().begin());
+        HWND hWnd = message.hWnd;
+        WGL::Scope scope(gl, hWnd);
+        RECT rect;
+        GetClientRect(hWnd, &rect);
+        glViewport(0, 0, rect.right, rect.bottom);
+        glClearColor(0, 0, 0.1f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT);
+        PAINTSTRUCT ps;
+        SwapBuffers(BeginPaint(hWnd, &ps));
+        EndPaint(hWnd, &ps);
+        return 0;
+    }
+
+private:
+    ECSManager& ecs_;
+};
+
+
+
 class Handler : public WindowEntityMessageHandler {
 public:
     Handler(ECSManager& ecs) {
         handlers[WM_CLOSE] = std::make_unique<CloseHandler>(ecs);
         handlers[WM_SIZE] = std::make_unique<SizeHandler>(ecs);
+        handlers[WM_PAINT] = std::make_unique<PaintHandler>(ecs);
     }
     
     LRESULT handleWindowMessage(
@@ -507,6 +572,7 @@ private:
 int main() {
     ECSManager ecs;
     ecs.pushSystem(std::make_unique<CreateWindowsSystem>(ecs));
+    ecs.pushSystem(std::make_unique<InitGLSystem>(ecs));
     ecs.pushSystem(std::make_unique<WindowMessageSystem>(ecs));
     ecs.createEntity(
         NewWindowFlag{},
