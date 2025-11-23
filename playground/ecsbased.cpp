@@ -466,13 +466,29 @@ public:
     WindowMessageSystem& operator=(WindowMessageSystem&&) = delete;
 
     void run() override {
+        attachHandler();
+        finishWindowInitialization();
+        runMessageLoop();
+    }
+
+private:
+    ECSManager& ecs_;
+    Handler handler_;
+
+    void attachHandler() {
         for (auto& w : ecs_.view<NewWindowFlag, WndHandle>()) {
             std::cout << "Set handler for window " << w.value << std::endl;
             ecs_.set(w, std::make_unique<WindowEntityMessageHandlerProxy>(w, handler_));
             ecs_.get<WndHandle>(w).setHandler(
                 ecs_.get<std::unique_ptr<WindowEntityMessageHandlerProxy>>(w).get());
         }
+    }
+
+    void finishWindowInitialization() {
         ecs_.removeAll<NewWindowFlag>();
+    }
+
+    void runMessageLoop() {
         while (handler_.isIdle()) {
             MSG msg;
             GetMessage(&msg, NULL, 0, 0);
@@ -485,10 +501,6 @@ public:
         }
         handler_.makeIdle();
     }
-
-private:
-    ECSManager& ecs_;
-    Handler handler_;
 };
 
 
