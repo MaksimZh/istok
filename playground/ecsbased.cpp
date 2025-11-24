@@ -434,6 +434,8 @@ public:
         }
         std::cout << "message: WM_SIZE " <<
             entity.value << std::endl;
+        HWND hWnd = ecs_.get<WndHandle>(entity).getHWnd();
+        InvalidateRect(hWnd, NULL, FALSE);
         ecs_.iterate();
         return 0;
     }
