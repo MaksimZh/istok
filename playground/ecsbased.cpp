@@ -2,6 +2,7 @@
 #include <gui/winapi/wgl.hpp>
 
 #include <windows.h>
+#include <dwmapi.h>
 #include <iostream>
 #include <unordered_set>
 #include <functional>
@@ -353,6 +354,16 @@ using Istok::GUI::WinAPI::GLContext;
 using Istok::GUI::WinAPI::WGL;
 
 
+void enableTransparency(HWND hWnd) {
+    DWM_BLURBEHIND bb = { 0 };
+    HRGN hRgn = CreateRectRgn(0, 0, -1, -1);
+    bb.dwFlags = DWM_BB_ENABLE | DWM_BB_BLURREGION;
+    bb.hRgnBlur = hRgn;
+    bb.fEnable = TRUE;
+    DwmEnableBlurBehindWindow(hWnd, &bb);
+}
+
+
 class InitGLSystem: public System {
 public:
     InitGLSystem(ECSManager& ecs) : ecs_(ecs) {}
@@ -367,6 +378,7 @@ public:
     void run() override {
         for (auto& w : ecs_.view<NewWindowFlag, WndHandle>()) {
             HWND hWnd = ecs_.get<WndHandle>(w).getHWnd();
+            enableTransparency(hWnd);
             Istok::GUI::WinAPI::prepareForGL(hWnd);
             if (!ecs_.hasAny<GLContext>()) {
                 ecs_.createEntity(GLContext(hWnd));
@@ -450,7 +462,7 @@ public:
         RECT rect;
         GetClientRect(hWnd, &rect);
         glViewport(0, 0, rect.right, rect.bottom);
-        glClearColor(0, 0, 0.1f, 1.0f);
+        glClearColor(0, 0, 0, 0);
         glClear(GL_COLOR_BUFFER_BIT);
         PAINTSTRUCT ps;
         SwapBuffers(BeginPaint(hWnd, &ps));
