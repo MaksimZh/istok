@@ -1,5 +1,6 @@
 #include <ecs.hpp>
 #include <gui/winapi/wgl.hpp>
+#include <gui/gl/buffer.hpp>
 
 #include <windows.h>
 #include <dwmapi.h>
@@ -8,6 +9,7 @@
 #include <functional>
 
 using namespace Istok::ECS;
+using namespace Istok::GUI;
 
 class ECSManager {
 public:
@@ -349,11 +351,6 @@ private:
 };
 
 
-using Istok::GUI::WinAPI::DCHandle;
-using Istok::GUI::WinAPI::GLContext;
-using Istok::GUI::WinAPI::WGL;
-
-
 void enableTransparency(HWND hWnd) {
     DWM_BLURBEHIND bb = { 0 };
     HRGN hRgn = CreateRectRgn(0, 0, -1, -1);
@@ -368,7 +365,9 @@ class InitGLSystem: public System {
 public:
     InitGLSystem(ECSManager& ecs) : ecs_(ecs) {}
     
-    ~InitGLSystem() {}
+    ~InitGLSystem() {
+        ecs_.removeAll<WinAPI::GLContext>();
+    }
 
     InitGLSystem(const InitGLSystem&) = delete;
     InitGLSystem& operator=(const InitGLSystem&) = delete;
@@ -379,9 +378,42 @@ public:
         for (auto& w : ecs_.view<NewWindowFlag, WndHandle>()) {
             HWND hWnd = ecs_.get<WndHandle>(w).getHWnd();
             enableTransparency(hWnd);
-            Istok::GUI::WinAPI::prepareForGL(hWnd);
-            if (!ecs_.hasAny<GLContext>()) {
-                ecs_.createEntity(GLContext(hWnd));
+            WinAPI::prepareForGL(hWnd);
+            if (!ecs_.hasAny<WinAPI::GLContext>()) {
+                ecs_.createEntity(WinAPI::GLContext(hWnd));
+            }
+        }
+    }
+
+private:
+    ECSManager& ecs_;
+};
+
+
+class SceneSystem: public System {
+public:
+    SceneSystem(ECSManager& ecs) : ecs_(ecs) {}
+    
+    ~SceneSystem() {
+        if (!ecs_.hasAny<WinAPI::GLContext>()) {
+            return;
+        }
+        WinAPI::GLContext& gl = ecs_.get<WinAPI::GLContext>(
+            *ecs_.view<WinAPI::GLContext>().begin());
+    }
+
+    SceneSystem(const SceneSystem&) = delete;
+    SceneSystem& operator=(const SceneSystem&) = delete;
+    SceneSystem(SceneSystem&&) = delete;
+    SceneSystem& operator=(SceneSystem&&) = delete;
+
+    void run() override {
+        for (auto& w : ecs_.view<NewWindowFlag, WndHandle>()) {
+            HWND hWnd = ecs_.get<WndHandle>(w).getHWnd();
+            enableTransparency(hWnd);
+            WinAPI::prepareForGL(hWnd);
+            if (!ecs_.hasAny<WinAPI::GLContext>()) {
+                ecs_.createEntity(WinAPI::GLContext(hWnd));
             }
         }
     }
@@ -445,6 +477,10 @@ private:
 };
 
 
+using VertexBuffer = OpenGL::VertexBuffer<WinAPI::WGL>;
+using VertexArray = OpenGL::VertexArray<WinAPI::WGL>;
+
+
 class PaintHandler : public WindowEntityMessageHandler {
 public:
     PaintHandler(ECSManager& ecs) : ecs_(ecs) {}
@@ -453,19 +489,29 @@ public:
         Entity entity, SysWindowMessage message
     ) noexcept override {
         assert(message.msg == WM_PAINT);
-        if (!ecs_.hasAny<GLContext>()) {
+        if (!ecs_.hasAny<WinAPI::GLContext>() ||
+            !ecs_.has<WndHandle>(entity) ||
+            !ecs_.has<VertexBuffer>(entity) ||
+            !ecs_.has<VertexArray>(entity)
+        ) {
             return handleByDefault(message);
         }
         std::cout << "message: WM_PAINT " <<
             entity.value << std::endl;
-        GLContext& gl = ecs_.get<GLContext>(*ecs_.view<GLContext>().begin());
+        WinAPI::GLContext& gl = ecs_.get<WinAPI::GLContext>(
+            *ecs_.view<WinAPI::GLContext>().begin());
         HWND hWnd = message.hWnd;
-        WGL::Scope scope(gl, hWnd);
+        WinAPI::WGL::Scope scope(gl, hWnd);
         RECT rect;
         GetClientRect(hWnd, &rect);
         glViewport(0, 0, rect.right, rect.bottom);
         glClearColor(0, 0, 0, 0);
         glClear(GL_COLOR_BUFFER_BIT);
+        VertexArray& vao = ecs_.get<VertexArray>(entity);
+        vao.bind(scope);
+        VertexBuffer& vbo = ecs_.get<VertexBuffer>(entity);
+        vbo.bind(scope);
+        glDrawArrays(GL_TRIANGLES, 0, 3);
         PAINTSTRUCT ps;
         SwapBuffers(BeginPaint(hWnd, &ps));
         EndPaint(hWnd, &ps);
