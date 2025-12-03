@@ -8,6 +8,7 @@ add_definitions(-DUNICODE -D_UNICODE)
 
 add_subdirectory(test)
 add_subdirectory(tools)
+add_subdirectory(logging)
 add_subdirectory(ecs)
 add_subdirectory(gui)
 add_subdirectory(playground)

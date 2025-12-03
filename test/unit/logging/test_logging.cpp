@@ -3,13 +3,20 @@
 #include <catch.hpp>
 #include <logging.hpp>
 
+#include <vector>
 #include <string>
 #include <format>
 
 using namespace Istok::Logging;
 
 namespace {
-    struct MockLogger : public Logger {};
+    struct MockLogger : public Logger {
+        std::vector<std::string> entries;
+
+        void log(Level level, std::string_view message) override {
+            entries.push_back(std::format("{}: {}", static_cast<int>(level), message));
+        }
+    };
 }
 
 TEST_CASE("Logging - WITH_LOGGER", "[unit][logging]") {
@@ -49,4 +56,18 @@ TEST_CASE("Logging - WITH_LOGGER", "[unit][logging]") {
         LOG_DEBUG("debug {}", i);
         LOG_TRACE("trace {}", i);
     }();
+    REQUIRE(logger1.entries == std::vector<std::string>{});
+    REQUIRE(logger2.entries == std::vector<std::string>{
+        "1: critical 2",
+        "2: error 2",
+        "3: warning 2",
+    });
+    REQUIRE(logger3.entries == std::vector<std::string>{
+        "1: critical 3",
+        "2: error 3",
+        "3: warning 3",
+        "4: info 3",
+        "5: debug 3",
+        "6: trace 3",
+    });
 }

@@ -83,25 +83,26 @@ private:
     Istok::Logging::LoggerRegistry::getGlobal().set(name, logger_ref, maxLevel)
 
 #define WITH_LOGGER(name) \
-    static Istok::Logging::LoggerRegistry::Entry istok_logging_get_logger = \
+    static auto istok_logging_get_logger = \
         []() { \
             static auto entry = \
                 Istok::Logging::LoggerRegistry::getGlobal().get(name); \
             return entry; \
         }
 
-#define WITH_THIS_LOGGER(name) \
+#define CLASS_WITH_LOGGER(name) \
     static Istok::Logging::LoggerRegistry::Entry istok_logging_get_logger() { \
         static auto entry = \
             Istok::Logging::LoggerRegistry::getGlobal().get(name); \
         return entry; \
     }
 
-#define LOG_WITH_LEVEL(level, format, ...) \
+#define LOG_WITH_LEVEL(level, fmt, ...) \
     do { \
-        if (level <= istok_logging_get_logger().maxLevel) { \
-            istok_logging_get_logger().logger->log( \
-                std::format(fmt, ##__VA_ARGS__)); \
+        Istok::Logging::LoggerRegistry::Entry entry = \
+            istok_logging_get_logger(); \
+        if (level <= entry.maxLevel) { \
+            entry.logger->log(level, std::format(fmt, ##__VA_ARGS__)); \
         } \
     } while (0)
 
