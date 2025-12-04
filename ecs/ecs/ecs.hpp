@@ -5,9 +5,12 @@
 #include "manager.hpp"
 #include "system.hpp"
 
+#include <logging.hpp>
+
 namespace Istok::ECS {
 
-class ECSManager {
+class ECSManager final {
+    CLASS_WITH_LOGGER("ECS");
 public:
     ECSManager() {}
 
@@ -45,11 +48,13 @@ public:
      * The components are destroyed after the systems in undefined order.
      */
     void clear() {
+        LOG_DEBUG("ECS: clear");
         systems_.clear();
         ecm_.clear();
     }
 
     void iterate() {
+        LOG_TRACE("ECS: iterate");
         systems_.run();
     }
 
@@ -57,6 +62,7 @@ public:
         if (running_) {
             return;
         }
+        LOG_DEBUG("ECS: run");
         running_ = true;
         while (running_) {
             iterate();
@@ -64,6 +70,7 @@ public:
     }
 
     void stop() {
+        LOG_DEBUG("ECS: stop");
         running_ = false;
     }
 

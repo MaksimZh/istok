@@ -506,6 +506,7 @@ private:
 int main() {
     SET_LOGGER("", Istok::Logging::terminal, Istok::Logging::Level::all);
     WITH_LOGGER("");
+    LOG_TRACE("App: begin");
     ECSManager ecs;
     ecs.pushSystem(std::make_unique<CreateWindowsSystem>(ecs));
     ecs.pushSystem(std::make_unique<InitGLSystem>(ecs));
@@ -519,10 +520,8 @@ int main() {
                 ScreenLocation{{300, 200, 500, 500}},
                 WindowHandler::Close{[&](){ ecs.stop(); }});
         }});
-    LOG_TRACE("Run");
     ecs.run();
-    LOG_TRACE("Stopped");
     ecs.clear();
-    LOG_TRACE("Clean");
+    LOG_TRACE("App: end");
     return 0;
 }
