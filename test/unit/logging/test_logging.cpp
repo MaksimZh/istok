@@ -14,7 +14,8 @@ namespace {
         std::vector<std::string> entries;
 
         void log(Level level, std::string_view message) override {
-            entries.push_back(std::format("{}: {}", static_cast<int>(level), message));
+            entries.push_back(
+                std::format("{}: {}", logLevelStr.at(level), message));
         }
     };
 }
@@ -23,9 +24,9 @@ TEST_CASE("Logging - WITH_LOGGER", "[unit][logging]") {
     MockLogger logger1;
     MockLogger logger2;
     MockLogger logger3;
-    SET_LOGGER("_test_logging_WITH_LOGGER_1", logger1, Level::OFF);
-    SET_LOGGER("_test_logging_WITH_LOGGER_2", logger2, Level::WARNING);
-    SET_LOGGER("_test_logging_WITH_LOGGER_3", logger3, Level::TRACE);
+    SET_LOGGER("_test_logging_WITH_LOGGER_1", logger1, Level::off);
+    SET_LOGGER("_test_logging_WITH_LOGGER_2", logger2, Level::warning);
+    SET_LOGGER("_test_logging_WITH_LOGGER_3", logger3, Level::all);
     [](){
         WITH_LOGGER("_test_logging_WITH_LOGGER_1");
         int i = 1;
@@ -58,17 +59,17 @@ TEST_CASE("Logging - WITH_LOGGER", "[unit][logging]") {
     }();
     REQUIRE(logger1.entries == std::vector<std::string>{});
     REQUIRE(logger2.entries == std::vector<std::string>{
-        "1: critical 2",
-        "2: error 2",
-        "3: warning 2",
+        "CRITICAL: critical 2",
+        "ERROR: error 2",
+        "WARNING: warning 2",
     });
     REQUIRE(logger3.entries == std::vector<std::string>{
-        "1: critical 3",
-        "2: error 3",
-        "3: warning 3",
-        "4: info 3",
-        "5: debug 3",
-        "6: trace 3",
+        "CRITICAL: critical 3",
+        "ERROR: error 3",
+        "WARNING: warning 3",
+        "INFO: info 3",
+        "DEBUG: debug 3",
+        "TRACE: trace 3",
     });
 }
 
@@ -76,9 +77,9 @@ TEST_CASE("Logging - CLASS_WITH_LOGGER", "[unit][logging]") {
     MockLogger logger1;
     MockLogger logger2;
     MockLogger logger3;
-    SET_LOGGER("_test_logging_CLASS_WITH_LOGGER_1", logger1, Level::OFF);
-    SET_LOGGER("_test_logging_CLASS_WITH_LOGGER_2", logger2, Level::WARNING);
-    SET_LOGGER("_test_logging_CLASS_WITH_LOGGER_3", logger3, Level::TRACE);
+    SET_LOGGER("_test_logging_CLASS_WITH_LOGGER_1", logger1, Level::off);
+    SET_LOGGER("_test_logging_CLASS_WITH_LOGGER_2", logger2, Level::warning);
+    SET_LOGGER("_test_logging_CLASS_WITH_LOGGER_3", logger3, Level::all);
     
     class C1 {
     public:
@@ -167,25 +168,25 @@ TEST_CASE("Logging - CLASS_WITH_LOGGER", "[unit][logging]") {
 
     REQUIRE(logger1.entries == std::vector<std::string>{});
     REQUIRE(logger2.entries == std::vector<std::string>{
-        "1: static critical 2",
-        "2: static error 2",
-        "3: static warning 2",
-        "1: critical 2",
-        "2: error 2",
-        "3: warning 2",
+        "CRITICAL: static critical 2",
+        "ERROR: static error 2",
+        "WARNING: static warning 2",
+        "CRITICAL: critical 2",
+        "ERROR: error 2",
+        "WARNING: warning 2",
     });
     REQUIRE(logger3.entries == std::vector<std::string>{
-        "1: static critical 3",
-        "2: static error 3",
-        "3: static warning 3",
-        "4: static info 3",
-        "5: static debug 3",
-        "6: static trace 3",
-        "1: critical 3",
-        "2: error 3",
-        "3: warning 3",
-        "4: info 3",
-        "5: debug 3",
-        "6: trace 3",
+        "CRITICAL: static critical 3",
+        "ERROR: static error 3",
+        "WARNING: static warning 3",
+        "INFO: static info 3",
+        "DEBUG: static debug 3",
+        "TRACE: static trace 3",
+        "CRITICAL: critical 3",
+        "ERROR: error 3",
+        "WARNING: warning 3",
+        "INFO: info 3",
+        "DEBUG: debug 3",
+        "TRACE: trace 3",
     });
 }

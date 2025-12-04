@@ -1,6 +1,8 @@
+// ecsbased.cpp
 #include <ecs.hpp>
 #include <gui/winapi/wgl.hpp>
 #include <gui/gl/buffer.hpp>
+#include <logging.hpp>
 
 #include <windows.h>
 #include <dwmapi.h>
@@ -10,7 +12,6 @@
 
 using namespace Istok::ECS;
 using namespace Istok::GUI;
-
 
 template <typename T>
 struct Rect {
@@ -143,6 +144,8 @@ public:
     }
 
 private:
+    CLASS_WITH_LOGGER("Components.Windows");
+    
     HWND hWnd_ = nullptr;
 
     void drop() {
@@ -151,10 +154,10 @@ private:
 
     void clear() {
         if (hWnd_) {
+            LOG_DEBUG("Destroying window: {}", (void*)hWnd_);
             setHandler(nullptr);
-            std::cout << "Destroying window: " << hWnd_ << std::endl;
             DestroyWindow(hWnd_);
-            std::cout << "Window destroyed: " << hWnd_ << std::endl;
+            LOG_TRACE("Window destroyed: {}", (void*)hWnd_);
             drop();
         }
     }
@@ -499,6 +502,7 @@ private:
 
 
 int main() {
+    SET_LOGGER("", Istok::Logging::terminal, Istok::Logging::Level::all);
     ECSManager ecs;
     ecs.pushSystem(std::make_unique<CreateWindowsSystem>(ecs));
     ecs.pushSystem(std::make_unique<InitGLSystem>(ecs));

@@ -5,31 +5,58 @@
 #include <string>
 #include <format>
 #include <mutex>
+#include <iostream>
+#include <map>
+#include <unordered_map>
+#include <cassert>
 
 namespace Istok::Logging {
 
 enum class Level {
-    OFF = 0,
-    CRITICAL = 1,
-    ERROR = 2,
-    WARNING = 3,
-    INFO = 4,
-    DEBUG = 5,
-    TRACE = 6,
+    off = 0,
+    critical = 10,
+    error = 20,
+    warning = 30,
+    info = 40,
+    debug = 50,
+    trace = 60,
+    all = 100,
 };
+
+
+const static std::map<Level, std::string> logLevelStr = {
+    {Level::off, "OFF"},
+    {Level::critical, "CRITICAL"},
+    {Level::error, "ERROR"},
+    {Level::warning, "WARNING"},
+    {Level::info, "INFO"},
+    {Level::debug, "DEBUG"},
+    {Level::trace, "TRACE"},
+    {Level::all, "ALL"},
+}; 
+
 
 class Logger {
 public:
     virtual ~Logger() = default;
-
     virtual void log(Level level, std::string_view message) = 0;
 };
+
 
 class NoneLogger final : public Logger {
     void log(Level level, std::string_view message) override {}
 };
 
 NoneLogger none;
+
+
+class TerminalLogger final : public Logger {
+    void log(Level level, std::string_view message) override {
+        std::cout << logLevelStr.at(level) << ": " << message << std::endl;
+    }
+};
+
+TerminalLogger terminal;
 
 class LoggerRegistry {
 public:
@@ -44,7 +71,7 @@ public:
     }
 
     LoggerRegistry() {
-        set("", none, Level::OFF);
+        set("", none, Level::off);
     }
 
     void set(std::string_view name, Logger& logger, Level maxLevel) {
@@ -61,15 +88,14 @@ public:
             ) {
                 return it->second;
             }
-            
+
+            assert(!name.empty());
             size_t pos = name.find_last_of('.');
             if (pos == std::string_view::npos) {
                 pos = 0;
             }
             name = name.substr(0, pos);
-        } while (!name.empty());
-
-        assert(false);
+        } while (true);
     }
 
 private:
@@ -107,19 +133,19 @@ private:
     } while (0)
 
 #define LOG_CRITICAL(format, ...) \
-    LOG_WITH_LEVEL(Istok::Logging::Level::CRITICAL, format, ##__VA_ARGS__)
+    LOG_WITH_LEVEL(Istok::Logging::Level::critical, format, ##__VA_ARGS__)
 
 #define LOG_ERROR(format, ...) \
-    LOG_WITH_LEVEL(Istok::Logging::Level::ERROR, format, ##__VA_ARGS__)
+    LOG_WITH_LEVEL(Istok::Logging::Level::error, format, ##__VA_ARGS__)
 
 #define LOG_WARNING(format, ...) \
-    LOG_WITH_LEVEL(Istok::Logging::Level::WARNING, format, ##__VA_ARGS__)
+    LOG_WITH_LEVEL(Istok::Logging::Level::warning, format, ##__VA_ARGS__)
 
 #define LOG_INFO(format, ...) \
-    LOG_WITH_LEVEL(Istok::Logging::Level::INFO, format, ##__VA_ARGS__)
+    LOG_WITH_LEVEL(Istok::Logging::Level::info, format, ##__VA_ARGS__)
 
 #define LOG_DEBUG(format, ...) \
-    LOG_WITH_LEVEL(Istok::Logging::Level::DEBUG, format, ##__VA_ARGS__)
+    LOG_WITH_LEVEL(Istok::Logging::Level::debug, format, ##__VA_ARGS__)
 
 #define LOG_TRACE(format, ...) \
-    LOG_WITH_LEVEL(Istok::Logging::Level::TRACE, format, ##__VA_ARGS__)
+    LOG_WITH_LEVEL(Istok::Logging::Level::trace, format, ##__VA_ARGS__)
