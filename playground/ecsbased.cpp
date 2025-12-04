@@ -6,7 +6,6 @@
 
 #include <windows.h>
 #include <dwmapi.h>
-#include <iostream>
 #include <unordered_set>
 #include <functional>
 
@@ -181,13 +180,15 @@ public:
 
     void run() override {
         for (auto& w : ecs_.view<NewWindowFlag, ScreenLocation>()) {
-            std::cout << "Creating window for entity " << w.value << std::endl;
+            LOG_DEBUG("Creating window for entity {}", w.value);
             Rect<int>& location = ecs_.get<ScreenLocation>(w).value;
             ecs_.set(w, WndHandle(createWindow(location)));
         }
     }
 
 private:
+    CLASS_WITH_LOGGER("Components.Windows");
+
     ECSManager& ecs_;
 
     static HWND createWindow(Rect<int> location) {
@@ -300,6 +301,8 @@ public:
     virtual ~WindowEntityMessageHandler() = default;
     virtual LRESULT handleWindowMessage(
         Entity entity, SysWindowMessage message) noexcept = 0;
+protected:
+    CLASS_WITH_LOGGER("Components.Windows");
 };
 
 
@@ -314,8 +317,7 @@ public:
         if (!ecs_.has<WindowHandler::Close>(entity)) {
             return handleByDefault(message);
         }
-        std::cout << "handler: WM_CLOSE " <<
-            entity.value << std::endl;
+        LOG_TRACE("handler: WM_CLOSE {}", entity.value);
         ecs_.get<WindowHandler::Close>(entity).func();
         return 0;
     }
@@ -336,8 +338,7 @@ public:
         if (!ecs_.has<WndHandle>(entity)) {
             return handleByDefault(message);
         }
-        std::cout << "message: WM_SIZE " <<
-            entity.value << std::endl;
+        LOG_TRACE("handler: WM_SIZE {}", entity.value);
         HWND hWnd = ecs_.get<WndHandle>(entity).getHWnd();
         InvalidateRect(hWnd, NULL, FALSE);
         ecs_.iterate();
@@ -368,8 +369,7 @@ public:
         ) {
             return handleByDefault(message);
         }
-        std::cout << "message: WM_PAINT " <<
-            entity.value << std::endl;
+        LOG_TRACE("message: WM_PAINT {}", entity.value);
         WinAPI::GLContext& gl = ecs_.get<WinAPI::GLContext>(
             *ecs_.view<WinAPI::GLContext>().begin());
         HWND hWnd = message.hWnd;
@@ -469,12 +469,14 @@ public:
     }
 
 private:
+    CLASS_WITH_LOGGER("Components.Windows");
+    
     ECSManager& ecs_;
     Handler handler_;
 
     void attachHandler() {
         for (auto& w : ecs_.view<NewWindowFlag, WndHandle>()) {
-            std::cout << "Set handler for window " << w.value << std::endl;
+            LOG_DEBUG("Set handler for window {}", w.value);
             ecs_.set(w, std::make_unique<WindowEntityMessageHandlerProxy>(w, handler_));
             ecs_.get<WndHandle>(w).setHandler(
                 ecs_.get<std::unique_ptr<WindowEntityMessageHandlerProxy>>(w).get());
@@ -503,6 +505,7 @@ private:
 
 int main() {
     SET_LOGGER("", Istok::Logging::terminal, Istok::Logging::Level::all);
+    WITH_LOGGER("");
     ECSManager ecs;
     ecs.pushSystem(std::make_unique<CreateWindowsSystem>(ecs));
     ecs.pushSystem(std::make_unique<InitGLSystem>(ecs));
@@ -516,10 +519,10 @@ int main() {
                 ScreenLocation{{300, 200, 500, 500}},
                 WindowHandler::Close{[&](){ ecs.stop(); }});
         }});
-    std::cout << "Run" << std::endl;
+    LOG_TRACE("Run");
     ecs.run();
-    std::cout << "Stopped" << std::endl;
+    LOG_TRACE("Stopped");
     ecs.clear();
-    std::cout << "Clean" << std::endl;
+    LOG_TRACE("Clean");
     return 0;
 }
