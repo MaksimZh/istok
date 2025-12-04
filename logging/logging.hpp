@@ -65,7 +65,7 @@ public:
         Level maxLevel;
     };
 
-    static LoggerRegistry& getGlobal() {
+    static LoggerRegistry& getGlobalInstance() {
         static LoggerRegistry instance;
         return instance;
     }
@@ -106,26 +106,28 @@ private:
 }  // namespace Istok::Logging
 
 #define SET_LOGGER(name, logger_ref, maxLevel) \
-    Istok::Logging::LoggerRegistry::getGlobal().set(name, logger_ref, maxLevel)
+    ::Istok::Logging:: \
+        LoggerRegistry::getGlobalInstance().set(name, logger_ref, maxLevel)
 
 #define WITH_LOGGER(name) \
     static auto istok_logging_get_logger = \
         []() { \
-            static auto entry = \
-                Istok::Logging::LoggerRegistry::getGlobal().get(name); \
+            static auto entry = ::Istok::Logging \
+                ::LoggerRegistry::getGlobalInstance().get(name); \
             return entry; \
         }
 
 #define CLASS_WITH_LOGGER(name) \
-    static Istok::Logging::LoggerRegistry::Entry istok_logging_get_logger() { \
+    static ::Istok::Logging::LoggerRegistry::Entry \
+    istok_logging_get_logger() { \
         static auto entry = \
-            Istok::Logging::LoggerRegistry::getGlobal().get(name); \
+            ::Istok::Logging::LoggerRegistry::getGlobalInstance().get(name); \
         return entry; \
     }
 
 #define LOG_WITH_LEVEL(level, fmt, ...) \
     do { \
-        Istok::Logging::LoggerRegistry::Entry entry = \
+        ::Istok::Logging::LoggerRegistry::Entry entry = \
             istok_logging_get_logger(); \
         if (level <= entry.maxLevel) { \
             entry.logger->log(level, std::format(fmt, ##__VA_ARGS__)); \
@@ -133,19 +135,19 @@ private:
     } while (0)
 
 #define LOG_CRITICAL(format, ...) \
-    LOG_WITH_LEVEL(Istok::Logging::Level::critical, format, ##__VA_ARGS__)
+    LOG_WITH_LEVEL(::Istok::Logging::Level::critical, format, ##__VA_ARGS__)
 
 #define LOG_ERROR(format, ...) \
-    LOG_WITH_LEVEL(Istok::Logging::Level::error, format, ##__VA_ARGS__)
+    LOG_WITH_LEVEL(::Istok::Logging::Level::error, format, ##__VA_ARGS__)
 
 #define LOG_WARNING(format, ...) \
-    LOG_WITH_LEVEL(Istok::Logging::Level::warning, format, ##__VA_ARGS__)
+    LOG_WITH_LEVEL(::Istok::Logging::Level::warning, format, ##__VA_ARGS__)
 
 #define LOG_INFO(format, ...) \
-    LOG_WITH_LEVEL(Istok::Logging::Level::info, format, ##__VA_ARGS__)
+    LOG_WITH_LEVEL(::Istok::Logging::Level::info, format, ##__VA_ARGS__)
 
 #define LOG_DEBUG(format, ...) \
-    LOG_WITH_LEVEL(Istok::Logging::Level::debug, format, ##__VA_ARGS__)
+    LOG_WITH_LEVEL(::Istok::Logging::Level::debug, format, ##__VA_ARGS__)
 
 #define LOG_TRACE(format, ...) \
-    LOG_WITH_LEVEL(Istok::Logging::Level::trace, format, ##__VA_ARGS__)
+    LOG_WITH_LEVEL(::Istok::Logging::Level::trace, format, ##__VA_ARGS__)

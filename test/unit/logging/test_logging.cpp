@@ -20,6 +20,30 @@ namespace {
     };
 }
 
+TEST_CASE("Logging - LoggerRegistry", "[unit][logging]") {
+    MockLogger a, b, c;
+    LoggerRegistry registry;
+    REQUIRE(registry.get("").logger == &none);
+    REQUIRE(registry.get("foo").logger == &none);
+    REQUIRE(registry.get("foo.boo").logger == &none);
+
+    registry.set("", a, Level::error);
+    registry.set("foo", b, Level::warning);
+    registry.set("foo.boo", c, Level::info);
+    REQUIRE(registry.get("").logger == &a);
+    REQUIRE(registry.get("").maxLevel == Level::error);
+    REQUIRE(registry.get("bar").logger == &a);
+    REQUIRE(registry.get("bar").maxLevel == Level::error);
+    REQUIRE(registry.get("foo").logger == &b);
+    REQUIRE(registry.get("foo").maxLevel == Level::warning);
+    REQUIRE(registry.get("foo.bar").logger == &b);
+    REQUIRE(registry.get("foo.bar").maxLevel == Level::warning);
+    REQUIRE(registry.get("foo.boo").logger == &c);
+    REQUIRE(registry.get("foo.boo").maxLevel == Level::info);
+    REQUIRE(registry.get("foo.boo.bar").logger == &c);
+    REQUIRE(registry.get("foo.boo.bar").maxLevel == Level::info);
+}
+
 TEST_CASE("Logging - WITH_LOGGER", "[unit][logging]") {
     MockLogger logger1;
     MockLogger logger2;
