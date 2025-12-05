@@ -143,7 +143,7 @@ public:
     }
 
 private:
-    CLASS_WITH_LOGGER("Components.Windows");
+    CLASS_WITH_LOGGER("Windows");
     
     HWND hWnd_ = nullptr;
 
@@ -156,7 +156,6 @@ private:
             LOG_DEBUG("Destroying window: {}", (void*)hWnd_);
             setHandler(nullptr);
             DestroyWindow(hWnd_);
-            LOG_TRACE("Window destroyed: {}", (void*)hWnd_);
             drop();
         }
     }
@@ -167,9 +166,12 @@ struct NewWindowFlag {};
 
 class CreateWindowsSystem : public System {
 public:
-    CreateWindowsSystem(ECSManager& ecs) : ecs_(ecs) {}
+    CreateWindowsSystem(ECSManager& ecs) : ecs_(ecs) {
+        LOG_DEBUG("create");
+    }
     
     ~CreateWindowsSystem() {
+        LOG_DEBUG("destroy");
         ecs_.removeAll<WndHandle>();
     }
 
@@ -179,15 +181,17 @@ public:
     CreateWindowsSystem& operator=(CreateWindowsSystem&&) = delete;
 
     void run() override {
+        LOG_DEBUG("run");
         for (auto& w : ecs_.view<NewWindowFlag, ScreenLocation>()) {
-            LOG_DEBUG("Creating window for entity {}", w.value);
             Rect<int>& location = ecs_.get<ScreenLocation>(w).value;
-            ecs_.set(w, WndHandle(createWindow(location)));
+            HWND hWnd = createWindow(location);
+            LOG_DEBUG("window {} created @{}", (void*)hWnd, w.value);
+            ecs_.set(w, WndHandle(hWnd));
         }
     }
 
 private:
-    CLASS_WITH_LOGGER("Components.Windows");
+    CLASS_WITH_LOGGER_PREFIX("Windows", "CreateWindowsSystem: ");
 
     ECSManager& ecs_;
 
@@ -236,9 +240,12 @@ void enableTransparency(HWND hWnd) {
 
 class InitGLSystem: public System {
 public:
-    InitGLSystem(ECSManager& ecs) : ecs_(ecs) {}
+    InitGLSystem(ECSManager& ecs) : ecs_(ecs) {
+        LOG_DEBUG("create");
+    }
     
     ~InitGLSystem() {
+        LOG_DEBUG("destroy");
         ecs_.removeAll<WinAPI::GLContext>();
     }
 
@@ -248,17 +255,23 @@ public:
     InitGLSystem& operator=(InitGLSystem&&) = delete;
 
     void run() override {
+        LOG_DEBUG("run");
         for (auto& w : ecs_.view<NewWindowFlag, WndHandle>()) {
             HWND hWnd = ecs_.get<WndHandle>(w).getHWnd();
+            LOG_DEBUG("prepare window {} @{} for GL", (void*)hWnd, w.value);
             enableTransparency(hWnd);
             WinAPI::prepareForGL(hWnd);
             if (!ecs_.hasAny<WinAPI::GLContext>()) {
-                ecs_.createEntity(WinAPI::GLContext(hWnd));
+                LOG_DEBUG("creating GLContext using window {}", (void*)hWnd);
+                Entity e = ecs_.createEntity(WinAPI::GLContext(hWnd));
+                LOG_DEBUG("GLContext stored @{}", e.value);
             }
         }
     }
 
 private:
+    CLASS_WITH_LOGGER_PREFIX("GL", "InitGLSystem: ");
+    
     ECSManager& ecs_;
 };
 
@@ -302,7 +315,7 @@ public:
     virtual LRESULT handleWindowMessage(
         Entity entity, SysWindowMessage message) noexcept = 0;
 protected:
-    CLASS_WITH_LOGGER("Components.Windows");
+    CLASS_WITH_LOGGER_PREFIX("Windows", "MSG: ");
 };
 
 
@@ -315,9 +328,10 @@ public:
     ) noexcept override {
         assert(message.msg == WM_CLOSE);
         if (!ecs_.has<WindowHandler::Close>(entity)) {
+            LOG_TRACE("WM_CLOSE @{} -> skip", entity.value);
             return handleByDefault(message);
         }
-        LOG_TRACE("handler: WM_CLOSE {}", entity.value);
+        LOG_TRACE("WM_CLOSE @{} -> process", entity.value);
         ecs_.get<WindowHandler::Close>(entity).func();
         return 0;
     }
@@ -336,9 +350,9 @@ public:
     ) noexcept override {
         assert(message.msg == WM_SIZE);
         if (!ecs_.has<WndHandle>(entity)) {
-            return handleByDefault(message);
+            LOG_TRACE("WM_SIZE @{} -> skip", entity.value);
         }
-        LOG_TRACE("handler: WM_SIZE {}", entity.value);
+        LOG_TRACE("WM_SIZE @{} -> process", entity.value);
         HWND hWnd = ecs_.get<WndHandle>(entity).getHWnd();
         InvalidateRect(hWnd, NULL, FALSE);
         ecs_.iterate();
@@ -367,9 +381,10 @@ public:
             !ecs_.has<VertexBuffer>(entity) ||
             !ecs_.has<VertexArray>(entity)
         ) {
+            LOG_TRACE("WM_PAINT @{} -> skip", entity.value);
             return handleByDefault(message);
         }
-        LOG_TRACE("message: WM_PAINT {}", entity.value);
+        LOG_TRACE("WM_PAINT @{} -> process", entity.value);
         WinAPI::GLContext& gl = ecs_.get<WinAPI::GLContext>(
             *ecs_.view<WinAPI::GLContext>().begin());
         HWND hWnd = message.hWnd;
@@ -449,9 +464,12 @@ private:
 
 class WindowMessageSystem: public System {
 public:
-    WindowMessageSystem(ECSManager& ecs) : ecs_(ecs), handler_(ecs) {}
+    WindowMessageSystem(ECSManager& ecs) : ecs_(ecs), handler_(ecs) {
+        LOG_DEBUG("create");
+    }
 
     ~WindowMessageSystem() {
+        LOG_DEBUG("destroy");
         for (auto& w : ecs_.view<WndHandle>()) {
             ecs_.get<WndHandle>(w).setHandler(nullptr);
         }
@@ -463,23 +481,27 @@ public:
     WindowMessageSystem& operator=(WindowMessageSystem&&) = delete;
 
     void run() override {
+        LOG_DEBUG("run");
         attachHandler();
         finishWindowInitialization();
         runMessageLoop();
     }
 
 private:
-    CLASS_WITH_LOGGER("Components.Windows");
+    CLASS_WITH_LOGGER_PREFIX("Windows", "WindowMessageSystem: ");
     
     ECSManager& ecs_;
     Handler handler_;
 
     void attachHandler() {
         for (auto& w : ecs_.view<NewWindowFlag, WndHandle>()) {
-            LOG_DEBUG("Set handler for window {}", w.value);
-            ecs_.set(w, std::make_unique<WindowEntityMessageHandlerProxy>(w, handler_));
+            LOG_DEBUG("set message handler @{}", w.value);
+            ecs_.set(
+                w, std::make_unique<WindowEntityMessageHandlerProxy>(
+                    w, handler_));
             ecs_.get<WndHandle>(w).setHandler(
-                ecs_.get<std::unique_ptr<WindowEntityMessageHandlerProxy>>(w).get());
+                ecs_.get<std::unique_ptr<WindowEntityMessageHandlerProxy>>(
+                    w).get());
         }
     }
 
@@ -505,8 +527,8 @@ private:
 
 int main() {
     SET_LOGGER("", Istok::Logging::terminal, Istok::Logging::Level::all);
-    WITH_LOGGER("");
-    LOG_TRACE("App: begin");
+    WITH_LOGGER_PREFIX("", "App: ");
+    LOG_TRACE("begin");
     ECSManager ecs;
     ecs.pushSystem(std::make_unique<CreateWindowsSystem>(ecs));
     ecs.pushSystem(std::make_unique<InitGLSystem>(ecs));
@@ -522,6 +544,6 @@ int main() {
         }});
     ecs.run();
     ecs.clear();
-    LOG_TRACE("App: end");
+    LOG_TRACE("end");
     return 0;
 }

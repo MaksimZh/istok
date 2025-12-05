@@ -10,7 +10,7 @@
 namespace Istok::ECS {
 
 class ECSManager final {
-    CLASS_WITH_LOGGER("ECS");
+    CLASS_WITH_LOGGER_PREFIX("ECS", "ECS: ");
 public:
     ECSManager() {}
 
@@ -48,13 +48,13 @@ public:
      * The components are destroyed after the systems in undefined order.
      */
     void clear() {
-        LOG_DEBUG("ECS: clear");
+        LOG_DEBUG("clear");
         systems_.clear();
         ecm_.clear();
     }
 
     void iterate() {
-        LOG_TRACE("ECS: iterate");
+        LOG_TRACE("iterate");
         systems_.run();
     }
 
@@ -62,7 +62,7 @@ public:
         if (running_) {
             return;
         }
-        LOG_DEBUG("ECS: run");
+        LOG_DEBUG("run");
         running_ = true;
         while (running_) {
             iterate();
@@ -70,7 +70,7 @@ public:
     }
 
     void stop() {
-        LOG_DEBUG("ECS: stop");
+        LOG_DEBUG("stop");
         running_ = false;
     }
 

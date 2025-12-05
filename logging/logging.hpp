@@ -52,7 +52,8 @@ NoneLogger none;
 
 class TerminalLogger final : public Logger {
     void log(Level level, std::string_view message) override {
-        std::cout << logLevelStr.at(level) << ": " << message << std::endl;
+        std::cout << "[" << logLevelStr.at(level) << "] "
+            << message << std::endl;
     }
 };
 
@@ -103,34 +104,61 @@ private:
     std::mutex mutex_;
 };
 
+template<typename... Args>
+std::string format(
+    std::string_view prefix,
+    std::format_string<Args...> fmt,
+    Args&&... args
+) {
+    std::string result;
+    result.reserve(prefix.size() + 128);
+    result = std::move(prefix);
+    std::format_to(
+        std::back_inserter(result),
+        fmt, std::forward<Args>(args)...);
+    return result;
+}
+
 }  // namespace Istok::Logging
 
 #define SET_LOGGER(name, logger_ref, maxLevel) \
     ::Istok::Logging:: \
         LoggerRegistry::getGlobalInstance().set(name, logger_ref, maxLevel)
 
-#define WITH_LOGGER(name) \
+#define WITH_LOGGER_PREFIX(name, prefix) \
     static auto istok_logging_get_logger = \
         []() { \
             static auto entry = ::Istok::Logging \
                 ::LoggerRegistry::getGlobalInstance().get(name); \
-            return entry; \
-        }
+            return entry; }; \
+    static auto istok_logging_get_prefix = \
+        []() -> ::std::string& { \
+            static ::std::string value = prefix; \
+            return value; }; \
 
-#define CLASS_WITH_LOGGER(name) \
+#define WITH_LOGGER(name) WITH_LOGGER_PREFIX(name, "") \
+    
+#define CLASS_WITH_LOGGER_PREFIX(name, prefix) \
     static ::Istok::Logging::LoggerRegistry::Entry \
     istok_logging_get_logger() { \
         static auto entry = \
             ::Istok::Logging::LoggerRegistry::getGlobalInstance().get(name); \
-        return entry; \
-    }
+        return entry; }; \
+    static ::std::string& \
+    istok_logging_get_prefix() { \
+        static ::std::string value = prefix; \
+        return value; }
+
+#define CLASS_WITH_LOGGER(name) CLASS_WITH_LOGGER_PREFIX(name, "")
 
 #define LOG_WITH_LEVEL(level, fmt, ...) \
     do { \
         ::Istok::Logging::LoggerRegistry::Entry entry = \
             istok_logging_get_logger(); \
         if (level <= entry.maxLevel) { \
-            entry.logger->log(level, std::format(fmt, ##__VA_ARGS__)); \
+            entry.logger->log( \
+                level, ::Istok::Logging::format( \
+                    istok_logging_get_prefix(), fmt, ##__VA_ARGS__)); \
         } \
     } while (0)
 
