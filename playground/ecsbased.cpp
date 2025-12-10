@@ -413,18 +413,18 @@ private:
 
 class Handler : public WindowEntityMessageHandler {
 public:
-    Handler(ECSManager& ecs) {
-        handlers[WM_CLOSE] = std::make_unique<CloseHandler>(ecs);
-        handlers[WM_SIZE] = std::make_unique<SizeHandler>(ecs);
-        handlers[WM_PAINT] = std::make_unique<PaintHandler>(ecs);
-    }
+    using HandlerMap = std::unordered_map<
+        UINT,
+        std::unique_ptr<WindowEntityMessageHandler>>;
+    
+    Handler(HandlerMap handlers) : handlers_(std::move(handlers)) {}
     
     LRESULT handleWindowMessage(
         Entity entity, SysWindowMessage message
     ) noexcept override {
-        if (handlers.contains(message.msg)) {
+        if (handlers_.contains(message.msg)) {
             idle_ = false;
-            return handlers[message.msg]->handleWindowMessage(entity, message);
+            return handlers_[message.msg]->handleWindowMessage(entity, message);
         }
         return handleByDefault(message);
     }
@@ -438,10 +438,7 @@ public:
     }
 
 private:
-    std::unordered_map<
-        UINT,
-        std::unique_ptr<WindowEntityMessageHandler>
-    > handlers;
+    HandlerMap handlers_;
     bool idle_ = true;
 };
 
@@ -464,7 +461,8 @@ private:
 
 class WindowMessageSystem: public System {
 public:
-    WindowMessageSystem(ECSManager& ecs) : ecs_(ecs), handler_(ecs) {
+    WindowMessageSystem(ECSManager& ecs, Handler::HandlerMap handlers)
+    : ecs_(ecs), handler_(std::move(handlers)) {
         LOG_DEBUG("create");
     }
 
@@ -529,10 +527,19 @@ int main() {
     SET_LOGGER("", Istok::Logging::terminal, Istok::Logging::Level::all);
     WITH_LOGGER_PREFIX("", "App: ");
     LOG_TRACE("begin");
+    
     ECSManager ecs;
+    
     ecs.pushSystem(std::make_unique<CreateWindowsSystem>(ecs));
     ecs.pushSystem(std::make_unique<InitGLSystem>(ecs));
-    ecs.pushSystem(std::make_unique<WindowMessageSystem>(ecs));
+
+    Handler::HandlerMap handler_map;
+    handler_map.emplace(WM_CLOSE, std::make_unique<CloseHandler>(ecs));
+    handler_map.emplace(WM_SIZE, std::make_unique<SizeHandler>(ecs));
+    handler_map.emplace(WM_PAINT, std::make_unique<PaintHandler>(ecs));
+    ecs.pushSystem(
+        std::make_unique<WindowMessageSystem>(ecs, std::move(handler_map)));
+    
     ecs.createEntity(
         NewWindowFlag{},
         ScreenLocation{{200, 100, 600, 400}},
@@ -542,7 +549,9 @@ int main() {
                 ScreenLocation{{300, 200, 500, 500}},
                 WindowHandler::Close{[&](){ ecs.stop(); }});
         }});
+    
     ecs.run();
+    
     ecs.clear();
     LOG_TRACE("end");
     return 0;
