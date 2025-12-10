@@ -275,6 +275,8 @@ private:
     ECSManager& ecs_;
 };
 
+using VertexBuffer = OpenGL::VertexBuffer<WinAPI::WGL>;
+using VertexArray = OpenGL::VertexArray<WinAPI::WGL>;
 
 class SceneSystem: public System {
 public:
@@ -363,52 +365,73 @@ private:
     ECSManager& ecs_;
 };
 
+class WindowRenderer {
+public:
+    virtual ~WindowRenderer() = default;
 
-using VertexBuffer = OpenGL::VertexBuffer<WinAPI::WGL>;
-using VertexArray = OpenGL::VertexArray<WinAPI::WGL>;
-
+    virtual void render(ECSManager& ecs, Entity entity) = 0;
+};
 
 class PaintHandler : public WindowEntityMessageHandler {
 public:
     PaintHandler(ECSManager& ecs) : ecs_(ecs) {}
-    
+
     LRESULT handleWindowMessage(
         Entity entity, SysWindowMessage message
     ) noexcept override {
         assert(message.msg == WM_PAINT);
-        if (!ecs_.hasAny<WinAPI::GLContext>() ||
-            !ecs_.has<WndHandle>(entity) ||
-            !ecs_.has<VertexBuffer>(entity) ||
-            !ecs_.has<VertexArray>(entity)
-        ) {
+        if (!ecs_.has<std::unique_ptr<WindowRenderer>>(entity)) {
             LOG_TRACE("WM_PAINT @{} -> skip", entity.value);
             return handleByDefault(message);
         }
         LOG_TRACE("WM_PAINT @{} -> process", entity.value);
-        WinAPI::GLContext& gl = ecs_.get<WinAPI::GLContext>(
-            *ecs_.view<WinAPI::GLContext>().begin());
-        HWND hWnd = message.hWnd;
-        WinAPI::WGL::Scope scope(gl, hWnd);
-        RECT rect;
-        GetClientRect(hWnd, &rect);
-        glViewport(0, 0, rect.right, rect.bottom);
-        glClearColor(0, 0, 0, 0);
-        glClear(GL_COLOR_BUFFER_BIT);
-        VertexArray& vao = ecs_.get<VertexArray>(entity);
-        vao.bind(scope);
-        VertexBuffer& vbo = ecs_.get<VertexBuffer>(entity);
-        vbo.bind(scope);
-        glDrawArrays(GL_TRIANGLES, 0, 3);
-        PAINTSTRUCT ps;
-        SwapBuffers(BeginPaint(hWnd, &ps));
-        EndPaint(hWnd, &ps);
+        ecs_.get<std::unique_ptr<WindowRenderer>>(entity)
+            ->render(ecs_, entity);
+        validateWindow(message.hWnd);
         return 0;
     }
 
 private:
     ECSManager& ecs_;
+
+    static void validateWindow(HWND hWnd) {
+        PAINTSTRUCT ps;
+        BeginPaint(hWnd, &ps);
+        EndPaint(hWnd, &ps);
+    }
 };
 
+
+class ColorFillRenderer : public WindowRenderer {
+public:
+    ColorFillRenderer(float r, float g, float b, float a)
+    : r_(r), g_(g), b_(b), a_(a) {}
+
+    void render(ECSManager& ecs, Entity entity) override {
+        if (
+            !ecs.hasAny<WinAPI::GLContext>() ||
+            !ecs.has<WndHandle>(entity)
+        ) {
+            return;
+        }
+        WinAPI::GLContext& gl = ecs.get<WinAPI::GLContext>(
+            *ecs.view<WinAPI::GLContext>().begin());
+        HWND hWnd = ecs.get<WndHandle>(entity).getHWnd();
+        WinAPI::WGL::Scope scope(gl, hWnd);
+        RECT rect;
+        GetClientRect(hWnd, &rect);
+        glViewport(0, 0, rect.right, rect.bottom);
+        glClearColor(r_, g_, b_, a_);
+        glClear(GL_COLOR_BUFFER_BIT);
+        SwapBuffers(WinAPI::DCHandle(hWnd).get());
+    }
+
+private:
+    float r_;
+    float g_;
+    float b_;
+    float a_;
+};
 
 
 class Handler : public WindowEntityMessageHandler {
@@ -543,10 +566,14 @@ int main() {
     ecs.createEntity(
         NewWindowFlag{},
         ScreenLocation{{200, 100, 600, 400}},
+        std::unique_ptr<WindowRenderer>(
+            std::make_unique<ColorFillRenderer>(0, 0, 0.5, 1)),
         WindowHandler::Close{[&](){
             ecs.createEntity(
                 NewWindowFlag{},
                 ScreenLocation{{300, 200, 500, 500}},
+                std::unique_ptr<WindowRenderer>(
+                    std::make_unique<ColorFillRenderer>(0, 0.5, 0, 1)),
                 WindowHandler::Close{[&](){ ecs.stop(); }});
         }});
     
