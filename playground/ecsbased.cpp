@@ -4,6 +4,7 @@
 #include <gui/gl/buffer.hpp>
 #include <logging.hpp>
 
+#include <memory>
 #include <windows.h>
 #include <dwmapi.h>
 #include <unordered_set>
@@ -434,6 +435,40 @@ private:
 };
 
 
+class DrawWindowSystem : public System {
+public:
+    DrawWindowSystem(ECSManager& ecs)
+    : ecs_(ecs) {
+        LOG_DEBUG("create");
+    }
+
+    ~DrawWindowSystem() {
+        LOG_DEBUG("destroy");
+        ecs_.removeAll<std::unique_ptr<WindowRenderer>>();
+    }
+    
+    DrawWindowSystem(const DrawWindowSystem&) = delete;
+    DrawWindowSystem& operator=(const DrawWindowSystem&) = delete;
+    DrawWindowSystem(DrawWindowSystem&&) = delete;
+    DrawWindowSystem& operator=(DrawWindowSystem&&) = delete;
+
+    void run() override {
+        LOG_DEBUG("run");
+        for (auto& w : ecs_.view<NewWindowFlag>()) {
+            LOG_DEBUG("set window renderer @{}", w.value);
+            ecs_.set(
+                w, std::unique_ptr<WindowRenderer>(
+                std::make_unique<ColorFillRenderer>(0, 0, 0.5, 1)));
+        }
+    }
+
+private:
+    CLASS_WITH_LOGGER_PREFIX("Windows", "DrawWindowSystem: ");
+  
+    ECSManager& ecs_;
+};
+
+
 class Handler : public WindowEntityMessageHandler {
 public:
     using HandlerMap = std::unordered_map<
@@ -482,7 +517,7 @@ private:
 };
 
 
-class WindowMessageSystem: public System {
+class WindowMessageSystem : public System {
 public:
     WindowMessageSystem(ECSManager& ecs, Handler::HandlerMap handlers)
     : ecs_(ecs), handler_(std::move(handlers)) {
@@ -555,25 +590,22 @@ int main() {
     
     ecs.pushSystem(std::make_unique<CreateWindowsSystem>(ecs));
     ecs.pushSystem(std::make_unique<InitGLSystem>(ecs));
+    ecs.pushSystem(std::make_unique<DrawWindowSystem>(ecs));
 
-    Handler::HandlerMap handler_map;
-    handler_map.emplace(WM_CLOSE, std::make_unique<CloseHandler>(ecs));
-    handler_map.emplace(WM_SIZE, std::make_unique<SizeHandler>(ecs));
-    handler_map.emplace(WM_PAINT, std::make_unique<PaintHandler>(ecs));
+    Handler::HandlerMap handlerMap;
+    handlerMap.emplace(WM_CLOSE, std::make_unique<CloseHandler>(ecs));
+    handlerMap.emplace(WM_SIZE, std::make_unique<SizeHandler>(ecs));
+    handlerMap.emplace(WM_PAINT, std::make_unique<PaintHandler>(ecs));
     ecs.pushSystem(
-        std::make_unique<WindowMessageSystem>(ecs, std::move(handler_map)));
+        std::make_unique<WindowMessageSystem>(ecs, std::move(handlerMap)));
     
     ecs.createEntity(
         NewWindowFlag{},
         ScreenLocation{{200, 100, 600, 400}},
-        std::unique_ptr<WindowRenderer>(
-            std::make_unique<ColorFillRenderer>(0, 0, 0.5, 1)),
         WindowHandler::Close{[&](){
             ecs.createEntity(
                 NewWindowFlag{},
                 ScreenLocation{{300, 200, 500, 500}},
-                std::unique_ptr<WindowRenderer>(
-                    std::make_unique<ColorFillRenderer>(0, 0.5, 0, 1)),
                 WindowHandler::Close{[&](){ ecs.stop(); }});
         }});
     

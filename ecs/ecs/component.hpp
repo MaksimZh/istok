@@ -129,7 +129,7 @@ private:
     > storages;
 
     template <typename Component>
-    constexpr std::type_index key() const {
+    std::type_index key() const {
         static std::type_index index(typeid(Component));
         return index;
     }
