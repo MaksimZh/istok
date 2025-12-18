@@ -5,9 +5,9 @@
 #include <logging.hpp>
 
 #include <memory>
+#include <windef.h>
 #include <windows.h>
 #include <dwmapi.h>
-#include <unordered_set>
 #include <functional>
 
 using namespace Istok::ECS;
@@ -183,8 +183,10 @@ public:
 
     void run() override {
         LOG_DEBUG("run");
-        for (auto& w : ecs_.view<NewWindowFlag, ScreenLocation>()) {
-            Rect<int>& location = ecs_.get<ScreenLocation>(w).value;
+        for (auto& w : ecs_.view<NewWindowFlag>()) {
+            Rect<int> location = ecs_.has<ScreenLocation>(w)
+                ? ecs_.get<ScreenLocation>(w).value
+                : Rect<int>{};
             HWND hWnd = createWindow(location);
             LOG_DEBUG("window {} created @{}", (void*)hWnd, w.value);
             ecs_.set(w, WndHandle(hWnd));
@@ -210,7 +212,6 @@ private:
         if (!hWnd) {
             throw std::runtime_error("Cannot create window");
         }
-        ShowWindow(hWnd, SW_SHOW);
         return hWnd;
     }
 
@@ -229,6 +230,40 @@ private:
 };
 
 
+struct ShowWindowFlag {};
+
+class ShowWindowsSystem : public System {
+public:
+    ShowWindowsSystem(ECSManager& ecs) : ecs_(ecs) {
+        LOG_DEBUG("create");
+    }
+    
+    ~ShowWindowsSystem() {
+        LOG_DEBUG("destroy");
+        ecs_.removeAll<WndHandle>();
+    }
+
+    ShowWindowsSystem(const ShowWindowsSystem&) = delete;
+    ShowWindowsSystem& operator=(const ShowWindowsSystem&) = delete;
+    ShowWindowsSystem(ShowWindowsSystem&&) = delete;
+    ShowWindowsSystem& operator=(ShowWindowsSystem&&) = delete;
+
+    void run() override {
+        LOG_DEBUG("run");
+        for (auto& w : ecs_.view<ShowWindowFlag, WndHandle>()) {
+            LOG_DEBUG("show window @{}", w.value);
+            ShowWindow(ecs_.get<WndHandle>(w).getHWnd(), SW_SHOW);
+        }
+        ecs_.removeAll<ShowWindowFlag>();
+    }
+
+private:
+    CLASS_WITH_LOGGER_PREFIX("Windows", "ShowWindowsSystem: ");
+
+    ECSManager& ecs_;
+};
+
+
 void enableTransparency(HWND hWnd) {
     DWM_BLURBEHIND bb = { 0 };
     HRGN hRgn = CreateRectRgn(0, 0, -1, -1);
@@ -239,10 +274,15 @@ void enableTransparency(HWND hWnd) {
 }
 
 
+struct GLHolderTag {};
+
 class InitGLSystem: public System {
 public:
     InitGLSystem(ECSManager& ecs) : ecs_(ecs) {
         LOG_DEBUG("create");
+        ecs.createEntity(
+            NewWindowFlag{},
+            GLHolderTag{});
     }
     
     ~InitGLSystem() {
@@ -259,14 +299,20 @@ public:
         LOG_DEBUG("run");
         for (auto& w : ecs_.view<NewWindowFlag, WndHandle>()) {
             HWND hWnd = ecs_.get<WndHandle>(w).getHWnd();
-            LOG_DEBUG("prepare window {} @{} for GL", (void*)hWnd, w.value);
+            LOG_DEBUG("prepare window for GL @{}", w.value);
             enableTransparency(hWnd);
             WinAPI::prepareForGL(hWnd);
-            if (!ecs_.hasAny<WinAPI::GLContext>()) {
-                LOG_DEBUG("creating GLContext using window {}", (void*)hWnd);
-                Entity e = ecs_.createEntity(WinAPI::GLContext(hWnd));
-                LOG_DEBUG("GLContext stored @{}", e.value);
-            }
+        }
+        if (!ecs_.hasAny<WinAPI::GLContext>()) {
+            assert(ecs_.hasAny<GLHolderTag>());
+            Entity e = *ecs_.view<GLHolderTag>().begin();
+            assert(ecs_.has<WndHandle>(e));
+            HWND hWnd = ecs_.get<WndHandle>(e).getHWnd();
+            LOG_DEBUG(
+                "creating GLContext @{} using window {}",
+                e.value, (void*)hWnd);
+            ecs_.set(e, WinAPI::GLContext(hWnd));
+            LOG_DEBUG("GLContext created");
         }
     }
 
@@ -468,6 +514,38 @@ private:
     ECSManager& ecs_;
 };
 
+class SetGLForCleanupSystem : public System {
+public:
+    SetGLForCleanupSystem(ECSManager& ecs)
+    : ecs_(ecs) {
+        LOG_DEBUG("create");
+    }
+
+    ~SetGLForCleanupSystem() {
+        LOG_DEBUG("destroy");
+        assert(ecs_.hasAny<GLHolderTag>());
+        Entity e = *ecs_.view<GLHolderTag>().begin();
+        assert(ecs_.has<WinAPI::GLContext>(e));
+        assert(ecs_.has<WndHandle>(e));
+        HWND hWnd = ecs_.get<WndHandle>(e).getHWnd();
+        ecs_.set(e, std::make_unique<WinAPI::DCHandle>(hWnd));
+        LOG_DEBUG("make GLContext current @{}", e.value);
+        ecs_.get<WinAPI::GLContext>(e).makeCurrent(
+            *ecs_.get<std::unique_ptr<WinAPI::DCHandle>>(e));
+    }
+    
+    SetGLForCleanupSystem(const SetGLForCleanupSystem&) = delete;
+    SetGLForCleanupSystem& operator=(const SetGLForCleanupSystem&) = delete;
+    SetGLForCleanupSystem(SetGLForCleanupSystem&&) = delete;
+    SetGLForCleanupSystem& operator=(SetGLForCleanupSystem&&) = delete;
+
+    void run() override {}
+
+private:
+    CLASS_WITH_LOGGER_PREFIX("Windows", "SetGLForCleanupSystem: ");
+  
+    ECSManager& ecs_;
+};
 
 class Handler : public WindowEntityMessageHandler {
 public:
@@ -589,8 +667,10 @@ int main() {
     ECSManager ecs;
     
     ecs.pushSystem(std::make_unique<CreateWindowsSystem>(ecs));
+    ecs.pushSystem(std::make_unique<ShowWindowsSystem>(ecs));
     ecs.pushSystem(std::make_unique<InitGLSystem>(ecs));
     ecs.pushSystem(std::make_unique<DrawWindowSystem>(ecs));
+    ecs.pushSystem(std::make_unique<SetGLForCleanupSystem>(ecs));
 
     Handler::HandlerMap handlerMap;
     handlerMap.emplace(WM_CLOSE, std::make_unique<CloseHandler>(ecs));
@@ -601,10 +681,12 @@ int main() {
     
     ecs.createEntity(
         NewWindowFlag{},
+        ShowWindowFlag{},
         ScreenLocation{{200, 100, 600, 400}},
         WindowHandler::Close{[&](){
             ecs.createEntity(
                 NewWindowFlag{},
+                ShowWindowFlag{},
                 ScreenLocation{{300, 200, 500, 500}},
                 WindowHandler::Close{[&](){ ecs.stop(); }});
         }});
