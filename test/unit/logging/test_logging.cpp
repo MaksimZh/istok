@@ -23,6 +23,7 @@ namespace {
 TEST_CASE("Logging - LoggerRegistry", "[unit][logging]") {
     MockLogger a, b, c;
     LoggerRegistry registry;
+    Logger& none = NoneLogger::GetInstance();
     REQUIRE(registry.get("").logger == &none);
     REQUIRE(registry.get("foo").logger == &none);
     REQUIRE(registry.get("foo.boo").logger == &none);

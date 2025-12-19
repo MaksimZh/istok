@@ -4,7 +4,7 @@
 
 #include <memory>
 #include <cassert>
-#include <stdexcept>
+#include <vector>
 
 namespace Istok::ECS {
 

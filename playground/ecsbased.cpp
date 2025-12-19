@@ -660,7 +660,10 @@ private:
 
 
 int main() {
-    SET_LOGGER("", Istok::Logging::terminal, Istok::Logging::Level::all);
+    SET_LOGGER(
+        "",
+        Istok::Logging::TerminalLogger::GetInstance(),
+        Istok::Logging::Level::all);
     WITH_LOGGER_PREFIX("", "App: ");
     LOG_TRACE("begin");
     

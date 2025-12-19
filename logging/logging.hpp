@@ -44,20 +44,35 @@ public:
 
 
 class NoneLogger final : public Logger {
+public:
+    static NoneLogger& GetInstance() {
+        static NoneLogger instance;
+        return instance;
+    }
+    
     void log(Level level, std::string_view message) override {}
-};
 
-NoneLogger none;
+private:
+    NoneLogger() = default;
+};
 
 
 class TerminalLogger final : public Logger {
+public:
+    static TerminalLogger& GetInstance() {
+        static TerminalLogger instance;
+        return instance;
+    }
+
     void log(Level level, std::string_view message) override {
         std::cout << "[" << logLevelStr.at(level) << "] "
             << message << std::endl;
     }
+
+private:
+    TerminalLogger() = default;
 };
 
-TerminalLogger terminal;
 
 class LoggerRegistry {
 public:
@@ -72,7 +87,7 @@ public:
     }
 
     LoggerRegistry() {
-        set("", none, Level::off);
+        set("", NoneLogger::GetInstance(), Level::off);
     }
 
     void set(std::string_view name, Logger& logger, Level maxLevel) {
