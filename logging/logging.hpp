@@ -2,13 +2,11 @@
 // Copyright 2025 Maksim Sergeevich Zholudev. All rights reserved
 #pragma once
 
-#include <string>
 #include <format>
-#include <mutex>
-#include <iostream>
 #include <map>
+#include <mutex>
+#include <string>
 #include <unordered_map>
-#include <cassert>
 
 namespace Istok::Logging {
 
@@ -24,7 +22,7 @@ enum class Level {
 };
 
 
-const static std::map<Level, std::string> logLevelStr = {
+inline const static std::map<Level, std::string> logLevelStr = {
     {Level::off, "OFF"},
     {Level::critical, "CRITICAL"},
     {Level::error, "ERROR"},
@@ -45,11 +43,7 @@ public:
 
 class NoneLogger final : public Logger {
 public:
-    static NoneLogger& GetInstance() {
-        static NoneLogger instance;
-        return instance;
-    }
-    
+    static NoneLogger& GetInstance();
     void log(Level level, std::string_view message) override {}
 
 private:
@@ -59,15 +53,8 @@ private:
 
 class TerminalLogger final : public Logger {
 public:
-    static TerminalLogger& GetInstance() {
-        static TerminalLogger instance;
-        return instance;
-    }
-
-    void log(Level level, std::string_view message) override {
-        std::cout << "[" << logLevelStr.at(level) << "] "
-            << message << std::endl;
-    }
+    static TerminalLogger& GetInstance();
+    void log(Level level, std::string_view message) override;
 
 private:
     TerminalLogger() = default;
@@ -81,38 +68,12 @@ public:
         Level maxLevel;
     };
 
-    static LoggerRegistry& getGlobalInstance() {
-        static LoggerRegistry instance;
-        return instance;
-    }
+    static LoggerRegistry& getGlobalInstance();
 
-    LoggerRegistry() {
-        set("", NoneLogger::GetInstance(), Level::off);
-    }
+    LoggerRegistry();
 
-    void set(std::string_view name, Logger& logger, Level maxLevel) {
-        std::lock_guard lock(mutex_);
-        loggers_[std::string(name)] = Entry{&logger, maxLevel};
-    }
-
-    Entry get(std::string_view name) {
-        std::lock_guard<std::mutex> lock(mutex_);
-        do {
-            if (
-                auto it = loggers_.find(std::string(name));
-                it != loggers_.end()
-            ) {
-                return it->second;
-            }
-
-            assert(!name.empty());
-            size_t pos = name.find_last_of('.');
-            if (pos == std::string_view::npos) {
-                pos = 0;
-            }
-            name = name.substr(0, pos);
-        } while (true);
-    }
+    void set(std::string_view name, Logger& logger, Level maxLevel);
+    Entry get(std::string_view name);
 
 private:
     std::unordered_map<std::string, Entry> loggers_;

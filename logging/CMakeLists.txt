@@ -1,2 +1,2 @@
-add_library(logging INTERFACE)
-target_include_directories(logging INTERFACE ./)
+add_library(logging STATIC logging.cpp)
+target_include_directories(logging PUBLIC ./)
