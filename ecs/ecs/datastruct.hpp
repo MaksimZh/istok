@@ -5,7 +5,6 @@
 #include <tools/queue.hpp>
 
 #include <cassert>
-#include <queue>
 #include <vector>
 #include <unordered_map>
 #include <ranges>

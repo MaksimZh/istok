@@ -5,12 +5,9 @@
 #include "datastruct.hpp"
 
 #include <cassert>
-#include <queue>
-#include <vector>
 
 
 namespace Istok::ECS {
-
 
 struct Entity {
     static constexpr uint64_t lowerMask = 0x00000000ffffffff;
