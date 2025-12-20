@@ -96,7 +96,7 @@ private:
                     GetWindowLongPtr(hWnd, GWLP_USERDATA))
         ) {
             return handler->handleWindowMessage(
-                WinAPI::SysWindowMessage(hWnd, msg, wParam, lParam));
+                WinAPI::WindowMessage(hWnd, msg, wParam, lParam));
         }
         return DefWindowProc(hWnd, msg, wParam, lParam);
     }
@@ -235,7 +235,7 @@ class WindowEntityMessageHandler {
 public:
     virtual ~WindowEntityMessageHandler() = default;
     virtual LRESULT handleWindowMessage(
-        Entity entity, WinAPI::SysWindowMessage message) noexcept = 0;
+        Entity entity, WinAPI::WindowMessage message) noexcept = 0;
 protected:
     CLASS_WITH_LOGGER_PREFIX("Windows", "MSG: ");
 };
@@ -246,7 +246,7 @@ public:
     CloseHandler(ECSManager& ecs) : ecs_(ecs) {}
     
     LRESULT handleWindowMessage(
-        Entity entity, WinAPI::SysWindowMessage message
+        Entity entity, WinAPI::WindowMessage message
     ) noexcept override {
         assert(message.msg == WM_CLOSE);
         if (!ecs_.has<WindowHandler::Close>(entity)) {
@@ -268,7 +268,7 @@ public:
     SizeHandler(ECSManager& ecs) : ecs_(ecs) {}
     
     LRESULT handleWindowMessage(
-        Entity entity, WinAPI::SysWindowMessage message
+        Entity entity, WinAPI::WindowMessage message
     ) noexcept override {
         assert(message.msg == WM_SIZE);
         if (!ecs_.has<WndHandle>(entity)) {
@@ -297,7 +297,7 @@ public:
     PaintHandler(ECSManager& ecs) : ecs_(ecs) {}
 
     LRESULT handleWindowMessage(
-        Entity entity, WinAPI::SysWindowMessage message
+        Entity entity, WinAPI::WindowMessage message
     ) noexcept override {
         assert(message.msg == WM_PAINT);
         if (!ecs_.has<std::unique_ptr<WindowRenderer>>(entity)) {
@@ -429,7 +429,7 @@ public:
     Handler(HandlerMap handlers) : handlers_(std::move(handlers)) {}
     
     LRESULT handleWindowMessage(
-        Entity entity, WinAPI::SysWindowMessage message
+        Entity entity, WinAPI::WindowMessage message
     ) noexcept override {
         if (handlers_.contains(message.msg)) {
             idle_ = false;
@@ -458,7 +458,7 @@ public:
         Entity entity, WindowEntityMessageHandler& handler
     ) : entity_(entity), handler_(&handler) {}
     
-    LRESULT handleWindowMessage(WinAPI::SysWindowMessage message) noexcept override {
+    LRESULT handleWindowMessage(WinAPI::WindowMessage message) noexcept override {
         return handler_->handleWindowMessage(entity_, message);
     }
 

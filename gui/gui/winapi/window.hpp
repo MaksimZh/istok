@@ -60,7 +60,7 @@ private:
 };
 
 
-struct SysWindowMessage {
+struct WindowMessage {
     HWND hWnd;
     UINT msg;
     WPARAM wParam;
@@ -68,7 +68,7 @@ struct SysWindowMessage {
 };
 
 
-inline LRESULT handleByDefault(SysWindowMessage message) {
+inline LRESULT handleByDefault(WindowMessage message) {
     return DefWindowProc(
         message.hWnd,
         message.msg,
@@ -80,7 +80,7 @@ inline LRESULT handleByDefault(SysWindowMessage message) {
 class WindowMessageHandler {
 public:
     virtual ~WindowMessageHandler() = default;
-    virtual LRESULT handleWindowMessage(SysWindowMessage message) noexcept = 0;
+    virtual LRESULT handleWindowMessage(WindowMessage message) noexcept = 0;
 };
 
 
