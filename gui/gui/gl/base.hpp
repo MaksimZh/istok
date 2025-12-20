@@ -3,7 +3,8 @@
 
 #include <GL/glew.h>
 
-#include <type_traits>
+#include <concepts>
+#include <stdexcept>
 
 namespace Istok::GUI::OpenGL {
 

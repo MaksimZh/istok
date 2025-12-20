@@ -8,7 +8,6 @@
 #include <GL/wglew.h>
 
 #include <stdexcept>
-#include <memory>
 
 namespace Istok::GUI::WinAPI {
 

@@ -2,140 +2,61 @@
 #pragma once
 
 #include <tools/exchange.hpp>
-#include "platform.hpp"
 
-#include <memory>
+#include <windows.h>
+#include <windowsx.h>
+#include <dwmapi.h>
 
 namespace Istok::GUI::WinAPI {
 
 
-class MessageHandler {
+inline HINSTANCE getHInstance() {
+    static HINSTANCE hInstance =
+        reinterpret_cast<HINSTANCE>(GetModuleHandle(NULL));
+    return hInstance;
+}
+
+
+class WindowClass {
 public:
-    virtual ~MessageHandler() = default;
-    virtual void onPaint() noexcept = 0;
-    virtual WindowArea onAreaTest(Position<int> position) noexcept = 0;
-};
+    WindowClass() = default;
 
-
-template <typename SysWindow>
-class SysWindowFactory {
-public:
-    virtual ~SysWindowFactory() = default;
-    virtual SysWindow createSysWindow(
-        const WindowParams& params, MessageHandler& handler) = 0;
-};
-
-
-template <typename Scene>
-class Renderer {
-public:
-    virtual ~Renderer() = default;
-    virtual void loadScene(std::unique_ptr<Scene>&& scene) = 0;
-    virtual void draw() = 0;
-};
-
-
-template <typename SysWindow, typename Scene>
-class RendererFactory {
-public:
-    virtual ~RendererFactory() = default;
-    virtual std::unique_ptr<Renderer<Scene>> create(SysWindow& window) = 0;
-};
-
-
-template <typename SysWindow, typename Scene_>
-class Window: public MessageHandler {
-public:
-    using Scene = Scene_;
-    
-    Window(
-        const WindowParams& params,
-        SysWindowFactory<SysWindow>& sysWindowFactory,
-        RendererFactory<SysWindow, Scene>& rendererFactory,
-        EventHandler<Window>& handler
-    ) : core(sysWindowFactory.createSysWindow(params, *this)),
-        handler(handler),
-        renderer(rendererFactory.create(core)),
-        areaTester(std::make_unique<DummyAreaTester>())
-    {
-        if (!renderer) {
-            throw std::runtime_error("Renderer not created");
+    WindowClass(WNDPROC lpfnWndProc, LPCWSTR className)
+    : name(className) {
+        WNDCLASSEX wcex{};
+        wcex.cbSize = sizeof(WNDCLASSEX);
+        wcex.style = CS_OWNDC;
+        wcex.lpfnWndProc = lpfnWndProc;
+        wcex.cbClsExtra = 0;
+        wcex.cbWndExtra = 0;
+        wcex.hInstance = getHInstance();
+        wcex.hIcon = nullptr;
+        wcex.hCursor = LoadCursor(NULL, IDC_ARROW);
+        wcex.hbrBackground = nullptr;
+        wcex.lpszMenuName = nullptr;
+        wcex.lpszClassName = className;
+        wcex.hIconSm = nullptr;
+        if (!RegisterClassEx(&wcex)) {
+            throw std::runtime_error("Failed to register window class.");
         }
     }
 
-    void appendHandler(Tools::Handler<WindowMessage, WindowResult> handler) {
-        core.appendHandler(handler);
+    ~WindowClass() noexcept {
+        UnregisterClass(name, getHInstance());
     }
 
-    void onPaint() noexcept override {
-        try {
-            renderer->draw();
-        } catch(...) {
-            handler.onException(std::current_exception());
-        }
-    }
+    WindowClass(const WindowClass&) = delete;
+    WindowClass& operator=(const WindowClass&) = delete;
+    WindowClass(WindowClass&& other) = delete;
+    WindowClass& operator=(WindowClass&& other) = delete;
 
-    void loadScene(std::unique_ptr<Scene>&& scene) {
-        renderer->loadScene(std::move(scene));
-    }
-
-
-    void setAreaTester(std::unique_ptr<WindowAreaTester>&& tester) {
-        areaTester = std::move(tester);
-    }
-
-    WindowArea onAreaTest(Position<int> position) noexcept override {
-        return areaTester->testWindowArea(position);
+    LPCWSTR get() const {
+        return name;
     }
 
 private:
-    SysWindow core;
-    EventHandler<Window>& handler;
-    std::unique_ptr<Renderer<Scene>> renderer;
-    std::unique_ptr<WindowAreaTester> areaTester;
-
-    class DummyAreaTester: public WindowAreaTester {
-    public:
-        WindowArea testWindowArea(
-            Position<int> position
-        ) const noexcept override {
-            return WindowArea::client;
-        }
-    };
+    LPCWSTR name = nullptr;
 };
 
-
-template <typename SysWindow, typename Scene>
-class GraphicWindowFactory: public WindowFactory<Window<SysWindow, Scene>>
-{
-public:
-    using Window = Window<SysWindow, Scene>;
-
-    GraphicWindowFactory(
-        std::unique_ptr<SysWindowFactory<SysWindow>>&& sysWindowFactory,
-        std::unique_ptr<RendererFactory<SysWindow, Scene>>&& rendererFactory,
-        EventHandler<Window>& handler
-    ) : rendererFactory(std::move(rendererFactory)),
-        sysWindowFactory(std::move(sysWindowFactory)),
-        handler(handler)
-    {
-        if (!this->sysWindowFactory) {
-            throw std::runtime_error("System window factory not found");
-        }
-        if (!this->rendererFactory) {
-            throw std::runtime_error("Renderer factory not found");
-        }
-    }
-    
-    std::unique_ptr<Window> create(const WindowParams& params) override {
-        return std::make_unique<Window>(
-            params, *sysWindowFactory, *rendererFactory, handler);
-    }
-
-private:
-    std::unique_ptr<SysWindowFactory<SysWindow>> sysWindowFactory;
-    std::unique_ptr<RendererFactory<SysWindow, Scene>> rendererFactory;
-    EventHandler<Window>& handler;
-};
 
 } // namespace Istok::GUI::WinAPI

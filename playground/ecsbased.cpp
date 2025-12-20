@@ -1,6 +1,7 @@
 // ecsbased.cpp
 #include <ecs.hpp>
 #include <gui/winapi/wgl.hpp>
+#include <gui/winapi/window.hpp>
 #include <gui/gl/buffer.hpp>
 #include <logging.hpp>
 
@@ -19,53 +20,6 @@ struct Rect {
     T top;
     T right;
     T bottom;
-};
-
-HINSTANCE getHInstance() {
-    static HINSTANCE hInstance =
-        reinterpret_cast<HINSTANCE>(GetModuleHandle(NULL));
-    return hInstance;
-}
-
-class WindowClass {
-public:
-    WindowClass() = default;
-
-    WindowClass(WNDPROC lpfnWndProc, LPCWSTR className)
-    : name(className) {
-        WNDCLASSEX wcex{};
-        wcex.cbSize = sizeof(WNDCLASSEX);
-        wcex.style = CS_OWNDC;
-        wcex.lpfnWndProc = lpfnWndProc;
-        wcex.cbClsExtra = 0;
-        wcex.cbWndExtra = 0;
-        wcex.hInstance = getHInstance();
-        wcex.hIcon = nullptr;
-        wcex.hCursor = LoadCursor(NULL, IDC_ARROW);
-        wcex.hbrBackground = nullptr;
-        wcex.lpszMenuName = nullptr;
-        wcex.lpszClassName = className;
-        wcex.hIconSm = nullptr;
-        if (!RegisterClassEx(&wcex)) {
-            throw std::runtime_error("Failed to register window class.");
-        }
-    }
-
-    ~WindowClass() noexcept {
-        UnregisterClass(name, getHInstance());
-    }
-
-    WindowClass(const WindowClass&) = delete;
-    WindowClass& operator=(const WindowClass&) = delete;
-    WindowClass(WindowClass&& other) = delete;
-    WindowClass& operator=(WindowClass&& other) = delete;
-
-    LPCWSTR get() const {
-        return name;
-    }
-
-private:
-    LPCWSTR name = nullptr;
 };
 
 struct ScreenLocation {
@@ -199,7 +153,7 @@ private:
     ECSManager& ecs_;
 
     static HWND createWindow(Rect<int> location) {
-        static WindowClass windowClass(windowProc, L"Istok");
+        static WinAPI::WindowClass windowClass(windowProc, L"Istok");
         HWND hWnd = CreateWindowEx(
             NULL,
             windowClass.get(),
@@ -208,7 +162,7 @@ private:
             location.left, location.top,
             location.right - location.left,
             location.bottom - location.top,
-            NULL, NULL, getHInstance(), nullptr);
+            NULL, NULL, WinAPI::getHInstance(), nullptr);
         if (!hWnd) {
             throw std::runtime_error("Cannot create window");
         }
