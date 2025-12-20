@@ -13,6 +13,7 @@
 
 using namespace Istok::ECS;
 using namespace Istok::GUI;
+using Istok::GUI::WinAPI::WndHandle;
 
 template <typename T>
 struct Rect {
@@ -33,88 +34,6 @@ struct Close {
 };
 
 } // namespace WindowHandler
-
-struct SysWindowMessage {
-    HWND hWnd;
-    UINT msg;
-    WPARAM wParam;
-    LPARAM lParam;
-};
-
-
-LRESULT handleByDefault(SysWindowMessage message) {
-    return DefWindowProc(
-        message.hWnd,
-        message.msg,
-        message.wParam,
-        message.lParam);
-}
-
-
-class WindowMessageHandler {
-public:
-    virtual ~WindowMessageHandler() = default;
-    virtual LRESULT handleWindowMessage(SysWindowMessage message) noexcept = 0;
-};
-
-
-class WndHandle {
-public:
-    WndHandle() = default;
-    
-    WndHandle(HWND hWnd) : hWnd_(hWnd) {}
-
-    ~WndHandle() {
-        clear();
-    }
-
-    WndHandle(const WndHandle&) = delete;
-    WndHandle& operator=(const WndHandle&) = delete;
-    
-    WndHandle(WndHandle&& source) : hWnd_(source.hWnd_) {
-        source.drop();
-    }
-    
-    WndHandle& operator=(WndHandle&& source) {
-        if (this != &source) {
-            clear();
-            hWnd_ = source.hWnd_;
-            source.drop();
-        }
-        return *this;
-    }
-
-    operator bool() const noexcept {
-        return hWnd_;
-    }
-
-    HWND getHWnd() const {
-        return hWnd_;
-    }
-
-    void setHandler(WindowMessageHandler* handler) {
-        SetWindowLongPtr(
-            hWnd_, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(handler));
-    }
-
-private:
-    CLASS_WITH_LOGGER("Windows");
-    
-    HWND hWnd_ = nullptr;
-
-    void drop() {
-        hWnd_ = nullptr;
-    }
-
-    void clear() {
-        if (hWnd_) {
-            LOG_DEBUG("Destroying window: {}", (void*)hWnd_);
-            setHandler(nullptr);
-            DestroyWindow(hWnd_);
-            drop();
-        }
-    }
-};
 
 
 struct NewWindowFlag {};
@@ -172,12 +91,12 @@ private:
     static LRESULT CALLBACK windowProc(
         HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam
     ) noexcept {
-        if (WindowMessageHandler* handler =
-                reinterpret_cast<WindowMessageHandler*>(
+        if (WinAPI::WindowMessageHandler* handler =
+                reinterpret_cast<WinAPI::WindowMessageHandler*>(
                     GetWindowLongPtr(hWnd, GWLP_USERDATA))
         ) {
             return handler->handleWindowMessage(
-                SysWindowMessage(hWnd, msg, wParam, lParam));
+                WinAPI::SysWindowMessage(hWnd, msg, wParam, lParam));
         }
         return DefWindowProc(hWnd, msg, wParam, lParam);
     }
@@ -316,7 +235,7 @@ class WindowEntityMessageHandler {
 public:
     virtual ~WindowEntityMessageHandler() = default;
     virtual LRESULT handleWindowMessage(
-        Entity entity, SysWindowMessage message) noexcept = 0;
+        Entity entity, WinAPI::SysWindowMessage message) noexcept = 0;
 protected:
     CLASS_WITH_LOGGER_PREFIX("Windows", "MSG: ");
 };
@@ -327,7 +246,7 @@ public:
     CloseHandler(ECSManager& ecs) : ecs_(ecs) {}
     
     LRESULT handleWindowMessage(
-        Entity entity, SysWindowMessage message
+        Entity entity, WinAPI::SysWindowMessage message
     ) noexcept override {
         assert(message.msg == WM_CLOSE);
         if (!ecs_.has<WindowHandler::Close>(entity)) {
@@ -349,7 +268,7 @@ public:
     SizeHandler(ECSManager& ecs) : ecs_(ecs) {}
     
     LRESULT handleWindowMessage(
-        Entity entity, SysWindowMessage message
+        Entity entity, WinAPI::SysWindowMessage message
     ) noexcept override {
         assert(message.msg == WM_SIZE);
         if (!ecs_.has<WndHandle>(entity)) {
@@ -378,7 +297,7 @@ public:
     PaintHandler(ECSManager& ecs) : ecs_(ecs) {}
 
     LRESULT handleWindowMessage(
-        Entity entity, SysWindowMessage message
+        Entity entity, WinAPI::SysWindowMessage message
     ) noexcept override {
         assert(message.msg == WM_PAINT);
         if (!ecs_.has<std::unique_ptr<WindowRenderer>>(entity)) {
@@ -510,7 +429,7 @@ public:
     Handler(HandlerMap handlers) : handlers_(std::move(handlers)) {}
     
     LRESULT handleWindowMessage(
-        Entity entity, SysWindowMessage message
+        Entity entity, WinAPI::SysWindowMessage message
     ) noexcept override {
         if (handlers_.contains(message.msg)) {
             idle_ = false;
@@ -533,13 +452,13 @@ private:
 };
 
 
-class WindowEntityMessageHandlerProxy : public WindowMessageHandler {
+class WindowEntityMessageHandlerProxy : public WinAPI::WindowMessageHandler {
 public:
     WindowEntityMessageHandlerProxy(
         Entity entity, WindowEntityMessageHandler& handler
     ) : entity_(entity), handler_(&handler) {}
     
-    LRESULT handleWindowMessage(SysWindowMessage message) noexcept override {
+    LRESULT handleWindowMessage(WinAPI::SysWindowMessage message) noexcept override {
         return handler_->handleWindowMessage(entity_, message);
     }
 
