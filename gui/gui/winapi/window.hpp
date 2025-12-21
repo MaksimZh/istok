@@ -3,29 +3,18 @@
 
 #include <logging.hpp>
 
+#include <memory>
+
 #include <windows.h>
 
 namespace Istok::GUI::WinAPI {
 
-HINSTANCE getHInstance();
-
-class WindowClass {
-public:
-    WindowClass() = default;
-    WindowClass(WNDPROC lpfnWndProc, LPCWSTR className);
-    ~WindowClass() noexcept;
-
-    WindowClass(const WindowClass&) = delete;
-    WindowClass& operator=(const WindowClass&) = delete;
-    WindowClass(WindowClass&& other) = delete;
-    WindowClass& operator=(WindowClass&& other) = delete;
-
-    LPCWSTR get() const {
-        return name;
-    }
-
-private:
-    LPCWSTR name = nullptr;
+template <typename T>
+struct Rect {
+    T left;
+    T top;
+    T right;
+    T bottom;
 };
 
 
@@ -34,10 +23,9 @@ struct WindowMessage {
     UINT msg;
     WPARAM wParam;
     LPARAM lParam;
+
+    LRESULT handleByDefault() noexcept;
 };
-
-
-LRESULT handleByDefault(WindowMessage message);
 
 
 class WindowMessageHandler {
@@ -50,29 +38,29 @@ public:
 class WndHandle {
 public:
     WndHandle() = default;
-    WndHandle(HWND hWnd) : hWnd_(hWnd) {}
+    WndHandle(Rect<int> screenLocation);
     ~WndHandle();
 
     WndHandle(const WndHandle&) = delete;
     WndHandle& operator=(const WndHandle&) = delete;
-    
-    WndHandle(WndHandle&& source);
-    WndHandle& operator=(WndHandle&& source);
+    WndHandle(WndHandle&& source) = default;
+    WndHandle& operator=(WndHandle&& source) = default;
 
     operator bool() const noexcept {
-        return hWnd_;
+        return hWnd_ && *hWnd_;
     }
 
     HWND getHWnd() const {
-        return hWnd_;
+        return hWnd_ ? *hWnd_ : nullptr;
     }
 
     void setHandler(WindowMessageHandler* handler);
+    void enableTransparency() noexcept;
 
 private:
     CLASS_WITH_LOGGER("Windows");
     
-    HWND hWnd_ = nullptr;
+    std::unique_ptr<HWND> hWnd_;
 
     void drop();
     void clear();

@@ -13,15 +13,8 @@
 
 using namespace Istok::ECS;
 using namespace Istok::GUI;
+using Istok::GUI::WinAPI::Rect;
 using Istok::GUI::WinAPI::WndHandle;
-
-template <typename T>
-struct Rect {
-    T left;
-    T top;
-    T right;
-    T bottom;
-};
 
 struct ScreenLocation {
     Rect<int> value;
@@ -60,9 +53,10 @@ public:
             Rect<int> location = ecs_.has<ScreenLocation>(w)
                 ? ecs_.get<ScreenLocation>(w).value
                 : Rect<int>{};
-            HWND hWnd = createWindow(location);
-            LOG_DEBUG("window {} created @{}", (void*)hWnd, w.value);
-            ecs_.set(w, WndHandle(hWnd));
+            ecs_.set(w, WndHandle(location));
+            LOG_DEBUG(
+                "window {} created @{}",
+                (void*)ecs_.get<WndHandle>(w).getHWnd(), w.value);
         }
     }
 
@@ -70,36 +64,6 @@ private:
     CLASS_WITH_LOGGER_PREFIX("Windows", "CreateWindowsSystem: ");
 
     ECSManager& ecs_;
-
-    static HWND createWindow(Rect<int> location) {
-        static WinAPI::WindowClass windowClass(windowProc, L"Istok");
-        HWND hWnd = CreateWindowEx(
-            NULL,
-            windowClass.get(),
-            L"Istok",
-            WS_OVERLAPPEDWINDOW,
-            location.left, location.top,
-            location.right - location.left,
-            location.bottom - location.top,
-            NULL, NULL, WinAPI::getHInstance(), nullptr);
-        if (!hWnd) {
-            throw std::runtime_error("Cannot create window");
-        }
-        return hWnd;
-    }
-
-    static LRESULT CALLBACK windowProc(
-        HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam
-    ) noexcept {
-        if (WinAPI::WindowMessageHandler* handler =
-                reinterpret_cast<WinAPI::WindowMessageHandler*>(
-                    GetWindowLongPtr(hWnd, GWLP_USERDATA))
-        ) {
-            return handler->handleWindowMessage(
-                WinAPI::WindowMessage(hWnd, msg, wParam, lParam));
-        }
-        return DefWindowProc(hWnd, msg, wParam, lParam);
-    }
 };
 
 
@@ -137,16 +101,6 @@ private:
 };
 
 
-void enableTransparency(HWND hWnd) {
-    DWM_BLURBEHIND bb = { 0 };
-    HRGN hRgn = CreateRectRgn(0, 0, -1, -1);
-    bb.dwFlags = DWM_BB_ENABLE | DWM_BB_BLURREGION;
-    bb.hRgnBlur = hRgn;
-    bb.fEnable = TRUE;
-    DwmEnableBlurBehindWindow(hWnd, &bb);
-}
-
-
 struct GLHolderTag {};
 
 class InitGLSystem: public System {
@@ -171,10 +125,10 @@ public:
     void run() override {
         LOG_DEBUG("run");
         for (auto& w : ecs_.view<NewWindowFlag, WndHandle>()) {
-            HWND hWnd = ecs_.get<WndHandle>(w).getHWnd();
+            auto& handle = ecs_.get<WndHandle>(w);
             LOG_DEBUG("prepare window for GL @{}", w.value);
-            enableTransparency(hWnd);
-            WinAPI::prepareForGL(hWnd);
+            handle.enableTransparency();
+            WinAPI::prepareForGL(handle.getHWnd());
         }
         if (!ecs_.hasAny<WinAPI::GLContext>()) {
             assert(ecs_.hasAny<GLHolderTag>());
@@ -192,41 +146,6 @@ public:
 private:
     CLASS_WITH_LOGGER_PREFIX("GL", "InitGLSystem: ");
     
-    ECSManager& ecs_;
-};
-
-using VertexBuffer = OpenGL::VertexBuffer<WinAPI::WGL>;
-using VertexArray = OpenGL::VertexArray<WinAPI::WGL>;
-
-class SceneSystem: public System {
-public:
-    SceneSystem(ECSManager& ecs) : ecs_(ecs) {}
-    
-    ~SceneSystem() {
-        if (!ecs_.hasAny<WinAPI::GLContext>()) {
-            return;
-        }
-        WinAPI::GLContext& gl = ecs_.get<WinAPI::GLContext>(
-            *ecs_.view<WinAPI::GLContext>().begin());
-    }
-
-    SceneSystem(const SceneSystem&) = delete;
-    SceneSystem& operator=(const SceneSystem&) = delete;
-    SceneSystem(SceneSystem&&) = delete;
-    SceneSystem& operator=(SceneSystem&&) = delete;
-
-    void run() override {
-        for (auto& w : ecs_.view<NewWindowFlag, WndHandle>()) {
-            HWND hWnd = ecs_.get<WndHandle>(w).getHWnd();
-            enableTransparency(hWnd);
-            WinAPI::prepareForGL(hWnd);
-            if (!ecs_.hasAny<WinAPI::GLContext>()) {
-                ecs_.createEntity(WinAPI::GLContext(hWnd));
-            }
-        }
-    }
-
-private:
     ECSManager& ecs_;
 };
 
@@ -251,7 +170,7 @@ public:
         assert(message.msg == WM_CLOSE);
         if (!ecs_.has<WindowHandler::Close>(entity)) {
             LOG_TRACE("WM_CLOSE @{} -> skip", entity.value);
-            return handleByDefault(message);
+            return message.handleByDefault();
         }
         LOG_TRACE("WM_CLOSE @{} -> process", entity.value);
         ecs_.get<WindowHandler::Close>(entity).func();
@@ -302,7 +221,7 @@ public:
         assert(message.msg == WM_PAINT);
         if (!ecs_.has<std::unique_ptr<WindowRenderer>>(entity)) {
             LOG_TRACE("WM_PAINT @{} -> skip", entity.value);
-            return handleByDefault(message);
+            return message.handleByDefault();
         }
         LOG_TRACE("WM_PAINT @{} -> process", entity.value);
         ecs_.get<std::unique_ptr<WindowRenderer>>(entity)
@@ -435,7 +354,7 @@ public:
             idle_ = false;
             return handlers_[message.msg]->handleWindowMessage(entity, message);
         }
-        return handleByDefault(message);
+        return message.handleByDefault();
     }
 
     bool isIdle() const noexcept {
