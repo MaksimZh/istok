@@ -6,6 +6,7 @@
 #include <memory>
 
 #include <dwmapi.h>
+#include <winuser.h>
 
 
 namespace Istok::GUI::WinAPI {
@@ -70,6 +71,42 @@ LRESULT CALLBACK windowProc(
     return DefWindowProc(hWnd, msg, wParam, lParam);
 }
 
+bool enableTransparency(HWND hWnd) noexcept {
+    DWM_BLURBEHIND bb = { 0 };
+    HRGN hRgn = CreateRectRgn(0, 0, -1, -1);
+    bb.dwFlags = DWM_BB_ENABLE | DWM_BB_BLURREGION;
+    bb.hRgnBlur = hRgn;
+    bb.fEnable = TRUE;
+    return DwmEnableBlurBehindWindow(hWnd, &bb) == S_OK;
+}
+
+bool prepareForGL(HWND hWnd) noexcept {
+    DCHandle dc(hWnd);
+    if (!dc) {
+        return false;
+    }
+    PIXELFORMATDESCRIPTOR pfd = {};
+    pfd.nSize = sizeof(PIXELFORMATDESCRIPTOR);
+    pfd.nVersion = 1;
+    pfd.dwFlags =
+        PFD_DRAW_TO_WINDOW |
+        PFD_SUPPORT_OPENGL |
+        PFD_DOUBLEBUFFER |
+        PFD_SUPPORT_COMPOSITION;
+    pfd.iPixelType = PFD_TYPE_RGBA;
+    pfd.cColorBits = 32;
+    pfd.cAlphaBits = 8;
+    pfd.cDepthBits = 24;
+    pfd.cStencilBits = 8;
+    pfd.iLayerType = PFD_MAIN_PLANE;
+
+    int pfi = ChoosePixelFormat(dc.getDC(), &pfd);
+    if (!pfi) {
+        return false;
+    }
+    return SetPixelFormat(dc.getDC(), pfi, &pfd);
+}
+
 }  // namespace
 
 
@@ -92,6 +129,8 @@ WndHandle::WndHandle(Rect<int> screenLocation) {
     if (!hWnd) {
         throw std::runtime_error("Cannot create window");
     }
+    enableTransparency(hWnd);
+    prepareForGL(hWnd);
     hWnd_ = std::make_unique<HWND>(hWnd);
 }
 
@@ -112,16 +151,14 @@ void WndHandle::setHandler(WindowMessageHandler* handler) {
 }
 
 
-void WndHandle::enableTransparency() noexcept {
-    if (!*this) {
-        return;
+DCHandle::DCHandle(HWND hWnd)
+: hDC_(std::make_unique<HDC>(GetDC(hWnd))) {}
+
+DCHandle::~DCHandle() {
+    if (hDC_ && *hDC_) {
+        ReleaseDC(WindowFromDC(*hDC_), *hDC_);
     }
-    DWM_BLURBEHIND bb = { 0 };
-    HRGN hRgn = CreateRectRgn(0, 0, -1, -1);
-    bb.dwFlags = DWM_BB_ENABLE | DWM_BB_BLURREGION;
-    bb.hRgnBlur = hRgn;
-    bb.fEnable = TRUE;
-    DwmEnableBlurBehindWindow(*hWnd_, &bb);
 }
+
 
 } // namespace Istok::GUI::WinAPI

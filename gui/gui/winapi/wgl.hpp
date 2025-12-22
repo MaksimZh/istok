@@ -1,6 +1,8 @@
 // Copyright 2025 Maksim Sergeevich Zholudev. All rights reserved
 #pragma once
 
+#include "window.hpp"
+
 #include <gui/gl/base.hpp>
 
 #include <windows.h>
@@ -10,60 +12,6 @@
 #include <stdexcept>
 
 namespace Istok::GUI::WinAPI {
-
-
-class DCHandle {
-public:
-    DCHandle(HDC hDC) : hDC(hDC) {}
-    
-    DCHandle(HWND hWnd) : hDC(GetDC(hWnd)) {
-        if (hDC == nullptr) {
-            throw std::runtime_error("Failed to get window DC");
-        }
-    }
-
-    DCHandle(const DCHandle&) = delete;
-    DCHandle& operator=(const DCHandle&) = delete;
-    
-    DCHandle(DCHandle&& other) {
-        hDC = other.hDC;
-        other.drop();
-    }
-
-    DCHandle& operator=(DCHandle&& other) {
-        if (this != &other) {
-            clean();
-            hDC = other.hDC;
-            other.drop();
-        }
-        return *this;
-    }
-
-    ~DCHandle() {
-        clean();
-    }
-
-    operator bool() const noexcept {
-        return hDC != nullptr;
-    }
-
-    HDC get() const noexcept {
-        return hDC;
-    }
-
-private:
-    HDC hDC;
-
-    void drop() {
-        hDC = nullptr;
-    }
-
-    void clean() {
-        if (hDC) {
-            ReleaseDC(WindowFromDC(hDC), hDC);
-        }
-    }
-};
 
 
 class GLHandle {
@@ -100,7 +48,7 @@ public:
         if (!*this) {
             throw std::runtime_error("Operating empty GLHandle");
         }
-        if (!wglMakeCurrent(dc.get(), hGL)) {
+        if (!wglMakeCurrent(dc.getDC(), hGL)) {
             throw std::runtime_error("Failed to make OpenGL context current!");
         }
     }
@@ -133,7 +81,7 @@ private:
 class CompatibilityGLContext {
 public:
     CompatibilityGLContext(const DCHandle& dc)
-    : gl(wglCreateContext(dc.get())) {
+    : gl(wglCreateContext(dc.getDC())) {
         if (!gl) {
             throw std::runtime_error("Failed to create compatibility OpenGL context");
         }
@@ -145,7 +93,7 @@ public:
     CompatibilityGLContext& operator=(CompatibilityGLContext&& other) = delete;
 
     void makeCurrent(const DCHandle& dc) {
-        gl.makeCurrent(dc.get());
+        gl.makeCurrent(dc);
     }
 
 private:
@@ -189,7 +137,7 @@ private:
             WGL_CONTEXT_FLAGS_ARB, 0,
             0
         };
-        HGLRC hGL = wglCreateContextAttribsARB(dc.get(), NULL, attribs);
+        HGLRC hGL = wglCreateContextAttribsARB(dc.getDC(), NULL, attribs);
         if (!hGL) {
             throw std::runtime_error("Failed to create OpenGL context");
         }
@@ -214,33 +162,6 @@ private:
 };
 
 
-void prepareForGL(HWND hWnd) {
-    DCHandle dc(hWnd);
-    PIXELFORMATDESCRIPTOR pfd = {};
-    pfd.nSize = sizeof(PIXELFORMATDESCRIPTOR);
-    pfd.nVersion = 1;
-    pfd.dwFlags =
-        PFD_DRAW_TO_WINDOW |
-        PFD_SUPPORT_OPENGL |
-        PFD_DOUBLEBUFFER |
-        PFD_SUPPORT_COMPOSITION;
-    pfd.iPixelType = PFD_TYPE_RGBA;
-    pfd.cColorBits = 32;
-    pfd.cAlphaBits = 8;
-    pfd.cDepthBits = 24;
-    pfd.cStencilBits = 8;
-    pfd.iLayerType = PFD_MAIN_PLANE;
-
-    int pfi = ChoosePixelFormat(dc.get(), &pfd);
-    if (!pfi) {
-        throw std::runtime_error("Failed to choose pixel format");
-    }
-    if (!SetPixelFormat(dc.get(), pfi, &pfd)) {
-        throw std::runtime_error("Failed to set pixel format");
-    }
-}
-
-
 class WGL {
 public:
     class Scope {
@@ -255,7 +176,7 @@ public:
         }
 
         void swapBuffers() {
-            SwapBuffers(dc.get());
+            SwapBuffers(dc.getDC());
         }
 
     private:

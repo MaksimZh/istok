@@ -124,12 +124,6 @@ public:
 
     void run() override {
         LOG_DEBUG("run");
-        for (auto& w : ecs_.view<NewWindowFlag, WndHandle>()) {
-            auto& handle = ecs_.get<WndHandle>(w);
-            LOG_DEBUG("prepare window for GL @{}", w.value);
-            handle.enableTransparency();
-            WinAPI::prepareForGL(handle.getHWnd());
-        }
         if (!ecs_.hasAny<WinAPI::GLContext>()) {
             assert(ecs_.hasAny<GLHolderTag>());
             Entity e = *ecs_.view<GLHolderTag>().begin();
@@ -262,7 +256,7 @@ public:
         glViewport(0, 0, rect.right, rect.bottom);
         glClearColor(r_, g_, b_, a_);
         glClear(GL_COLOR_BUFFER_BIT);
-        SwapBuffers(WinAPI::DCHandle(hWnd).get());
+        SwapBuffers(WinAPI::DCHandle(hWnd).getDC());
     }
 
 private:

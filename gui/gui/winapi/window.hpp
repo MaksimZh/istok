@@ -55,15 +55,36 @@ public:
     }
 
     void setHandler(WindowMessageHandler* handler);
-    void enableTransparency() noexcept;
 
 private:
     CLASS_WITH_LOGGER("Windows");
     
     std::unique_ptr<HWND> hWnd_;
-
-    void drop();
-    void clear();
 };
+
+
+class DCHandle {
+public:
+    DCHandle() = default;
+    DCHandle(HWND hWnd);
+    ~DCHandle();
+
+    DCHandle(const DCHandle&) = delete;
+    DCHandle& operator=(const DCHandle&) = delete;
+    DCHandle(DCHandle&&) = default;
+    DCHandle& operator=(DCHandle&& other) = default;
+
+    operator bool() const noexcept {
+        return hDC_ && *hDC_;
+    }
+
+    HDC getDC() const noexcept {
+        return hDC_ ? *hDC_ : nullptr;
+    }
+
+private:
+    std::unique_ptr<HDC> hDC_;
+};
+
 
 } // namespace Istok::GUI::WinAPI
