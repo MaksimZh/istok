@@ -57,7 +57,7 @@ public:
     void setHandler(WindowMessageHandler* handler);
 
 private:
-    CLASS_WITH_LOGGER("Windows");
+    CLASS_WITH_LOGGER_PREFIX("Windows", "WinAPI: ");
     
     std::unique_ptr<HWND> hWnd_;
 };

@@ -48,7 +48,7 @@ public:
      * The components are destroyed after the systems in undefined order.
      */
     void clear() {
-        LOG_DEBUG("clear");
+        LOG_TRACE("clear");
         systems_.clear();
         ecm_.clear();
     }
@@ -62,7 +62,7 @@ public:
         if (running_) {
             return;
         }
-        LOG_DEBUG("run");
+        LOG_TRACE("run");
         running_ = true;
         while (running_) {
             iterate();
@@ -70,7 +70,7 @@ public:
     }
 
     void stop() {
-        LOG_DEBUG("stop");
+        LOG_TRACE("stop");
         running_ = false;
     }
 

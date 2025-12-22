@@ -2,6 +2,7 @@
 #pragma once
 
 #include "window.hpp"
+#include "logging.hpp"
 
 #include <memory>
 
@@ -21,8 +22,11 @@ HINSTANCE getHInstance() {
 
 class WindowClass {
 public:
-    WindowClass(WNDPROC lpfnWndProc, LPCWSTR className)
+    WindowClass() = default;
+    
+    WindowClass(WNDPROC lpfnWndProc, LPCWSTR className) noexcept
     : name(className) {
+        WITH_LOGGER_PREFIX("Windows", "WinAPI: ");
         WNDCLASSEX wcex{};
         wcex.cbSize = sizeof(WNDCLASSEX);
         wcex.style = CS_OWNDC;
@@ -37,7 +41,7 @@ public:
         wcex.lpszClassName = className;
         wcex.hIconSm = nullptr;
         if (!RegisterClassEx(&wcex)) {
-            throw std::runtime_error("Failed to register window class.");
+            LOG_ERROR("Failed to register window class.");
         }
     }
 
@@ -72,17 +76,25 @@ LRESULT CALLBACK windowProc(
 }
 
 bool enableTransparency(HWND hWnd) noexcept {
+    WITH_LOGGER_PREFIX("Windows", "WinAPI: ");
     DWM_BLURBEHIND bb = { 0 };
     HRGN hRgn = CreateRectRgn(0, 0, -1, -1);
     bb.dwFlags = DWM_BB_ENABLE | DWM_BB_BLURREGION;
     bb.hRgnBlur = hRgn;
     bb.fEnable = TRUE;
-    return DwmEnableBlurBehindWindow(hWnd, &bb) == S_OK;
+    if (DwmEnableBlurBehindWindow(hWnd, &bb) != S_OK) {
+        LOG_ERROR("Cannot set transparency for window {}.", (void*)hWnd);
+        return false;
+    }
+    LOG_TRACE("DWM transparency set for window {}.", (void*)hWnd);
+    return true;
 }
 
-bool prepareForGL(HWND hWnd) noexcept {
+bool setPixelFormatForGL(HWND hWnd) noexcept {
+    WITH_LOGGER_PREFIX("Windows", "WinAPI: ");
     DCHandle dc(hWnd);
     if (!dc) {
+        LOG_ERROR("Cannot get DC for window {}.", (void*)hWnd);
         return false;
     }
     PIXELFORMATDESCRIPTOR pfd = {};
@@ -102,9 +114,15 @@ bool prepareForGL(HWND hWnd) noexcept {
 
     int pfi = ChoosePixelFormat(dc.getDC(), &pfd);
     if (!pfi) {
+        LOG_ERROR("ChoosePixelFormat failed for window {}.", (void*)hWnd);
         return false;
     }
-    return SetPixelFormat(dc.getDC(), pfi, &pfd);
+    if (!SetPixelFormat(dc.getDC(), pfi, &pfd)) {
+        LOG_ERROR("SetPixelFormat failed for window {}.", (void*)hWnd);
+        return false;
+    }
+    LOG_TRACE("GL pixel format set for window {}.", (void*)hWnd);
+    return true;
 }
 
 }  // namespace
@@ -127,17 +145,19 @@ WndHandle::WndHandle(Rect<int> screenLocation) {
         screenLocation.bottom - screenLocation.top,
         NULL, NULL, WinAPI::getHInstance(), nullptr);
     if (!hWnd) {
-        throw std::runtime_error("Cannot create window");
+        LOG_ERROR("Cannot create window.");
+        return;
     }
+    LOG_TRACE("Created window: {}", (void*)hWnd);
     enableTransparency(hWnd);
-    prepareForGL(hWnd);
+    setPixelFormatForGL(hWnd);
     hWnd_ = std::make_unique<HWND>(hWnd);
 }
 
 
 WndHandle::~WndHandle() {
     if (hWnd_ && *hWnd_) {
-        LOG_DEBUG("Destroying window: {}", (void*)getHWnd());
+        LOG_TRACE("Destroying window: {}", (void*)getHWnd());
         setHandler(nullptr);
         DestroyWindow(getHWnd());
     }
@@ -145,8 +165,11 @@ WndHandle::~WndHandle() {
 
 
 void WndHandle::setHandler(WindowMessageHandler* handler) {
+    if (!*this) {
+        return;
+    }
     SetWindowLongPtr(
-        getHWnd(), GWLP_USERDATA,
+        *hWnd_, GWLP_USERDATA,
         reinterpret_cast<LONG_PTR>(handler));
 }
 

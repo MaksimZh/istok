@@ -34,11 +34,11 @@ struct NewWindowFlag {};
 class CreateWindowsSystem : public System {
 public:
     CreateWindowsSystem(ECSManager& ecs) : ecs_(ecs) {
-        LOG_DEBUG("create");
+        LOG_TRACE("create");
     }
     
     ~CreateWindowsSystem() {
-        LOG_DEBUG("destroy");
+        LOG_TRACE("destroy");
         ecs_.removeAll<WndHandle>();
     }
 
@@ -48,15 +48,15 @@ public:
     CreateWindowsSystem& operator=(CreateWindowsSystem&&) = delete;
 
     void run() override {
-        LOG_DEBUG("run");
+        LOG_TRACE("run");
         for (auto& w : ecs_.view<NewWindowFlag>()) {
             Rect<int> location = ecs_.has<ScreenLocation>(w)
                 ? ecs_.get<ScreenLocation>(w).value
                 : Rect<int>{};
             ecs_.set(w, WndHandle(location));
-            LOG_DEBUG(
-                "window {} created @{}",
-                (void*)ecs_.get<WndHandle>(w).getHWnd(), w.value);
+            LOG_TRACE(
+                "@{} + window {}",
+                w.value, (void*)ecs_.get<WndHandle>(w).getHWnd());
         }
     }
 
@@ -72,11 +72,11 @@ struct ShowWindowFlag {};
 class ShowWindowsSystem : public System {
 public:
     ShowWindowsSystem(ECSManager& ecs) : ecs_(ecs) {
-        LOG_DEBUG("create");
+        LOG_TRACE("create");
     }
     
     ~ShowWindowsSystem() {
-        LOG_DEBUG("destroy");
+        LOG_TRACE("destroy");
         ecs_.removeAll<WndHandle>();
     }
 
@@ -86,9 +86,9 @@ public:
     ShowWindowsSystem& operator=(ShowWindowsSystem&&) = delete;
 
     void run() override {
-        LOG_DEBUG("run");
+        LOG_TRACE("run");
         for (auto& w : ecs_.view<ShowWindowFlag, WndHandle>()) {
-            LOG_DEBUG("show window @{}", w.value);
+            LOG_TRACE("show window @{}", w.value);
             ShowWindow(ecs_.get<WndHandle>(w).getHWnd(), SW_SHOW);
         }
         ecs_.removeAll<ShowWindowFlag>();
@@ -106,14 +106,14 @@ struct GLHolderTag {};
 class InitGLSystem: public System {
 public:
     InitGLSystem(ECSManager& ecs) : ecs_(ecs) {
-        LOG_DEBUG("create");
+        LOG_TRACE("create");
         ecs.createEntity(
             NewWindowFlag{},
             GLHolderTag{});
     }
     
     ~InitGLSystem() {
-        LOG_DEBUG("destroy");
+        LOG_TRACE("destroy");
         ecs_.removeAll<WinAPI::GLContext>();
     }
 
@@ -123,17 +123,17 @@ public:
     InitGLSystem& operator=(InitGLSystem&&) = delete;
 
     void run() override {
-        LOG_DEBUG("run");
+        LOG_TRACE("run");
         if (!ecs_.hasAny<WinAPI::GLContext>()) {
             assert(ecs_.hasAny<GLHolderTag>());
             Entity e = *ecs_.view<GLHolderTag>().begin();
             assert(ecs_.has<WndHandle>(e));
             HWND hWnd = ecs_.get<WndHandle>(e).getHWnd();
-            LOG_DEBUG(
+            LOG_TRACE(
                 "creating GLContext @{} using window {}",
                 e.value, (void*)hWnd);
             ecs_.set(e, WinAPI::GLContext(hWnd));
-            LOG_DEBUG("GLContext created");
+            LOG_TRACE("GLContext created");
         }
     }
 
@@ -271,11 +271,11 @@ class DrawWindowSystem : public System {
 public:
     DrawWindowSystem(ECSManager& ecs)
     : ecs_(ecs) {
-        LOG_DEBUG("create");
+        LOG_TRACE("create");
     }
 
     ~DrawWindowSystem() {
-        LOG_DEBUG("destroy");
+        LOG_TRACE("destroy");
         ecs_.removeAll<std::unique_ptr<WindowRenderer>>();
     }
     
@@ -285,9 +285,9 @@ public:
     DrawWindowSystem& operator=(DrawWindowSystem&&) = delete;
 
     void run() override {
-        LOG_DEBUG("run");
+        LOG_TRACE("run");
         for (auto& w : ecs_.view<NewWindowFlag>()) {
-            LOG_DEBUG("set window renderer @{}", w.value);
+            LOG_TRACE("set window renderer @{}", w.value);
             ecs_.set(
                 w, std::unique_ptr<WindowRenderer>(
                 std::make_unique<ColorFillRenderer>(0, 0, 0.5, 1)));
@@ -304,18 +304,18 @@ class SetGLForCleanupSystem : public System {
 public:
     SetGLForCleanupSystem(ECSManager& ecs)
     : ecs_(ecs) {
-        LOG_DEBUG("create");
+        LOG_TRACE("create");
     }
 
     ~SetGLForCleanupSystem() {
-        LOG_DEBUG("destroy");
+        LOG_TRACE("destroy");
         assert(ecs_.hasAny<GLHolderTag>());
         Entity e = *ecs_.view<GLHolderTag>().begin();
         assert(ecs_.has<WinAPI::GLContext>(e));
         assert(ecs_.has<WndHandle>(e));
         HWND hWnd = ecs_.get<WndHandle>(e).getHWnd();
         ecs_.set(e, std::make_unique<WinAPI::DCHandle>(hWnd));
-        LOG_DEBUG("make GLContext current @{}", e.value);
+        LOG_TRACE("make GLContext current @{}", e.value);
         ecs_.get<WinAPI::GLContext>(e).makeCurrent(
             *ecs_.get<std::unique_ptr<WinAPI::DCHandle>>(e));
     }
@@ -385,11 +385,11 @@ class WindowMessageSystem : public System {
 public:
     WindowMessageSystem(ECSManager& ecs, Handler::HandlerMap handlers)
     : ecs_(ecs), handler_(std::move(handlers)) {
-        LOG_DEBUG("create");
+        LOG_TRACE("create");
     }
 
     ~WindowMessageSystem() {
-        LOG_DEBUG("destroy");
+        LOG_TRACE("destroy");
         for (auto& w : ecs_.view<WndHandle>()) {
             ecs_.get<WndHandle>(w).setHandler(nullptr);
         }
@@ -401,7 +401,7 @@ public:
     WindowMessageSystem& operator=(WindowMessageSystem&&) = delete;
 
     void run() override {
-        LOG_DEBUG("run");
+        LOG_TRACE("run");
         attachHandler();
         finishWindowInitialization();
         runMessageLoop();
@@ -415,7 +415,7 @@ private:
 
     void attachHandler() {
         for (auto& w : ecs_.view<NewWindowFlag, WndHandle>()) {
-            LOG_DEBUG("set message handler @{}", w.value);
+            LOG_TRACE("set message handler @{}", w.value);
             ecs_.set(
                 w, std::make_unique<WindowEntityMessageHandlerProxy>(
                     w, handler_));
