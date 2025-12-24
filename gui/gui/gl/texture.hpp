@@ -1,7 +1,6 @@
 // Copyright 2025 Maksim Sergeevich Zholudev. All rights reserved
 #pragma once
 
-#include <gui/common/platform.hpp>
 #include "base.hpp"
 
 #define STB_IMAGE_IMPLEMENTATION

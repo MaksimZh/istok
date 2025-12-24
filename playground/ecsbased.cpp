@@ -3,6 +3,7 @@
 #include <gui/winapi/wgl.hpp>
 #include <gui/winapi/window.hpp>
 #include <gui/gl/buffer.hpp>
+#include <gui/gl/texture.hpp>
 #include <logging.hpp>
 
 #include <memory>
@@ -103,7 +104,6 @@ private:
 };
 
 
-
 class InitGLSystem: public System {
 public:
     InitGLSystem(ECSManager& ecs) : ecs_(ecs) {
@@ -140,6 +140,52 @@ public:
 
 private:
     CLASS_WITH_LOGGER_PREFIX("GL", "InitGLSystem: ");
+    
+    ECSManager& ecs_;
+};
+
+
+struct Atlas {
+    OpenGL::ImageTexture<WinAPI::WGL> texture;
+};
+
+class GLAtlasSystem: public System {
+public:
+    GLAtlasSystem(ECSManager& ecs) : ecs_(ecs) {
+        LOG_TRACE("create");
+    }
+    
+    ~GLAtlasSystem() {
+        LOG_TRACE("destroy");
+        ecs_.removeAll<Atlas>();
+    }
+
+    GLAtlasSystem(const GLAtlasSystem&) = delete;
+    GLAtlasSystem& operator=(const GLAtlasSystem&) = delete;
+    GLAtlasSystem(GLAtlasSystem&&) = delete;
+    GLAtlasSystem& operator=(GLAtlasSystem&&) = delete;
+
+    void run() override {
+        LOG_TRACE("run");
+        if (ecs_.hasAny<Atlas>()) {
+            return;
+        }
+        assert(ecs_.hasAny<WinAPI::GLContext>());
+        Entity e = *ecs_.view<WinAPI::GLContext>().begin();
+        assert(ecs_.has<WndHandle>(e));
+        WinAPI::GLContext& gl = ecs_.get<WinAPI::GLContext>(e);
+        HWND hWnd = ecs_.get<WndHandle>(e).getHWnd();
+        WinAPI::WGL::Scope scope(gl, hWnd);
+        auto texture = OpenGL::ImageTexture<WinAPI::WGL>(
+            scope,
+            "C:/Users/zholu/Documents/Programming/istok/playground/gui.png");
+        LOG_DEBUG(
+            "loaded texture {}x{}",
+            texture.getWidth(), texture.getHeight());
+    }
+
+private:
+    CLASS_WITH_LOGGER_PREFIX("GL", "GLAtlasSystem: ");
     
     ECSManager& ecs_;
 };
@@ -310,9 +356,15 @@ public:
 
     ~SetGLForCleanupSystem() {
         LOG_TRACE("destroy");
-        assert(ecs_.hasAny<WinAPI::GLContext>());
+        if (!ecs_.hasAny<WinAPI::GLContext>()) {
+            LOG_WARNING("no GL context found.");
+            return;
+        }
         Entity e = *ecs_.view<WinAPI::GLContext>().begin();
-        assert(ecs_.has<WndHandle>(e));
+        if (!ecs_.has<WndHandle>(e)) {
+            LOG_WARNING("no window to select GL context.");
+            return;
+        }
         HWND hWnd = ecs_.get<WndHandle>(e).getHWnd();
         ecs_.set(e, std::make_unique<WinAPI::DCHandle>(hWnd));
         LOG_TRACE("make GLContext current @{}", e.value);
@@ -458,6 +510,7 @@ int main() {
     ecs.pushSystem(std::make_unique<CreateWindowsSystem>(ecs));
     ecs.pushSystem(std::make_unique<ShowWindowsSystem>(ecs));
     ecs.pushSystem(std::make_unique<InitGLSystem>(ecs));
+    ecs.pushSystem(std::make_unique<GLAtlasSystem>(ecs));
     ecs.pushSystem(std::make_unique<DrawWindowSystem>(ecs));
     ecs.pushSystem(std::make_unique<SetGLForCleanupSystem>(ecs));
 
