@@ -67,7 +67,7 @@ private:
 };
 
 
-struct ShowWindowFlag {};
+struct VisibleWindowFlag {};
 
 class ShowWindowsSystem : public System {
 public:
@@ -87,11 +87,13 @@ public:
 
     void run() override {
         LOG_TRACE("run");
-        for (auto& w : ecs_.view<ShowWindowFlag, WndHandle>()) {
+        for (
+            auto& w :
+            ecs_.view<NewWindowFlag, VisibleWindowFlag, WndHandle>()
+        ) {
             LOG_TRACE("show window @{}", w.value);
             ecs_.get<WndHandle>(w).setVisibility(true);
         }
-        ecs_.removeAll<ShowWindowFlag>();
     }
 
 private:
@@ -101,7 +103,6 @@ private:
 };
 
 
-struct GLHolderTag {};
 
 class InitGLSystem: public System {
 public:
@@ -109,7 +110,7 @@ public:
         LOG_TRACE("create");
         ecs.createEntity(
             NewWindowFlag{},
-            GLHolderTag{});
+            WinAPI::GLContext{});
     }
     
     ~InitGLSystem() {
@@ -124,9 +125,9 @@ public:
 
     void run() override {
         LOG_TRACE("run");
-        if (!ecs_.hasAny<WinAPI::GLContext>()) {
-            assert(ecs_.hasAny<GLHolderTag>());
-            Entity e = *ecs_.view<GLHolderTag>().begin();
+        assert(ecs_.hasAny<WinAPI::GLContext>());
+        Entity e = *ecs_.view<WinAPI::GLContext>().begin();
+        if (!ecs_.get<WinAPI::GLContext>(e)) {
             assert(ecs_.has<WndHandle>(e));
             HWND hWnd = ecs_.get<WndHandle>(e).getHWnd();
             LOG_TRACE(
@@ -309,9 +310,8 @@ public:
 
     ~SetGLForCleanupSystem() {
         LOG_TRACE("destroy");
-        assert(ecs_.hasAny<GLHolderTag>());
-        Entity e = *ecs_.view<GLHolderTag>().begin();
-        assert(ecs_.has<WinAPI::GLContext>(e));
+        assert(ecs_.hasAny<WinAPI::GLContext>());
+        Entity e = *ecs_.view<WinAPI::GLContext>().begin();
         assert(ecs_.has<WndHandle>(e));
         HWND hWnd = ecs_.get<WndHandle>(e).getHWnd();
         ecs_.set(e, std::make_unique<WinAPI::DCHandle>(hWnd));
@@ -470,12 +470,12 @@ int main() {
     
     ecs.createEntity(
         NewWindowFlag{},
-        ShowWindowFlag{},
+        VisibleWindowFlag{},
         ScreenLocation{{200, 100, 600, 400}},
         WindowHandler::Close{[&](){
             ecs.createEntity(
                 NewWindowFlag{},
-                ShowWindowFlag{},
+                VisibleWindowFlag{},
                 ScreenLocation{{300, 200, 500, 500}},
                 WindowHandler::Close{[&](){ ecs.stop(); }});
         }});
