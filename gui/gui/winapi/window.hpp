@@ -55,6 +55,7 @@ public:
     }
 
     void setHandler(WindowMessageHandler* handler);
+    void setVisibility(bool value);
 
 private:
     CLASS_WITH_LOGGER_PREFIX("Windows", "WinAPI: ");

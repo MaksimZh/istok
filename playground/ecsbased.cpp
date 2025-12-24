@@ -89,7 +89,7 @@ public:
         LOG_TRACE("run");
         for (auto& w : ecs_.view<ShowWindowFlag, WndHandle>()) {
             LOG_TRACE("show window @{}", w.value);
-            ShowWindow(ecs_.get<WndHandle>(w).getHWnd(), SW_SHOW);
+            ecs_.get<WndHandle>(w).setVisibility(true);
         }
         ecs_.removeAll<ShowWindowFlag>();
     }

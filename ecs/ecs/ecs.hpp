@@ -16,8 +16,8 @@ public:
 
     ECSManager(const ECSManager&) = delete;
     ECSManager& operator=(const ECSManager&) = delete;
-    ECSManager(ECSManager&&) = default;
-    ECSManager& operator=(ECSManager&&) = default;
+    ECSManager(ECSManager&&) = delete;
+    ECSManager& operator=(ECSManager&&) = delete;
 
     /* Calls clear method to ensure the reference to ECSManager is valid
      * until all systems and components are destroyed.

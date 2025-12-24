@@ -165,12 +165,14 @@ WndHandle::~WndHandle() {
 
 
 void WndHandle::setHandler(WindowMessageHandler* handler) {
-    if (!*this) {
-        return;
-    }
     SetWindowLongPtr(
-        *hWnd_, GWLP_USERDATA,
+        getHWnd(), GWLP_USERDATA,
         reinterpret_cast<LONG_PTR>(handler));
+}
+
+
+void WndHandle::setVisibility(bool value) {
+    ShowWindow(getHWnd(), value ? SW_SHOW : SW_HIDE);
 }
 
 
@@ -182,6 +184,5 @@ DCHandle::~DCHandle() {
         ReleaseDC(WindowFromDC(*hDC_), *hDC_);
     }
 }
-
 
 } // namespace Istok::GUI::WinAPI
