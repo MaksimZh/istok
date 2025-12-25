@@ -179,9 +179,11 @@ public:
         auto texture = OpenGL::ImageTexture<WinAPI::WGL>(
             scope,
             "C:/Users/zholu/Documents/Programming/istok/playground/gui.png");
+        ecs_.set(e, Atlas{std::move(texture)});
         LOG_DEBUG(
-            "loaded texture {}x{}",
-            texture.getWidth(), texture.getHeight());
+            "loaded texture {}x{} @{}",
+            texture.getWidth(), texture.getHeight(),
+            e.value);
     }
 
 private:
@@ -501,7 +503,7 @@ int main() {
     SET_LOGGER(
         "",
         Istok::Logging::TerminalLogger::GetInstance(),
-        Istok::Logging::Level::all);
+        Istok::Logging::Level::debug);
     WITH_LOGGER_PREFIX("", "App: ");
     LOG_TRACE("begin");
     
