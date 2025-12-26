@@ -2,6 +2,7 @@
 #include <catch.hpp>
 #include "helper.hpp"
 
+#include <catch2/catch_test_macros.hpp>
 #include <ecs/entity.hpp>
 
 using namespace Istok::ECS;
@@ -14,6 +15,79 @@ TEST_CASE("Entity - value", "[unit][ecs]") {
     Entity e(42, 17);
     REQUIRE(e.index() == 42);
     REQUIRE(e.generation() == 17);
+}
+
+
+TEST_CASE("EntityStorage - create", "[unit][ecs]") {
+    EntityStorage storage(2);  // TODO: initialSize -> initialCapacity
+    REQUIRE(storage.size() == 2);  // TODO: size -> capacity
+}
+
+
+TEST_CASE("EntityStorage - createEntity", "[unit][ecs]") {
+    EntityStorage storage(2);
+    Entity a = storage.create();  // TODO: create -> createEntity
+}
+
+
+TEST_CASE("EntityStorage - destroyEntity", "[unit][ecs]") {
+    EntityStorage storage(2);
+    Entity a = storage.create();
+    storage.destroy(a);  // TODO: destroy -> destroyEntity
+}
+
+
+TEST_CASE("EntityStorage - extend", "[unit][ecs]") {
+    EntityStorage storage(2);
+    REQUIRE(storage.size() == 2);
+    storage.extend(3);
+    REQUIRE(storage.size() == 5);
+    storage.extend(0);
+    REQUIRE(storage.size() == 5);
+}
+
+
+TEST_CASE("EntityStorage - isFull", "[unit][ecs]") {
+    EntityStorage storage(2);
+    REQUIRE(storage.full() == false);  // TODO: full -> isFull
+    storage.create();
+    REQUIRE(storage.full() == false);
+    storage.create();
+    REQUIRE(storage.full() == true);
+    storage.extend(3);
+    storage.create();
+    REQUIRE(storage.full() == false);
+    storage.create();
+    REQUIRE(storage.full() == false);
+    storage.create();
+    REQUIRE(storage.full() == true);
+    storage.extend(0);
+    REQUIRE(storage.full() == true);
+}
+
+
+TEST_CASE("EntityStorage - isValidEntity", "[unit][ecs]") {
+    EntityStorage storage(2);
+    REQUIRE(storage.isValid(Entity(0, 0)) == false);
+    REQUIRE(storage.isValid(Entity(0, 1)) == false);
+    REQUIRE(storage.isValid(Entity(0, 2)) == false);
+    REQUIRE(storage.isValid(Entity(1, 0)) == false);
+    REQUIRE(storage.isValid(Entity(1, 1)) == false);
+    REQUIRE(storage.isValid(Entity(1, 2)) == false);
+    // TODO: REQUIRE(storage.isValid(Entity(2, 0)) == false);
+    // TODO: REQUIRE(storage.isValid(Entity(2, 1)) == false);
+    // TODO: REQUIRE(storage.isValid(Entity(2, 2)) == false);
+    Entity a = storage.create();
+    Entity b = storage.create();
+    REQUIRE(storage.isValid(a) == true);
+    REQUIRE(storage.isValid(b) == true);
+    storage.destroy(b);
+    REQUIRE(storage.isValid(a) == true);
+    REQUIRE(storage.isValid(b) == false);
+    Entity c = storage.create();
+    REQUIRE(storage.isValid(a) == true);
+    REQUIRE(storage.isValid(b) == false);
+    REQUIRE(storage.isValid(c) == true);
 }
 
 

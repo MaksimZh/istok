@@ -10,22 +10,19 @@
 namespace Istok::ECS {
 
 struct Entity {
-    static constexpr uint64_t lowerMask = 0x00000000ffffffff;
-    static constexpr uint64_t upperMask = 0xffffffff00000000;
-    
     uint64_t value;
 
     constexpr Entity() : value(0) {}
     constexpr Entity(size_t index, size_t generation)
         : value(index + (generation << 32)) {}
     bool operator==(const Entity& other) const = default;
-    
+
     uint32_t index() const {
-        return value & lowerMask;
+        return value & LOWER_MASK;
     }
 
     uint32_t generation() const {
-        return (value & upperMask) >> 32;
+        return (value & UPPER_MASK) >> 32;
     }
 
     struct Hasher {
@@ -33,6 +30,10 @@ struct Entity {
             return std::hash<uint64_t>()(entity.value);
         }
     };
+
+private:
+    static constexpr uint64_t LOWER_MASK = 0x00000000ffffffff;
+    static constexpr uint64_t UPPER_MASK = 0xffffffff00000000;
 };
 
 
@@ -50,7 +51,9 @@ public:
     }
     
     Entity create() {
+        assert(!full());
         size_t index = indexPool.getFreeIndex();
+        generations.inc(index);
         return Entity(index, generations.get(index));
     }
 
@@ -60,7 +63,8 @@ public:
     }
     
     bool isValid(Entity e) const {
-        return generations.get(e.index()) == e.generation();
+        return e.generation() % 2 == 1
+            && generations.get(e.index()) == e.generation();
     }
    
     void extend(size_t delta) {
