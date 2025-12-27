@@ -472,7 +472,8 @@ TEST_CASE("ECS Data Structures - DenseMap", "[unit][ecs]") {
     }
 }
 
-
+// TODO: split test on per-feature basis
+// TODO: test sentinel getter
 TEST_CASE("ECS Data Structures - LimitedCounter", "[unit][ecs]") {
     ecs::LimitedCounter counter(3);
     REQUIRE(counter.full() == false);
@@ -514,6 +515,8 @@ TEST_CASE("ECS Data Structures - LimitedCounter", "[unit][ecs]") {
 }
 
 
+// TODO: split test on per-feature basis
+// TODO: test capacity getter
 TEST_CASE("ECS Data Structures - IndexPool", "[unit][ecs]") {
     ecs::IndexPool pool(3);
     REQUIRE(pool.full() == false);

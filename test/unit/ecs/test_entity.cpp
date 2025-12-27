@@ -74,9 +74,9 @@ TEST_CASE("EntityStorage - isValidEntity", "[unit][ecs]") {
     REQUIRE(storage.isValid(Entity(1, 0)) == false);
     REQUIRE(storage.isValid(Entity(1, 1)) == false);
     REQUIRE(storage.isValid(Entity(1, 2)) == false);
-    // TODO: REQUIRE(storage.isValid(Entity(2, 0)) == false);
-    // TODO: REQUIRE(storage.isValid(Entity(2, 1)) == false);
-    // TODO: REQUIRE(storage.isValid(Entity(2, 2)) == false);
+    REQUIRE(storage.isValid(Entity(2, 0)) == false);
+    REQUIRE(storage.isValid(Entity(2, 1)) == false);
+    REQUIRE(storage.isValid(Entity(2, 2)) == false);
     Entity a = storage.create();
     Entity b = storage.create();
     REQUIRE(storage.isValid(a) == true);

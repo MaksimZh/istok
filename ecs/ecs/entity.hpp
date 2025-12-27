@@ -40,41 +40,42 @@ private:
 class EntityStorage {
 public:
     EntityStorage(size_t initialSize)
-        : indexPool(initialSize), generations(initialSize) {}
+        : indexPool_(initialSize), generations_(initialSize) {}
 
     size_t size() const {
-        return generations.size();
+        return generations_.size();
     }
 
     bool full() const {
-        return indexPool.full();
+        return indexPool_.full();
     }
     
     Entity create() {
         assert(!full());
-        size_t index = indexPool.getFreeIndex();
-        generations.inc(index);
-        return Entity(index, generations.get(index));
+        size_t index = indexPool_.getFreeIndex();
+        generations_.inc(index);
+        return Entity(index, generations_.get(index));
     }
 
     void destroy(Entity e) {
-        indexPool.freeIndex(e.index());
-        generations.inc(e.index());
+        indexPool_.freeIndex(e.index());
+        generations_.inc(e.index());
     }
     
     bool isValid(Entity e) const {
-        return e.generation() % 2 == 1
-            && generations.get(e.index()) == e.generation();
+        return e.index() < indexPool_.capacity()
+            && e.generation() % 2 == 1
+            && generations_.get(e.index()) == e.generation();
     }
    
     void extend(size_t delta) {
-        indexPool.extend(delta);
-        generations.extend(delta);
+        indexPool_.extend(delta);
+        generations_.extend(delta);
     }
 
 private:
-    IndexPool indexPool;
-    CounterArray generations;
+    IndexPool indexPool_;
+    CounterArray generations_;
 };
 
 

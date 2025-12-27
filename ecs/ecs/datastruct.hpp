@@ -357,51 +357,60 @@ private:
 
 class LimitedCounter {
 public:
-    explicit LimitedCounter(size_t sentinel) : value(0), sentinel(sentinel) {}
+    explicit LimitedCounter(size_t sentinel)
+    : value_(0), sentinel_(sentinel) {}
+
+    size_t sentinel() const {
+        return sentinel_;
+    }
 
     bool full() const {
-        return value >= sentinel;
+        return value_ >= sentinel_;
     }
 
     size_t take() {
         assert(!full());
-        return value++;
+        return value_++;
     }
 
     void extend(size_t delta) {
-        sentinel += delta;
+        sentinel_ += delta;
     }
 
 private:
-    size_t value;
-    size_t sentinel;
+    size_t value_;
+    size_t sentinel_;
 };
 
 
 class IndexPool {
 public:
-    IndexPool(size_t initialSize) : nextIndex(initialSize) {}
+    IndexPool(size_t initialSize) : nextIndex_(initialSize) {}
 
-    size_t getFreeIndex() {
-        assert(!full());
-        return freeIndices.empty() ? nextIndex.take() : freeIndices.take();
-    }
-    
-    void freeIndex(size_t index) {
-        freeIndices.push(index);
+    size_t capacity() const {
+        return nextIndex_.sentinel();
     }
     
     bool full() const {
-        return nextIndex.full() && freeIndices.empty();
+        return nextIndex_.full() && freeIndices_.empty();
+    }
+
+    size_t getFreeIndex() {
+        assert(!full());
+        return freeIndices_.empty() ? nextIndex_.take() : freeIndices_.take();
+    }
+    
+    void freeIndex(size_t index) {
+        freeIndices_.push(index);
     }
 
     void extend(size_t delta) {
-        nextIndex.extend(delta);
+        nextIndex_.extend(delta);
     }
 
 private:
-    LimitedCounter nextIndex;
-    Istok::Tools::SimpleQueue<size_t> freeIndices;
+    LimitedCounter nextIndex_;
+    Istok::Tools::SimpleQueue<size_t> freeIndices_;
 };
 
 
