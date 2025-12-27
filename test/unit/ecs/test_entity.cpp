@@ -19,110 +19,110 @@ TEST_CASE("Entity - value", "[unit][ecs]") {
 
 
 TEST_CASE("EntityStorage - create", "[unit][ecs]") {
-    EntityStorage storage(2);  // TODO: initialSize -> initialCapacity
-    REQUIRE(storage.size() == 2);  // TODO: size -> capacity
+    EntityStorage storage(2);
+    REQUIRE(storage.capacity() == 2);
 }
 
 
 TEST_CASE("EntityStorage - createEntity", "[unit][ecs]") {
     EntityStorage storage(2);
-    Entity a = storage.create();  // TODO: create -> createEntity
+    Entity a = storage.createEntity();
 }
 
 
 TEST_CASE("EntityStorage - destroyEntity", "[unit][ecs]") {
     EntityStorage storage(2);
-    Entity a = storage.create();
-    storage.destroy(a);  // TODO: destroy -> destroyEntity
+    Entity a = storage.createEntity();
+    storage.destroyEntity(a);
 }
 
 
 TEST_CASE("EntityStorage - extend", "[unit][ecs]") {
     EntityStorage storage(2);
-    REQUIRE(storage.size() == 2);
+    REQUIRE(storage.capacity() == 2);
     storage.extend(3);
-    REQUIRE(storage.size() == 5);
+    REQUIRE(storage.capacity() == 5);
     storage.extend(0);
-    REQUIRE(storage.size() == 5);
+    REQUIRE(storage.capacity() == 5);
 }
 
 
 TEST_CASE("EntityStorage - isFull", "[unit][ecs]") {
     EntityStorage storage(2);
-    REQUIRE(storage.full() == false);  // TODO: full -> isFull
-    storage.create();
-    REQUIRE(storage.full() == false);
-    storage.create();
-    REQUIRE(storage.full() == true);
+    REQUIRE(storage.isFull() == false);  // TODO: full -> isFull
+    storage.createEntity();
+    REQUIRE(storage.isFull() == false);
+    storage.createEntity();
+    REQUIRE(storage.isFull() == true);
     storage.extend(3);
-    storage.create();
-    REQUIRE(storage.full() == false);
-    storage.create();
-    REQUIRE(storage.full() == false);
-    storage.create();
-    REQUIRE(storage.full() == true);
+    storage.createEntity();
+    REQUIRE(storage.isFull() == false);
+    storage.createEntity();
+    REQUIRE(storage.isFull() == false);
+    storage.createEntity();
+    REQUIRE(storage.isFull() == true);
     storage.extend(0);
-    REQUIRE(storage.full() == true);
+    REQUIRE(storage.isFull() == true);
 }
 
 
 TEST_CASE("EntityStorage - isValidEntity", "[unit][ecs]") {
     EntityStorage storage(2);
-    REQUIRE(storage.isValid(Entity(0, 0)) == false);
-    REQUIRE(storage.isValid(Entity(0, 1)) == false);
-    REQUIRE(storage.isValid(Entity(0, 2)) == false);
-    REQUIRE(storage.isValid(Entity(1, 0)) == false);
-    REQUIRE(storage.isValid(Entity(1, 1)) == false);
-    REQUIRE(storage.isValid(Entity(1, 2)) == false);
-    REQUIRE(storage.isValid(Entity(2, 0)) == false);
-    REQUIRE(storage.isValid(Entity(2, 1)) == false);
-    REQUIRE(storage.isValid(Entity(2, 2)) == false);
-    Entity a = storage.create();
-    Entity b = storage.create();
-    REQUIRE(storage.isValid(a) == true);
-    REQUIRE(storage.isValid(b) == true);
-    storage.destroy(b);
-    REQUIRE(storage.isValid(a) == true);
-    REQUIRE(storage.isValid(b) == false);
-    Entity c = storage.create();
-    REQUIRE(storage.isValid(a) == true);
-    REQUIRE(storage.isValid(b) == false);
-    REQUIRE(storage.isValid(c) == true);
+    REQUIRE(storage.isValidEntity(Entity(0, 0)) == false);
+    REQUIRE(storage.isValidEntity(Entity(0, 1)) == false);
+    REQUIRE(storage.isValidEntity(Entity(0, 2)) == false);
+    REQUIRE(storage.isValidEntity(Entity(1, 0)) == false);
+    REQUIRE(storage.isValidEntity(Entity(1, 1)) == false);
+    REQUIRE(storage.isValidEntity(Entity(1, 2)) == false);
+    REQUIRE(storage.isValidEntity(Entity(2, 0)) == false);
+    REQUIRE(storage.isValidEntity(Entity(2, 1)) == false);
+    REQUIRE(storage.isValidEntity(Entity(2, 2)) == false);
+    Entity a = storage.createEntity();
+    Entity b = storage.createEntity();
+    REQUIRE(storage.isValidEntity(a) == true);
+    REQUIRE(storage.isValidEntity(b) == true);
+    storage.destroyEntity(b);
+    REQUIRE(storage.isValidEntity(a) == true);
+    REQUIRE(storage.isValidEntity(b) == false);
+    Entity c = storage.createEntity();
+    REQUIRE(storage.isValidEntity(a) == true);
+    REQUIRE(storage.isValidEntity(b) == false);
+    REQUIRE(storage.isValidEntity(c) == true);
 }
 
 
 TEST_CASE("Entity - storage", "[unit][ecs]") {
     EntityStorage storage(3);
-    REQUIRE(storage.size() == 3);
-    REQUIRE(storage.full() == false);
+    REQUIRE(storage.capacity() == 3);
+    REQUIRE(storage.isFull() == false);
 
     SECTION("create") {
-        Entity e = storage.create();
-        REQUIRE(storage.full() == false);
-        REQUIRE(storage.isValid(e) == true);
+        Entity e = storage.createEntity();
+        REQUIRE(storage.isFull() == false);
+        REQUIRE(storage.isValidEntity(e) == true);
     }
 
     SECTION("make full") {
         EntityUSet entities;
-        entities.insert(storage.create());
-        entities.insert(storage.create());
-        entities.insert(storage.create());
+        entities.insert(storage.createEntity());
+        entities.insert(storage.createEntity());
+        entities.insert(storage.createEntity());
         REQUIRE(entities.size() == 3);
-        REQUIRE(storage.full() == true);
+        REQUIRE(storage.isFull() == true);
         for (const Entity& e: entities) {
-            REQUIRE(storage.isValid(e) == true);
+            REQUIRE(storage.isValidEntity(e) == true);
         }
 
         SECTION("extend") {
             storage.extend(2);
-            REQUIRE(storage.size() == 5);
-            REQUIRE(storage.full() == false);
-            entities.insert(storage.create());
-            entities.insert(storage.create());
-            REQUIRE(storage.full() == true);
+            REQUIRE(storage.capacity() == 5);
+            REQUIRE(storage.isFull() == false);
+            entities.insert(storage.createEntity());
+            entities.insert(storage.createEntity());
+            REQUIRE(storage.isFull() == true);
             REQUIRE(entities.size() == 5);
             for (const Entity& e: entities) {
-                REQUIRE(storage.isValid(e) == true);
+                REQUIRE(storage.isValidEntity(e) == true);
             }
         }
 
@@ -130,22 +130,22 @@ TEST_CASE("Entity - storage", "[unit][ecs]") {
             auto it = entities.begin();
             Entity e1 = *(it++);
             Entity e2 = *(it++);
-            storage.destroy(e1);
-            storage.destroy(e2);
-            REQUIRE(storage.full() == false);
-            REQUIRE(storage.isValid(e1) == false);
-            REQUIRE(storage.isValid(e2) == false);
+            storage.destroyEntity(e1);
+            storage.destroyEntity(e2);
+            REQUIRE(storage.isFull() == false);
+            REQUIRE(storage.isValidEntity(e1) == false);
+            REQUIRE(storage.isValidEntity(e2) == false);
 
             SECTION("insert new") {
-                entities.insert(storage.create());
-                entities.insert(storage.create());
-                REQUIRE(storage.full() == true);
+                entities.insert(storage.createEntity());
+                entities.insert(storage.createEntity());
+                REQUIRE(storage.isFull() == true);
                 // all entities (old and new) are different
                 REQUIRE(entities.size() == 5);
                 entities.erase(e1);
                 entities.erase(e2);
                 for (const Entity& e: entities) {
-                    REQUIRE(storage.isValid(e) == true);
+                    REQUIRE(storage.isValidEntity(e) == true);
                 }
             }
         }
@@ -153,16 +153,16 @@ TEST_CASE("Entity - storage", "[unit][ecs]") {
 
     SECTION("extend") {
         storage.extend(2);
-        REQUIRE(storage.size() == 5);
+        REQUIRE(storage.capacity() == 5);
         EntityUSet entities;
-        entities.insert(storage.create());
-        entities.insert(storage.create());
-        entities.insert(storage.create());
+        entities.insert(storage.createEntity());
+        entities.insert(storage.createEntity());
+        entities.insert(storage.createEntity());
         REQUIRE(entities.size() == 3);
-        REQUIRE(storage.full() == false);
-        entities.insert(storage.create());
-        entities.insert(storage.create());
-        REQUIRE(storage.full() == true);
+        REQUIRE(storage.isFull() == false);
+        entities.insert(storage.createEntity());
+        entities.insert(storage.createEntity());
+        REQUIRE(storage.isFull() == true);
         REQUIRE(entities.size() == 5);
     }
 }

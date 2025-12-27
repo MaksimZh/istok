@@ -39,30 +39,30 @@ private:
 
 class EntityStorage {
 public:
-    EntityStorage(size_t initialSize)
-        : indexPool_(initialSize), generations_(initialSize) {}
+    EntityStorage(size_t initialCapacity)
+        : indexPool_(initialCapacity), generations_(initialCapacity) {}
 
-    size_t size() const {
+    size_t capacity() const {
         return generations_.size();
     }
 
-    bool full() const {
-        return indexPool_.full();
+    bool isFull() const {
+        return indexPool_.full();  // TODO: isFull
     }
     
-    Entity create() {
-        assert(!full());
+    Entity createEntity() {
+        assert(!isFull());
         size_t index = indexPool_.getFreeIndex();
         generations_.inc(index);
         return Entity(index, generations_.get(index));
     }
 
-    void destroy(Entity e) {
+    void destroyEntity(Entity e) {
         indexPool_.freeIndex(e.index());
         generations_.inc(e.index());
     }
     
-    bool isValid(Entity e) const {
+    bool isValidEntity(Entity e) const {
         return e.index() < indexPool_.capacity()
             && e.generation() % 2 == 1
             && generations_.get(e.index()) == e.generation();
@@ -84,19 +84,19 @@ public:
     EntityManager(size_t initialCapacity)
         : storage(initialCapacity) {}
     
-    Entity create() {
-        if (storage.full()) {
-            storage.extend(storage.size());
+    Entity create() {  // TODO: createEntity
+        if (storage.isFull()) {
+            storage.extend(storage.capacity());
         }
-        return storage.create();
+        return storage.createEntity();
     }
 
     void destroy(Entity e) {
-        storage.destroy(e);
+        storage.destroyEntity(e);
     }
     
     bool isValid(Entity e) const {
-        return storage.isValid(e);
+        return storage.isValidEntity(e);
     }
 
 private:
