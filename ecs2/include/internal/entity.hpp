@@ -3,6 +3,7 @@
 
 #include <bit>
 #include <cassert>
+#include <cstddef>
 #include <cstdint>
 #include <vector>
 
@@ -18,7 +19,7 @@ struct Entity final {
        
     bool operator==(const Entity& other) const = default;
 
-    uint32_t index() const {
+    size_t index() const {
         return index_;
     }
 

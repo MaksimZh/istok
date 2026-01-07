@@ -2,7 +2,7 @@
 #include <catch.hpp>
 
 #include <catch2/catch_test_macros.hpp>
-#include <cstdint>
+#include <cstddef>
 #include <internal/entity.hpp>
 
 #include <set>
@@ -89,10 +89,10 @@ TEST_CASE("EntityManager - mass index reuse", "[unit][ecs]") {
     REQUIRE(em.isValidEntity(g));
     REQUIRE(em.isValidEntity(h));
     REQUIRE(em.isValidEntity(i));
-    std::set<uint32_t> s = {0, 1, 2};
-    std::set<uint32_t> x = {a.index(), b.index(), c.index()};
-    std::set<uint32_t> y = {d.index(), e.index(), f.index()};
-    std::set<uint32_t> z = {g.index(), h.index(), i.index()};
+    std::set<size_t> s = {0, 1, 2};
+    std::set<size_t> x = {a.index(), b.index(), c.index()};
+    std::set<size_t> y = {d.index(), e.index(), f.index()};
+    std::set<size_t> z = {g.index(), h.index(), i.index()};
     REQUIRE(x == s);
     REQUIRE(y == s);
     REQUIRE(z == s);
