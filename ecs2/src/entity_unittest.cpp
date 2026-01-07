@@ -9,27 +9,17 @@
 
 using namespace Istok::ECS;
 
-
-TEST_CASE("Entity", "[unit][ecs]") {
-    SECTION("getters") {
-        Entity e(42, 17);
-        REQUIRE(e.index() == 42);
-        REQUIRE(e.generation() == 17);
-    }
-    
-    SECTION("equality", "[unit][ecs]") {
-        REQUIRE(Entity(42, 17) == Entity(42, 17));
-        REQUIRE(Entity(42, 17) != Entity(24, 17));
-        REQUIRE(Entity(42, 17) != Entity(42, 71));
-    }
-}
-
-
 TEST_CASE("EntityManager - basics", "[unit][ecs]") {
     EntityManager em;
     Entity a = em.createEntity();
     Entity b = em.createEntity();
     Entity c = em.createEntity();
+
+    SECTION("indices") {
+        REQUIRE(a.index() == 0);
+        REQUIRE(b.index() == 1);
+        REQUIRE(c.index() == 2);
+    }
     
     SECTION("validity") {
         REQUIRE(em.isValidEntity(a));
@@ -99,9 +89,11 @@ TEST_CASE("EntityManager - mass index reuse", "[unit][ecs]") {
     REQUIRE(em.isValidEntity(g));
     REQUIRE(em.isValidEntity(h));
     REQUIRE(em.isValidEntity(i));
+    std::set<uint32_t> s = {0, 1, 2};
     std::set<uint32_t> x = {a.index(), b.index(), c.index()};
     std::set<uint32_t> y = {d.index(), e.index(), f.index()};
     std::set<uint32_t> z = {g.index(), h.index(), i.index()};
-    REQUIRE(x == y);
-    REQUIRE(y == z);
+    REQUIRE(x == s);
+    REQUIRE(y == s);
+    REQUIRE(z == s);
 }

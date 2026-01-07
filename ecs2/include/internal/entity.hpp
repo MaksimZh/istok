@@ -15,23 +15,21 @@ struct Entity {
             return std::bit_cast<size_t>(entity);
         }
     };
-
-    constexpr Entity(size_t index, size_t generation)
-    : index_(index), generation_(generation) {}
-    
+       
     bool operator==(const Entity& other) const = default;
 
     uint32_t index() const {
         return index_;
     }
 
-    uint32_t generation() const {
-        return generation_;
-    }
-
 private:
+    friend class EntityManager;
+    
     int32_t index_;
     int32_t generation_;
+
+    constexpr Entity(size_t index, size_t generation)
+    : index_(index), generation_(generation) {}
 };
 
 
