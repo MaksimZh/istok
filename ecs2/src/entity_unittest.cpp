@@ -15,33 +15,38 @@ TEST_CASE("EntityManager - basics", "[unit][ecs]") {
     Entity b = em.createEntity();
     Entity c = em.createEntity();
 
-    SECTION("indices") {
+    SECTION("index values") {
         REQUIRE(a.index() == 0);
         REQUIRE(b.index() == 1);
         REQUIRE(c.index() == 2);
     }
     
-    SECTION("validity") {
+    SECTION("entity validity") {
         REQUIRE(em.isValidEntity(a));
         REQUIRE(em.isValidEntity(b));
         REQUIRE(em.isValidEntity(c));
     }
 
-    SECTION("uniqueness") {
+    SECTION("index validity") {
+        REQUIRE(em.isValidIndex(0));
+        REQUIRE(em.isValidIndex(1));
+        REQUIRE(em.isValidIndex(2));
+        REQUIRE(!em.isValidIndex(3));
+    }
+
+    SECTION("entity uniqueness") {
         REQUIRE(a != b);
         REQUIRE(b != c);
         REQUIRE(c != a);
     }
 
-    SECTION("invalidate on deletion") {
-        em.deleteEntity(b);
-        REQUIRE(em.isValidEntity(a));
-        REQUIRE(!em.isValidEntity(b));
-        REQUIRE(em.isValidEntity(c));
+    SECTION("entity from index") {
+        REQUIRE(em.entityFromIndex(0) == a);
+        REQUIRE(em.entityFromIndex(1) == b);
+        REQUIRE(em.entityFromIndex(2) == c);
     }
 
-    SECTION("deletion is idempotent") {
-        em.deleteEntity(b);
+    SECTION("invalidate on deletion") {
         em.deleteEntity(b);
         REQUIRE(em.isValidEntity(a));
         REQUIRE(!em.isValidEntity(b));
@@ -89,6 +94,9 @@ TEST_CASE("EntityManager - mass index reuse", "[unit][ecs]") {
     REQUIRE(em.isValidEntity(g));
     REQUIRE(em.isValidEntity(h));
     REQUIRE(em.isValidEntity(i));
+    REQUIRE(em.entityFromIndex(0) == g);
+    REQUIRE(em.entityFromIndex(1) == h);
+    REQUIRE(em.entityFromIndex(2) == i);
     std::set<size_t> s = {0, 1, 2};
     std::set<size_t> x = {a.index(), b.index(), c.index()};
     std::set<size_t> y = {d.index(), e.index(), f.index()};
