@@ -1,6 +1,7 @@
 // Copyright 2026 Maksim Sergeevich Zholudev. All rights reserved
 #pragma once
 
+#include <cassert>
 #include <cstddef>
 #include <vector>
 
@@ -26,16 +27,14 @@ public:
             && indexToComponent_[index] >= 0;
     }
 
-    T* get(size_t index) {
-        if (!has(index)) {
-            return nullptr;
-        }
-        return &components_[indexToComponent_[index]];
+    T& get(size_t index) {
+        assert(has(index));
+        return components_[indexToComponent_[index]];
     }
 
     void insert(size_t index, T&& value) {
-        if (auto c = get(index)) {
-            *c = std::move(value);
+        if (has(index)) {
+            components_[indexToComponent_[index]] = std::move(value);
             return;
         }
         if (index >= indexToComponent_.size()) {
@@ -47,9 +46,7 @@ public:
     }
 
     void remove(size_t index) {
-        if (!has(index)) {
-            return;
-        }
+        assert(has(index));
         size_t componentIndex = indexToComponent_[index];
         if (componentIndex < components_.size() - 1) {
             indexToComponent_[componentToIndex_.back()] = componentIndex;
