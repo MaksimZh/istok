@@ -4,6 +4,7 @@
 #include <cassert>
 #include <cstddef>
 #include <vector>
+#include <span>
 
 namespace Istok::ECS {
 
@@ -56,6 +57,10 @@ public:
         indexToComponent_[index] = EMPTY;
         components_.pop_back();
         componentToIndex_.pop_back();
+    }
+
+    std::span<size_t> indices() {
+        return std::span<size_t>(componentToIndex_);
     }
 
 private:

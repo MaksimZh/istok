@@ -4,7 +4,18 @@
 #include <catch2/catch_test_macros.hpp>
 #include <internal/component.hpp>
 
+#include <set>
+
 using namespace Istok::ECS;
+
+namespace {
+
+template <typename T>
+std::set<size_t> indexSet(ComponentStorageOf<T>& storage) {
+    return std::set(storage.indices().begin(), storage.indices().end());
+}
+
+}  // namespace
 
 TEST_CASE("ComponentStorageOf - basics", "[unit][ecs]") {
     ComponentStorageOf<int> cs;
@@ -16,6 +27,7 @@ TEST_CASE("ComponentStorageOf - basics", "[unit][ecs]") {
         REQUIRE(cs.has(0));
         REQUIRE(!cs.has(1));
         REQUIRE(cs.get(0) == 42);
+        REQUIRE(indexSet(cs) == std::set<size_t>{0});
     }
 
     SECTION("insert middle") {
@@ -25,6 +37,7 @@ TEST_CASE("ComponentStorageOf - basics", "[unit][ecs]") {
         REQUIRE(cs.has(2));
         REQUIRE(!cs.has(3));
         REQUIRE(cs.get(2) == 42);
+        REQUIRE(indexSet(cs) == std::set<size_t>{2});
     }
 
     SECTION("remove last") {
@@ -40,6 +53,7 @@ TEST_CASE("ComponentStorageOf - basics", "[unit][ecs]") {
         REQUIRE(cs.get(0) == 40);
         REQUIRE(cs.get(1) == 41);
         REQUIRE(cs.get(2) == 42);
+        REQUIRE(indexSet(cs) == std::set<size_t>{0, 1, 2});
     }
 
     SECTION("remove middle") {
@@ -55,6 +69,7 @@ TEST_CASE("ComponentStorageOf - basics", "[unit][ecs]") {
         REQUIRE(cs.get(0) == 40);
         REQUIRE(cs.get(2) == 42);
         REQUIRE(cs.get(3) == 43);
+        REQUIRE(indexSet(cs) == std::set<size_t>{0, 2, 3});
     }
 }
 
@@ -67,16 +82,7 @@ TEST_CASE("ComponentStorageOf - multi actions", "[unit][ecs]") {
     cs.insert(9, 109);
     cs.insert(6, 106);
     cs.insert(7, 107);
-    REQUIRE(cs.has(0));
-    REQUIRE(!cs.has(1));
-    REQUIRE(cs.has(2));
-    REQUIRE(cs.has(3));
-    REQUIRE(!cs.has(4));
-    REQUIRE(!cs.has(5));
-    REQUIRE(cs.has(6));
-    REQUIRE(cs.has(7));
-    REQUIRE(!cs.has(8));
-    REQUIRE(cs.has(9));
+    REQUIRE(indexSet(cs) == std::set<size_t>{0, 2, 3, 6, 7, 9});
     REQUIRE(cs.get(0) == 100);
     REQUIRE(cs.get(2) == 102);
     REQUIRE(cs.get(3) == 103);
@@ -90,16 +96,7 @@ TEST_CASE("ComponentStorageOf - multi actions", "[unit][ecs]") {
     cs.insert(5, 205);
     cs.insert(2, 202);
     cs.insert(8, 208);
-    REQUIRE(cs.has(0));
-    REQUIRE(!cs.has(1));
-    REQUIRE(cs.has(2));
-    REQUIRE(cs.has(3));
-    REQUIRE(!cs.has(4));
-    REQUIRE(cs.has(5));
-    REQUIRE(!cs.has(6));
-    REQUIRE(cs.has(7));
-    REQUIRE(cs.has(8));
-    REQUIRE(!cs.has(9));
+    REQUIRE(indexSet(cs) == std::set<size_t>{0, 2, 3, 5, 7, 8});
     REQUIRE(cs.get(0) == 200);
     REQUIRE(cs.get(2) == 202);
     REQUIRE(cs.get(3) == 103);
