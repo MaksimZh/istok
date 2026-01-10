@@ -11,14 +11,14 @@ using namespace Istok::ECS;
 namespace {
 
 template <typename T>
-std::set<size_t> indexSet(ComponentStorageOf<T>& storage) {
+std::set<size_t> indexSet(ComponentStorage<T>& storage) {
     return std::set(storage.indices().begin(), storage.indices().end());
 }
 
 }  // namespace
 
-TEST_CASE("ComponentStorageOf - basics", "[unit][ecs]") {
-    ComponentStorageOf<int> cs;
+TEST_CASE("ComponentStorage - basics", "[unit][ecs]") {
+    ComponentStorage<int> cs;
     REQUIRE(cs.size() == 0);
     REQUIRE(!cs.has(0));
 
@@ -74,8 +74,8 @@ TEST_CASE("ComponentStorageOf - basics", "[unit][ecs]") {
 }
 
 
-TEST_CASE("ComponentStorageOf - multi actions", "[unit][ecs]") {
-    ComponentStorageOf<int> cs;
+TEST_CASE("ComponentStorage - multi actions", "[unit][ecs]") {
+    ComponentStorage<int> cs;
     cs.insert(0, 100);
     cs.insert(3, 103);
     cs.insert(2, 102);

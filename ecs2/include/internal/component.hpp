@@ -9,15 +9,15 @@
 namespace Istok::ECS {
 
 template <typename T>
-class ComponentStorageOf {
+class ComponentStorage {
 public:
-    ComponentStorageOf() = default;
-    ~ComponentStorageOf() = default;
+    ComponentStorage() = default;
+    ~ComponentStorage() = default;
     
-    ComponentStorageOf(const ComponentStorageOf&) = delete;
-    ComponentStorageOf& operator=(const ComponentStorageOf&) = delete;
-    ComponentStorageOf(ComponentStorageOf&&) noexcept = default;
-    ComponentStorageOf& operator=(ComponentStorageOf&&) noexcept = default;
+    ComponentStorage(const ComponentStorage&) = delete;
+    ComponentStorage& operator=(const ComponentStorage&) = delete;
+    ComponentStorage(ComponentStorage&&) noexcept = default;
+    ComponentStorage& operator=(ComponentStorage&&) noexcept = default;
 
     size_t size() const {
         return components_.size();
