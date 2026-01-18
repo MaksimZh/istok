@@ -5,11 +5,19 @@
 #include <cstddef>
 #include <vector>
 #include <span>
+#include <unordered_map>
+#include <typeindex>
+#include <memory>
 
 namespace Istok::ECS {
 
+class AbstractComponentStorage {
+public:
+    virtual ~AbstractComponentStorage() = default;
+};
+
 template <typename T>
-class ComponentStorage {
+class ComponentStorage : public AbstractComponentStorage {
 public:
     ComponentStorage() = default;
     ~ComponentStorage() = default;
@@ -69,6 +77,81 @@ private:
     std::vector<int32_t> indexToComponent_;
     std::vector<T> components_;
     std::vector<size_t> componentToIndex_;
+};
+
+
+class ComponentManager {
+public:
+    ComponentManager() = default;
+    ~ComponentManager() = default;
+    
+    ComponentManager(const ComponentManager&) = delete;
+    ComponentManager& operator=(const ComponentManager&) = delete;
+    ComponentManager(ComponentManager&&) noexcept = default;
+    ComponentManager& operator=(ComponentManager&&) noexcept = default;
+
+    template <typename Component>
+    bool has(size_t index) {
+        auto it = storages_.find(key<Component>());
+        return it != storages_.end()
+            && as<Component>(*it->second).has(index);
+    }
+
+    template <typename Component>
+    Component& get(size_t index) {
+        assert(has<Component>(index));
+        return getStorage<Component>().get(index);
+    }
+
+    template <typename Component>
+    void insert(size_t index, Component&& value) {
+        ensureStorage<Component>().insert(index, std::move(value));
+    }
+
+    template <typename Component>
+    void remove(size_t index) {
+        assert(has<Component>(index));
+        getStorage<Component>().remove(index);
+    }
+
+private:
+    std::unordered_map<
+        std::type_index,
+        std::unique_ptr<AbstractComponentStorage>
+    > storages_;
+
+    template <typename Component>
+    static std::type_index key() {
+        static std::type_index index(typeid(Component));
+        return index;
+    }
+
+    template <typename Component>
+    static ComponentStorage<Component>& as(AbstractComponentStorage& storage) {
+        assert(dynamic_cast<ComponentStorage<Component>*>(&storage));
+        return reinterpret_cast<ComponentStorage<Component>&>(storage);
+    }
+
+    template <typename Component>
+    ComponentStorage<Component>& getStorage() {
+        auto it = storages_.find(key<Component>());
+        assert(it != storages_.end());
+        return as<Component>(*it->second);
+    }
+    
+    template <typename Component>
+    ComponentStorage<Component>& ensureStorage() {
+        auto k = key<Component>();
+        auto it = storages_.find(k);
+        if (it == storages_.end()) {
+            auto result = storages_.emplace(
+                k,
+                std::make_unique<ComponentStorage<Component>>());
+            assert(result.second == true);
+            it = result.first;
+        }
+        return as<Component>(*it->second);
+    }
 };
 
 }  // namespace Istok::ECS

@@ -104,3 +104,80 @@ TEST_CASE("ComponentStorage - multi actions", "[unit][ecs]") {
     REQUIRE(cs.get(7) == 107);
     REQUIRE(cs.get(8) == 208);
 }
+
+
+namespace {
+    struct A {
+        int value;
+        bool operator==(const A&) const = default;
+    };
+
+    struct B {
+        int value;
+        bool operator==(const B&) const = default;
+    };
+
+    struct C {
+        int value;
+        bool operator==(const C&) const = default;
+    };
+}  // namespace
+
+
+TEST_CASE("ComponentManager - basic", "[unit][ecs]") {
+    ComponentManager cm;
+    REQUIRE(!cm.has<A>(0));
+    REQUIRE(!cm.has<B>(0));
+    REQUIRE(!cm.has<C>(0));
+
+    SECTION("insert single") {
+        cm.insert(0, A{100});
+        REQUIRE(cm.has<A>(0));
+        REQUIRE(!cm.has<A>(1));
+        REQUIRE(!cm.has<B>(0));
+        REQUIRE(cm.get<A>(0) == A{100});
+    }
+
+    SECTION("insert multiple") {
+        cm.insert(0, A{100});
+        cm.insert(1, A{101});
+        REQUIRE(cm.has<A>(0));
+        REQUIRE(cm.has<A>(1));
+        REQUIRE(!cm.has<A>(2));
+        REQUIRE(!cm.has<B>(0));
+        REQUIRE(cm.get<A>(0) == A{100});
+        REQUIRE(cm.get<A>(1) == A{101});
+    }
+
+    SECTION("insert multiple components") {
+        cm.insert(0, A{100});
+        cm.insert(1, B{201});
+        REQUIRE(cm.has<A>(0));
+        REQUIRE(!cm.has<A>(1));
+        REQUIRE(!cm.has<B>(0));
+        REQUIRE(cm.has<B>(1));
+        REQUIRE(cm.get<A>(0) == A{100});
+        REQUIRE(cm.get<B>(1) == B{201});
+    }
+
+    SECTION("remove single") {
+        cm.insert(0, A{100});
+        cm.remove<A>(0);
+        REQUIRE(!cm.has<A>(0));
+    }
+
+    SECTION("remove") {
+        cm.insert(0, A{100});
+        cm.insert(1, A{101});
+        cm.insert(0, B{200});
+        cm.insert(1, B{201});
+        cm.remove<A>(0);
+        REQUIRE(!cm.has<A>(0));
+        REQUIRE(cm.has<A>(1));
+        REQUIRE(cm.has<B>(0));
+        REQUIRE(cm.has<B>(1));
+        REQUIRE(cm.get<A>(1) == A{101});
+        REQUIRE(cm.get<B>(0) == B{200});
+        REQUIRE(cm.get<B>(1) == B{201});
+    }
+}
