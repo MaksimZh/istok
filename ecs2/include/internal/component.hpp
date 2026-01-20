@@ -80,6 +80,15 @@ private:
 };
 
 
+template<typename... Components>
+class PosComponentFilter {};
+
+template<typename... Components>
+class NegComponentFilter {};
+
+template<typename Master, typename PosFilter, typename NegFilter>
+class ComponentView {};
+
 class ComponentManager {
 public:
     ComponentManager() = default;
@@ -112,6 +121,19 @@ public:
     void remove(size_t index) {
         assert(has<Component>(index));
         getStorage<Component>().remove(index);
+    }
+
+    template<typename Master, typename... Pos>
+    ComponentView<
+        Master,
+        PosComponentFilter<Pos...>,
+        NegComponentFilter<>
+    > view() {
+        return ComponentView<
+            Master,
+            PosComponentFilter<Pos...>,
+            NegComponentFilter<>
+        >();
     }
 
 private:

@@ -5,6 +5,7 @@
 #include <internal/component.hpp>
 
 #include <set>
+#include <vector>
 
 using namespace Istok::ECS;
 
@@ -180,4 +181,16 @@ TEST_CASE("ComponentManager - basic", "[unit][ecs]") {
         REQUIRE(cm.get<B>(0) == B{200});
         REQUIRE(cm.get<B>(1) == B{201});
     }
+}
+
+
+TEST_CASE("ComponentManager - view", "[unit][ecs]") {
+    ComponentManager cm;
+    cm.insert(0, A{100});
+    cm.insert(1, A{101});
+    cm.insert(1, B{201});
+    cm.insert(2, B{202});
+    cm.insert(2, C{302});
+    cm.insert(0, C{300});
+    cm.view<A>();
 }
