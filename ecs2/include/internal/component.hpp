@@ -67,8 +67,8 @@ public:
         componentToIndex_.pop_back();
     }
 
-    std::span<size_t> indices() {
-        return std::span<size_t>(componentToIndex_);
+    std::span<const size_t> indices() const {
+        return std::span<const size_t>(componentToIndex_);
     }
 
 private:
@@ -90,29 +90,55 @@ class NegComponentFilter {};
 template<typename Master, typename PosFilter, typename NegFilter>
 class ComponentView {
 public:
-    class iterator {
+    class Iterator {
     public:
-        size_t operator*() const noexcept { return 0; }
+        Iterator(std::span<const size_t>::iterator current)
+        : current_(current) {}
+        
+        size_t operator*() const noexcept { return *current_; }
 
-        iterator& operator++() noexcept {
+        Iterator& operator++() noexcept {
+            ++current_;
             return *this;
         }
 
-        iterator operator++(int) noexcept {
+        Iterator operator++(int) noexcept {
             auto tmp = *this;
             ++(*this);
             return tmp;
         }
 
-        bool operator==(const iterator& other) const noexcept = default;
+        bool operator==(const Iterator& other) const noexcept = default;
+    
+    private:
+        std::span<const size_t>::iterator current_;
     };
     
-    using const_iterator = iterator;
+    using iterator = Iterator;
+    
+    iterator begin() noexcept { return Iterator(master_.indices().begin()); }
+    
+    iterator end() noexcept { return Iterator(master_.indices().end()); }
 
-    iterator begin() noexcept { return iterator{}; }
-    iterator end() noexcept { return iterator{}; }
-    const_iterator begin() const noexcept { return iterator{}; }
-    const_iterator end() const noexcept { return iterator{}; }
+    using const_iterator = Iterator;
+    
+    const_iterator begin() const noexcept {
+        return Iterator(master_.indices().begin());
+    }
+    
+    const_iterator end() const noexcept {
+        return Iterator(master_.indices().end());
+    }
+
+    ComponentView(const ComponentStorage<Master>& master) : master_(master) {}
+
+    ComponentView(const ComponentView&) = delete;
+    ComponentView& operator=(const ComponentView&) = delete;
+    ComponentView(ComponentView&&) = delete;
+    ComponentView& operator=(ComponentView&&) = delete;
+
+private:
+    const ComponentStorage<Master>& master_;
 };
 
 class ComponentManager {
@@ -159,7 +185,7 @@ public:
             Master,
             PosComponentFilter<Pos...>,
             NegComponentFilter<>
-        >();
+        >(ensureStorage<Master>());
     }
 
 private:

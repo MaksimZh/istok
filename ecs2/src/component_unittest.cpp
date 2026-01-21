@@ -201,5 +201,5 @@ TEST_CASE("ComponentManager - view", "[unit][ecs]") {
     cm.insert(2, C{302});
     cm.insert(0, C{300});
 
-    REQUIRE(vectorize(cm.view<A>()) == std::vector<size_t>{});
+    REQUIRE(vectorize(cm.view<A>()) == std::vector<size_t>{0, 1});
 }
