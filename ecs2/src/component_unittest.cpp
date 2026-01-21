@@ -183,6 +183,14 @@ TEST_CASE("ComponentManager - basic", "[unit][ecs]") {
     }
 }
 
+namespace {
+
+template <typename T>
+std::vector<size_t> vectorize(const T& x) {
+    return std::vector<size_t>(x.begin(), x.end());
+}
+
+}  // namespace
 
 TEST_CASE("ComponentManager - view", "[unit][ecs]") {
     ComponentManager cm;
@@ -192,5 +200,6 @@ TEST_CASE("ComponentManager - view", "[unit][ecs]") {
     cm.insert(2, B{202});
     cm.insert(2, C{302});
     cm.insert(0, C{300});
-    cm.view<A>();
+
+    REQUIRE(vectorize(cm.view<A>()) == std::vector<size_t>{});
 }

@@ -86,8 +86,34 @@ class PosComponentFilter {};
 template<typename... Components>
 class NegComponentFilter {};
 
+
 template<typename Master, typename PosFilter, typename NegFilter>
-class ComponentView {};
+class ComponentView {
+public:
+    class iterator {
+    public:
+        size_t operator*() const noexcept { return 0; }
+
+        iterator& operator++() noexcept {
+            return *this;
+        }
+
+        iterator operator++(int) noexcept {
+            auto tmp = *this;
+            ++(*this);
+            return tmp;
+        }
+
+        bool operator==(const iterator& other) const noexcept = default;
+    };
+    
+    using const_iterator = iterator;
+
+    iterator begin() noexcept { return iterator{}; }
+    iterator end() noexcept { return iterator{}; }
+    const_iterator begin() const noexcept { return iterator{}; }
+    const_iterator end() const noexcept { return iterator{}; }
+};
 
 class ComponentManager {
 public:
