@@ -186,20 +186,28 @@ TEST_CASE("ComponentManager - basic", "[unit][ecs]") {
 namespace {
 
 template <typename T>
-std::vector<size_t> vectorize(const T& x) {
-    return std::vector<size_t>(x.begin(), x.end());
+std::set<size_t> toSet(const T& x) {
+    return std::set<size_t>(x.begin(), x.end());
 }
 
 }  // namespace
 
 TEST_CASE("ComponentManager - view", "[unit][ecs]") {
     ComponentManager cm;
-    cm.insert(0, A{100});
-    cm.insert(1, A{101});
-    cm.insert(1, B{201});
-    cm.insert(2, B{202});
-    cm.insert(2, C{302});
-    cm.insert(0, C{300});
+    cm.insert(0, A{10});
+    cm.insert(1, A{11});
+    cm.insert(2, A{12});
+    cm.insert(3, A{13});
+    cm.insert(2, B{22});
+    cm.insert(3, B{23});
+    cm.insert(4, B{24});
+    cm.insert(5, B{25});
+    cm.insert(0, C{34});
+    cm.insert(2, C{35});
+    cm.insert(4, C{36});
+    cm.insert(6, C{36});
 
-    REQUIRE(vectorize(cm.view<A>()) == std::vector<size_t>{0, 1});
+    REQUIRE(toSet(cm.view<A>()) == std::set<size_t>{0, 1, 2, 3});
+    REQUIRE(toSet(cm.view<B>()) == std::set<size_t>{2, 3, 4, 5});
+    REQUIRE(toSet(cm.view<C>()) == std::set<size_t>{0, 2, 4, 6});
 }
