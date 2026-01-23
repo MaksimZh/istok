@@ -194,20 +194,42 @@ std::set<size_t> toSet(const T& x) {
 
 TEST_CASE("ComponentManager - view", "[unit][ecs]") {
     ComponentManager cm;
-    cm.insert(0, A{10});
-    cm.insert(1, A{11});
-    cm.insert(2, A{12});
-    cm.insert(3, A{13});
-    cm.insert(2, B{22});
-    cm.insert(3, B{23});
-    cm.insert(4, B{24});
-    cm.insert(5, B{25});
-    cm.insert(0, C{34});
-    cm.insert(2, C{35});
-    cm.insert(4, C{36});
-    cm.insert(6, C{36});
+    cm.insert(0, A{0});
+    cm.insert(1, A{0});
+    cm.insert(2, A{0});
+    cm.insert(3, A{0});
+    cm.insert(2, B{0});
+    cm.insert(3, B{0});
+    cm.insert(4, B{0});
+    cm.insert(5, B{0});
+    cm.insert(0, C{0});
+    cm.insert(2, C{0});
+    cm.insert(4, C{0});
+    cm.insert(6, C{0});
 
     REQUIRE(toSet(cm.view<A>()) == std::set<size_t>{0, 1, 2, 3});
     REQUIRE(toSet(cm.view<B>()) == std::set<size_t>{2, 3, 4, 5});
     REQUIRE(toSet(cm.view<C>()) == std::set<size_t>{0, 2, 4, 6});
+    REQUIRE(toSet(cm.view<A, B>()) == std::set<size_t>{2, 3});
+    REQUIRE(toSet(cm.view<B, A>()) == std::set<size_t>{2, 3});
+    REQUIRE(toSet(cm.view<B, C>()) == std::set<size_t>{2, 4});
+    REQUIRE(toSet(cm.view<C, B>()) == std::set<size_t>{2, 4});
+    REQUIRE(toSet(cm.view<A, C>()) == std::set<size_t>{0, 2});
+    REQUIRE(toSet(cm.view<C, A>()) == std::set<size_t>{0, 2});
+    REQUIRE(toSet(cm.view<A, B, C>()) == std::set<size_t>{2});
+    REQUIRE(toSet(cm.view<B, C, A>()) == std::set<size_t>{2});
+    REQUIRE(toSet(cm.view<C, A, B>()) == std::set<size_t>{2});
+}
+
+TEST_CASE("ComponentManager - empty view", "[unit][ecs]") {
+    ComponentManager cm;
+
+    REQUIRE(toSet(cm.view<A>()) == std::set<size_t>{});
+
+    cm.insert(0, A{10});
+    cm.insert(1, A{11});
+    cm.insert(2, B{22});
+    cm.insert(3, B{23});
+
+    REQUIRE(toSet(cm.view<A, B>()) == std::set<size_t>{});
 }

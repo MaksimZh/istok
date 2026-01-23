@@ -1,6 +1,5 @@
 // Copyright 2026 Maksim Sergeevich Zholudev. All rights reserved
 #pragma once
-
 #include <cassert>
 #include <cstddef>
 #include <vector>
@@ -80,8 +79,25 @@ private:
 };
 
 
-template<typename... Components>
-class PosComponentFilter {};
+template<typename... Storages>
+class PosComponentFilter {
+public:
+    PosComponentFilter(const Storages*... storages) : storages_(storages...) {
+        assert(true);
+    }
+
+    PosComponentFilter(const PosComponentFilter&) = default;
+    PosComponentFilter& operator=(const PosComponentFilter&) = default;
+    PosComponentFilter(PosComponentFilter&&) = default;
+    PosComponentFilter& operator=(PosComponentFilter&&) = default;
+
+    bool check(size_t index) const {
+        return (std::get<const Storages*>(storages_)->has(index) && ...);
+    }
+
+private:
+    std::tuple<const Storages*...> storages_;
+};
 
 template<typename... Components>
 class NegComponentFilter {};
@@ -92,13 +108,26 @@ class ComponentView {
 public:
     class Iterator {
     public:
-        Iterator(std::span<const size_t>::iterator current)
-        : current_(current) {}
+        using element_type = size_t;
+        using difference_type = ptrdiff_t;
         
-        size_t operator*() const noexcept { return *current_; }
+        Iterator(
+            std::span<const size_t>::iterator current,
+            std::span<const size_t>::iterator sentinel,
+            const PosFilter& pos
+        ) : current_(current), sentinel_(sentinel), pos_(&pos) {
+            assert(current_ <= sentinel_);
+            seek();
+        }
+        
+        size_t operator*() const noexcept {
+            assert(current_ < sentinel_);
+            return *current_;
+        }
 
         Iterator& operator++() noexcept {
             ++current_;
+            seek();
             return *this;
         }
 
@@ -108,29 +137,61 @@ public:
             return tmp;
         }
 
-        bool operator==(const Iterator& other) const noexcept = default;
+        bool operator==(const Iterator& other) const noexcept {
+            assert(sentinel_ == other.sentinel_);
+            assert(pos_ == other.pos_);
+            return current_ == other.current_;
+        }
     
     private:
         std::span<const size_t>::iterator current_;
+        std::span<const size_t>::iterator sentinel_;
+        const PosFilter* pos_;
+
+        void seek() {
+            while (current_ < sentinel_ && !pos_->check(*current_)) {
+                current_++;
+            }
+        }
     };
     
     using iterator = Iterator;
     
-    iterator begin() noexcept { return Iterator(master_.indices().begin()); }
+    iterator begin() noexcept {
+        return Iterator(
+            master_.indices().begin(),
+            master_.indices().end(),
+            pos_);
+    }
     
-    iterator end() noexcept { return Iterator(master_.indices().end()); }
+    iterator end() noexcept {
+        return Iterator(
+            master_.indices().end(),
+            master_.indices().end(),
+            pos_);
+    }
 
     using const_iterator = Iterator;
     
     const_iterator begin() const noexcept {
-        return Iterator(master_.indices().begin());
+        return Iterator(
+            master_.indices().begin(),
+            master_.indices().end(),
+            pos_);
     }
     
     const_iterator end() const noexcept {
-        return Iterator(master_.indices().end());
+        return Iterator(
+            master_.indices().end(),
+            master_.indices().end(),
+            pos_);
     }
 
-    ComponentView(const ComponentStorage<Master>& master) : master_(master) {}
+    ComponentView(
+        const Master& master,
+        const PosFilter& pos,
+        const NegFilter& neg
+    ) : master_(master), pos_(pos) {}
 
     ComponentView(const ComponentView&) = delete;
     ComponentView& operator=(const ComponentView&) = delete;
@@ -138,7 +199,8 @@ public:
     ComponentView& operator=(ComponentView&&) = delete;
 
 private:
-    const ComponentStorage<Master>& master_;
+    const Master& master_;
+    PosFilter pos_;
 };
 
 class ComponentManager {
@@ -176,16 +238,12 @@ public:
     }
 
     template<typename Master, typename... Pos>
-    ComponentView<
-        Master,
-        PosComponentFilter<Pos...>,
-        NegComponentFilter<>
-    > view() {
-        return ComponentView<
-            Master,
-            PosComponentFilter<Pos...>,
-            NegComponentFilter<>
-        >(ensureStorage<Master>());
+    auto view() {
+        return ComponentView(
+            ensureStorage<Master>(),
+            PosComponentFilter(&ensureStorage<Pos>()...),
+            NegComponentFilter<>()
+        );
     }
 
 private:
