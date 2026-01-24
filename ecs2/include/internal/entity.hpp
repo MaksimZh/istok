@@ -10,6 +10,11 @@
 
 namespace Istok::ECS {
 
+namespace Internal {
+    class EntityManager;
+}
+
+
 struct Entity final {
     struct Hasher {
         size_t operator()(const Entity& entity) const {
@@ -24,7 +29,7 @@ struct Entity final {
     }
 
 private:
-    friend class EntityManager;
+    friend class Internal::EntityManager;
     
     int32_t index_;
     int32_t generation_;
@@ -33,6 +38,8 @@ private:
     : index_(index), generation_(generation) {}
 };
 
+
+namespace Internal {
 
 class EntityManager final {
 public:
@@ -115,5 +122,7 @@ private:
         ++entities_[index].generation_;
     }
 };
+
+}  // namespace Internal
 
 }  // namespace Istok::ECS

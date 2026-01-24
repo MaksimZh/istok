@@ -5,9 +5,8 @@
 #include <internal/component.hpp>
 
 #include <set>
-#include <vector>
 
-using namespace Istok::ECS;
+using namespace Istok::ECS::Internal;
 
 namespace {
 

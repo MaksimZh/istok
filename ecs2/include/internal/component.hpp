@@ -8,7 +8,7 @@
 #include <typeindex>
 #include <memory>
 
-namespace Istok::ECS {
+namespace Istok::ECS::Internal {
 
 class AbstractComponentStorage {
 public:
@@ -286,4 +286,4 @@ private:
     }
 };
 
-}  // namespace Istok::ECS
+}  // namespace Istok::ECS::Internal

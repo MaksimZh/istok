@@ -8,6 +8,7 @@
 #include <set>
 
 using namespace Istok::ECS;
+using namespace Istok::ECS::Internal;
 
 TEST_CASE("EntityManager - basics", "[unit][ecs]") {
     EntityManager em;
