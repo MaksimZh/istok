@@ -14,3 +14,8 @@ add_executable(ecs2_component_unittest ./src/component_unittest.cpp)
 target_link_libraries(ecs2_component_unittest PRIVATE ecs2)
 target_link_libraries(ecs2_component_unittest PRIVATE Catch2::Catch2WithMain)
 add_test(NAME ecs2_component_unittest COMMAND ecs2_component_unittest)
+
+add_executable(ecs2_unittest ./src/ecs_unittest.cpp)
+target_link_libraries(ecs2_unittest PRIVATE ecs2)
+target_link_libraries(ecs2_unittest PRIVATE Catch2::Catch2WithMain)
+add_test(NAME ecs2_unittest COMMAND ecs2_unittest)
