@@ -7,6 +7,7 @@
 #include <unordered_map>
 #include <typeindex>
 #include <memory>
+#include <utility>
 
 namespace Istok::ECS::Internal {
 
@@ -42,14 +43,14 @@ public:
 
     void insert(size_t index, T&& value) {
         if (has(index)) {
-            components_[indexToComponent_[index]] = std::move(value);
+            components_[indexToComponent_[index]] = std::forward<T>(value);
             return;
         }
         if (index >= indexToComponent_.size()) {
             indexToComponent_.resize(index + 1, EMPTY);
         }
         indexToComponent_[index] = components_.size();
-        components_.push_back(std::move(value));
+        components_.push_back(std::forward<T>(value));
         componentToIndex_.push_back(index);
     }
 
@@ -64,6 +65,12 @@ public:
         indexToComponent_[index] = EMPTY;
         components_.pop_back();
         componentToIndex_.pop_back();
+    }
+
+    void clear() {
+        indexToComponent_.clear();
+        components_.clear();
+        componentToIndex_.clear();
     }
 
     std::span<const size_t> indices() const {
@@ -214,7 +221,7 @@ public:
     ComponentManager& operator=(ComponentManager&&) noexcept = default;
 
     template <typename Component>
-    bool has(size_t index) {
+    bool has(size_t index) const {
         auto it = storages_.find(key<Component>());
         return it != storages_.end()
             && as<Component>(*it->second).has(index);
@@ -228,13 +235,19 @@ public:
 
     template <typename Component>
     void insert(size_t index, Component&& value) {
-        ensureStorage<Component>().insert(index, std::move(value));
+        ensureStorage<Component>().insert(
+            index, std::forward<Component>(value));
     }
 
     template <typename Component>
     void remove(size_t index) {
         assert(has<Component>(index));
         getStorage<Component>().remove(index);
+    }
+
+    template <typename Component>
+    void removeAll() {
+        ensureStorage<Component>().clear();
     }
 
     template<typename Master, typename... Pos>

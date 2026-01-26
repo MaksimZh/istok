@@ -71,6 +71,19 @@ TEST_CASE("ComponentStorage - basics", "[unit][ecs]") {
         REQUIRE(cs.get(3) == 43);
         REQUIRE(indexSet(cs) == std::set<size_t>{0, 2, 3});
     }
+
+    SECTION("clear") {
+        cs.insert(0, 40);
+        cs.insert(1, 41);
+        cs.insert(2, 42);
+        cs.insert(3, 43);
+        cs.clear();
+        REQUIRE(!cs.has(0));
+        REQUIRE(!cs.has(1));
+        REQUIRE(!cs.has(2));
+        REQUIRE(!cs.has(3));
+        REQUIRE(indexSet(cs) == std::set<size_t>{});
+    }
 }
 
 
@@ -177,6 +190,20 @@ TEST_CASE("ComponentManager - basic", "[unit][ecs]") {
         REQUIRE(cm.has<B>(0));
         REQUIRE(cm.has<B>(1));
         REQUIRE(cm.get<A>(1) == A{101});
+        REQUIRE(cm.get<B>(0) == B{200});
+        REQUIRE(cm.get<B>(1) == B{201});
+    }
+
+    SECTION("remove all") {
+        cm.insert(0, A{100});
+        cm.insert(1, A{101});
+        cm.insert(0, B{200});
+        cm.insert(1, B{201});
+        cm.removeAll<A>();
+        REQUIRE(!cm.has<A>(0));
+        REQUIRE(!cm.has<A>(1));
+        REQUIRE(cm.has<B>(0));
+        REQUIRE(cm.has<B>(1));
         REQUIRE(cm.get<B>(0) == B{200});
         REQUIRE(cm.get<B>(1) == B{201});
     }
