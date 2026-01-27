@@ -85,6 +85,12 @@ TEST_CASE("ComponentStorage - basics", "[unit][ecs]") {
         REQUIRE(!cs.has(3));
         REQUIRE(indexSet(cs) == std::set<size_t>{});
     }
+
+    SECTION("modify") {
+        cs.insert(0, 100);
+        cs.get(0) = 101;
+        REQUIRE(cs.get(0) == 101);
+    }
 }
 
 
@@ -325,6 +331,15 @@ TEST_CASE("ComponentManager - basic", "[unit][ecs]") {
         REQUIRE(cm.get<A>(1) == A{101});
         REQUIRE(cm.get<B>(1) == B{201});
     }
+
+    SECTION("modify") {
+        cm.insert(0, A{100});
+        cm.get<A>(0) = A{101};
+        REQUIRE(cm.get<A>(0) == A{101});
+        cm.get<A>(0).value = 102;
+        REQUIRE(cm.get<A>(0) == A{102});
+    }
+
 }
 
 namespace {

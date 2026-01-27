@@ -127,6 +127,14 @@ TEST_CASE("ECSManager - components", "[unit][ecs]") {
         REQUIRE(ecs.get<B>(a) == B{200});
         REQUIRE(ecs.get<B>(b) == B{201});
     }
+
+    SECTION("modify") {
+        ecs.insert(a, A{100});
+        ecs.get<A>(a) = A{101};
+        REQUIRE(ecs.get<A>(a) == A{101});
+        ecs.get<A>(a).value = 102;
+        REQUIRE(ecs.get<A>(a) == A{102});
+    }
 }
 
 
