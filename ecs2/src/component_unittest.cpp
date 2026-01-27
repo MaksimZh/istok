@@ -2,6 +2,7 @@
 #include <catch.hpp>
 
 #include <catch2/catch_test_macros.hpp>
+#include <cstdlib>
 #include <internal/component.hpp>
 
 #include <set>
@@ -87,6 +88,35 @@ TEST_CASE("ComponentStorage - basics", "[unit][ecs]") {
 }
 
 
+TEST_CASE("ComponentStorage - ensureHasNot", "[unit][ecs]") {
+    ComponentStorage<int> cs;
+    cs.insert(0, 40);
+    cs.insert(1, 41);
+    cs.insert(2, 42);
+    cs.insert(3, 43);
+
+    SECTION("first") {
+        cs.ensureHasNot(0);
+        REQUIRE(indexSet(cs) == std::set<size_t>{1, 2, 3});
+    }
+
+    SECTION("middle") {
+        cs.ensureHasNot(1);
+        REQUIRE(indexSet(cs) == std::set<size_t>{0, 2, 3});
+    }
+
+    SECTION("last") {
+        cs.ensureHasNot(3);
+        REQUIRE(indexSet(cs) == std::set<size_t>{0, 1, 2});
+    }
+
+    SECTION("none") {
+        cs.ensureHasNot(4);
+        REQUIRE(indexSet(cs) == std::set<size_t>{0, 1, 2, 3});
+    }
+}
+
+
 TEST_CASE("ComponentStorage - multi actions", "[unit][ecs]") {
     ComponentStorage<int> cs;
     cs.insert(0, 100);
@@ -116,6 +146,80 @@ TEST_CASE("ComponentStorage - multi actions", "[unit][ecs]") {
     REQUIRE(cs.get(5) == 205);
     REQUIRE(cs.get(7) == 107);
     REQUIRE(cs.get(8) == 208);
+}
+
+
+namespace {
+
+template <typename Tag>
+class MockUnique {
+public:
+    MockUnique(std::string& status) : status_(&status) {
+        *status_ = "valid";
+    }
+
+    ~MockUnique() {
+        clear();
+    }
+
+    MockUnique(const MockUnique&) = delete;
+    MockUnique& operator=(const MockUnique&) = delete;
+    
+    MockUnique(MockUnique&& other) : status_(other.status_) {
+        other.status_ = nullptr;
+    }
+    
+    MockUnique& operator=(MockUnique&& other) {
+        if (this != &other) {
+            clear();
+            this->status_ = other.status_;
+            other.status_ = nullptr;
+        }
+        return *this;
+    }
+
+private:
+    std::string* status_ = nullptr;
+
+    void clear() {
+        if (status_) {
+            *status_ = "destroyed";
+        }
+    }
+};
+
+}  // namespace
+
+TEST_CASE("ComponentStorage - component lifecycle", "[unit][ecs]") {
+    std::string s0;
+    std::string s1;
+
+    {
+        using CA = MockUnique<void>;
+        ComponentStorage<CA> cs;
+        cs.insert(0, CA(s0));
+        cs.insert(1, CA(s1));
+        REQUIRE(s0 == "valid");
+        REQUIRE(s1 == "valid");
+
+        SECTION("none") {}
+
+        SECTION("remove") {
+            cs.remove(0);
+            REQUIRE(s0 == "destroyed");
+            REQUIRE(s1 == "valid");
+        }
+
+        SECTION("clear") {
+            cs.clear();
+            REQUIRE(s0 == "destroyed");
+            REQUIRE(s1 == "destroyed");
+        }
+
+    }
+
+    REQUIRE(s0 == "destroyed");
+    REQUIRE(s1 == "destroyed");
 }
 
 
@@ -205,6 +309,20 @@ TEST_CASE("ComponentManager - basic", "[unit][ecs]") {
         REQUIRE(cm.has<B>(0));
         REQUIRE(cm.has<B>(1));
         REQUIRE(cm.get<B>(0) == B{200});
+        REQUIRE(cm.get<B>(1) == B{201});
+    }
+
+    SECTION("clear index") {
+        cm.insert(0, A{100});
+        cm.insert(1, A{101});
+        cm.insert(0, B{200});
+        cm.insert(1, B{201});
+        cm.clearIndex(0);
+        REQUIRE(!cm.has<A>(0));
+        REQUIRE(cm.has<A>(1));
+        REQUIRE(!cm.has<B>(0));
+        REQUIRE(cm.has<B>(1));
+        REQUIRE(cm.get<A>(1) == A{101});
         REQUIRE(cm.get<B>(1) == B{201});
     }
 }

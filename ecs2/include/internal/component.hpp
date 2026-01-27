@@ -14,6 +14,7 @@ namespace Istok::ECS::Internal {
 class AbstractComponentStorage {
 public:
     virtual ~AbstractComponentStorage() = default;
+    virtual void ensureHasNot(size_t index) = 0;
 };
 
 template <typename T>
@@ -71,6 +72,12 @@ public:
         indexToComponent_.clear();
         components_.clear();
         componentToIndex_.clear();
+    }
+
+    void ensureHasNot(size_t index) override {
+        if (has(index)) {
+            remove(index);
+        }
     }
 
     std::span<const size_t> indices() const {
@@ -248,6 +255,12 @@ public:
     template <typename Component>
     void removeAll() {
         ensureStorage<Component>().clear();
+    }
+
+    void clearIndex(size_t index) {
+        for (auto& it : storages_) {
+            it.second->ensureHasNot(index);
+        }
     }
 
     template<typename Master, typename... Pos>

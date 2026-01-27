@@ -21,6 +21,7 @@ public:
 
     void deleteEntity(Entity entity) noexcept {
         assert(isValidEntity(entity));
+        componentManager.clearIndex(entity.index());
         entityManager.deleteEntity(entity);
     }
 

@@ -128,3 +128,76 @@ TEST_CASE("ECSManager - components", "[unit][ecs]") {
         REQUIRE(ecs.get<B>(b) == B{201});
     }
 }
+
+
+namespace {
+
+template <typename Tag>
+class MockUnique {
+public:
+    MockUnique(std::string& status) : status_(&status) {
+        *status_ = "valid";
+    }
+
+    ~MockUnique() {
+        clear();
+    }
+
+    MockUnique(const MockUnique&) = delete;
+    MockUnique& operator=(const MockUnique&) = delete;
+    
+    MockUnique(MockUnique&& other) : status_(other.status_) {
+        other.status_ = nullptr;
+    }
+    
+    MockUnique& operator=(MockUnique&& other) {
+        if (this != &other) {
+            clear();
+            this->status_ = other.status_;
+            other.status_ = nullptr;
+        }
+        return *this;
+    }
+
+private:
+    std::string* status_ = nullptr;
+
+    void clear() {
+        if (status_) {
+            *status_ = "destroyed";
+        }
+    }
+};
+
+}  // namespace
+
+TEST_CASE("ECSManager - component lifecycle", "[unit][ecs]") {
+    ECSManager ecs;
+    using CA = MockUnique<A>;
+    auto a = ecs.createEntity();
+    auto b = ecs.createEntity();
+    std::string sa;
+    std::string sb;
+    ecs.insert(a, CA(sa));
+    ecs.insert(b, CA(sb));
+    REQUIRE(sa == "valid");
+    REQUIRE(sb == "valid");
+
+    SECTION("remove component") {
+        ecs.remove<CA>(a);
+        REQUIRE(sa == "destroyed");
+        REQUIRE(sb == "valid");
+    }
+
+    SECTION("remove all") {
+        ecs.removeAll<CA>();
+        REQUIRE(sa == "destroyed");
+        REQUIRE(sb == "destroyed");
+    }
+
+    SECTION("delete entity") {
+        ecs.deleteEntity(a);
+        REQUIRE(sa == "destroyed");
+        REQUIRE(sb == "valid");
+    }
+}
