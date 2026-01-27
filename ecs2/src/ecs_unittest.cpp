@@ -273,3 +273,35 @@ TEST_CASE("ECSManager - empty view", "[unit][ecs]") {
 
     REQUIRE(toSet(ecs.view<A, B>()) == std::set<size_t>{});
 }
+
+
+TEST_CASE("ECSManager - loop systems", "[unit][ecs]") {
+    ECSManager ecs;
+
+    SECTION("single") {
+        auto a = ecs.createEntity();
+        ecs.insert(a, A{100});
+        ecs.addLoopSystem([a](ECSManager& ecs) { ecs.get<A>(a).value++; });
+        REQUIRE(ecs.get<A>(a) == A{100});
+        ecs.iterate();
+        REQUIRE(ecs.get<A>(a) == A{101});
+        ecs.iterate();
+        REQUIRE(ecs.get<A>(a) == A{102});
+    }
+
+    SECTION("multiple") {
+        auto a = ecs.createEntity();
+        ecs.insert(a, A{100});
+        ecs.insert(a, B{200});
+        ecs.addLoopSystem([a](ECSManager& ecs) { ecs.get<A>(a).value++; });
+        ecs.addLoopSystem([a](ECSManager& ecs) { ecs.get<B>(a).value++; });
+        REQUIRE(ecs.get<A>(a) == A{100});
+        REQUIRE(ecs.get<B>(a) == B{200});
+        ecs.iterate();
+        REQUIRE(ecs.get<A>(a) == A{101});
+        REQUIRE(ecs.get<B>(a) == B{201});
+        ecs.iterate();
+        REQUIRE(ecs.get<A>(a) == A{102});
+        REQUIRE(ecs.get<B>(a) == B{202});
+    }
+}
