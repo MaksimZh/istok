@@ -16,6 +16,16 @@ using System = std::function<void(ECSManager&)>;
 
 class ECSManager {
 public:
+    ~ECSManager() {
+        for (
+            auto it = cleanupSystems_.rbegin();
+            it != cleanupSystems_.rend();
+            ++it
+        ) {
+            (*it)(*this);
+        }
+    }
+    
     bool isValidEntity(Entity entity) const noexcept {
         return entityManager_.isValidEntity(entity);
     }
@@ -71,6 +81,10 @@ public:
         loopSystems_.push_back(system);
     }
 
+    void addCleanupSystem(System system) {
+        cleanupSystems_.push_back(system);
+    }
+
     void iterate() {
         for (auto& s : loopSystems_) {
             s(*this);
@@ -81,6 +95,7 @@ private:
     Internal::EntityManager entityManager_;
     Internal::ComponentManager componentManager_;
     std::vector<System> loopSystems_;
+    std::vector<System> cleanupSystems_;
 };
 
 }  // namespace Istok::ECS
