@@ -201,3 +201,67 @@ TEST_CASE("ECSManager - component lifecycle", "[unit][ecs]") {
         REQUIRE(sb == "valid");
     }
 }
+
+
+namespace {
+
+template <typename T>
+std::set<size_t> toSet(const T& x) {
+    return std::set<size_t>(x.begin(), x.end());
+}
+
+}  // namespace
+
+
+TEST_CASE("ECSManager - view", "[unit][ecs]") {
+    ECSManager ecs;
+    auto e0 = ecs.createEntity();
+    auto e1 = ecs.createEntity();
+    auto e2 = ecs.createEntity();
+    auto e3 = ecs.createEntity();
+    auto e4 = ecs.createEntity();
+    auto e5 = ecs.createEntity();
+    auto e6 = ecs.createEntity();
+    ecs.insert(e0, A{0});
+    ecs.insert(e1, A{0});
+    ecs.insert(e2, A{0});
+    ecs.insert(e3, A{0});
+    ecs.insert(e2, B{0});
+    ecs.insert(e3, B{0});
+    ecs.insert(e4, B{0});
+    ecs.insert(e5, B{0});
+    ecs.insert(e0, C{0});
+    ecs.insert(e2, C{0});
+    ecs.insert(e4, C{0});
+    ecs.insert(e6, C{0});
+
+    REQUIRE(toSet(ecs.view<A>()) == std::set<size_t>{0, 1, 2, 3});
+    REQUIRE(toSet(ecs.view<B>()) == std::set<size_t>{2, 3, 4, 5});
+    REQUIRE(toSet(ecs.view<C>()) == std::set<size_t>{0, 2, 4, 6});
+    REQUIRE(toSet(ecs.view<A, B>()) == std::set<size_t>{2, 3});
+    REQUIRE(toSet(ecs.view<B, A>()) == std::set<size_t>{2, 3});
+    REQUIRE(toSet(ecs.view<B, C>()) == std::set<size_t>{2, 4});
+    REQUIRE(toSet(ecs.view<C, B>()) == std::set<size_t>{2, 4});
+    REQUIRE(toSet(ecs.view<A, C>()) == std::set<size_t>{0, 2});
+    REQUIRE(toSet(ecs.view<C, A>()) == std::set<size_t>{0, 2});
+    REQUIRE(toSet(ecs.view<A, B, C>()) == std::set<size_t>{2});
+    REQUIRE(toSet(ecs.view<B, C, A>()) == std::set<size_t>{2});
+    REQUIRE(toSet(ecs.view<C, A, B>()) == std::set<size_t>{2});
+}
+
+TEST_CASE("ECSManager - empty view", "[unit][ecs]") {
+    ECSManager ecs;
+    auto e0 = ecs.createEntity();
+    auto e1 = ecs.createEntity();
+    auto e2 = ecs.createEntity();
+    auto e3 = ecs.createEntity();
+
+    REQUIRE(toSet(ecs.view<A>()) == std::set<size_t>{});
+
+    ecs.insert(e0, A{10});
+    ecs.insert(e1, A{11});
+    ecs.insert(e2, B{22});
+    ecs.insert(e3, B{23});
+
+    REQUIRE(toSet(ecs.view<A, B>()) == std::set<size_t>{});
+}

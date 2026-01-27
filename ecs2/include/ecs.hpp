@@ -57,6 +57,11 @@ public:
         componentManager.removeAll<Component>();
     }
 
+    template<typename... Components>
+    auto view() {
+        return componentManager.view<Components...>();
+    }
+
 private:
     Internal::EntityManager entityManager;
     Internal::ComponentManager componentManager;
