@@ -59,8 +59,13 @@ public:
     bool isValidIndex(size_t index) const {
         return index < entities_.size() && !isLink(index);
     }
+
+    size_t size() const {
+        return size_;
+    }
     
     Entity createEntity() {
+        ++size_;
         if (freeIndex_ == entities_.size()) {
             entities_.push_back(Entity(freeIndex_, 0));
             return getEntity(freeIndex_++);
@@ -78,6 +83,7 @@ public:
 
     void deleteEntity(Entity entity) {
         assert(isValidEntity(entity));
+        --size_;
         setLink(entity.index_, freeIndex_);
         freeIndex_ = entity.index_;
     }
@@ -85,6 +91,7 @@ public:
 private:
     std::vector<Entity> entities_;
     size_t freeIndex_ = 0;
+    size_t size_ = 0;
 
     bool isLink(size_t index) const {
         assert(index >= 0);

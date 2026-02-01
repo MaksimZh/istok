@@ -40,6 +40,10 @@ public:
         entityManager_.deleteEntity(entity);
     }
 
+    size_t countEntities() const noexcept {
+        return entityManager_.size();
+    }
+
     template <typename Component>
     bool has(Entity entity) const noexcept {
         assert(isValidEntity(entity));

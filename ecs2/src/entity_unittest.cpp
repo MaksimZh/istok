@@ -12,9 +12,13 @@ using namespace Istok::ECS::Internal;
 
 TEST_CASE("EntityManager - basics", "[unit][ecs]") {
     EntityManager em;
+    REQUIRE(em.size() == 0);
     Entity a = em.createEntity();
+    REQUIRE(em.size() == 1);
     Entity b = em.createEntity();
+    REQUIRE(em.size() == 2);
     Entity c = em.createEntity();
+    REQUIRE(em.size() == 3);
 
     SECTION("index values") {
         REQUIRE(a.index() == 0);
@@ -49,6 +53,7 @@ TEST_CASE("EntityManager - basics", "[unit][ecs]") {
 
     SECTION("invalidate on deletion") {
         em.deleteEntity(b);
+        REQUIRE(em.size() == 2);
         REQUIRE(em.isValidEntity(a));
         REQUIRE(!em.isValidEntity(b));
         REQUIRE(em.isValidEntity(c));
@@ -57,6 +62,7 @@ TEST_CASE("EntityManager - basics", "[unit][ecs]") {
     SECTION("reuse after deletion") {
         em.deleteEntity(b);
         Entity d = em.createEntity();
+        REQUIRE(em.size() == 3);
         REQUIRE(em.isValidEntity(a));
         REQUIRE(!em.isValidEntity(b));
         REQUIRE(em.isValidEntity(c));

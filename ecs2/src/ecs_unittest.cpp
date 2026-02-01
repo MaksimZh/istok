@@ -9,9 +9,13 @@ using namespace Istok::ECS;
 
 TEST_CASE("ECSManager - entities", "[unit][ecs]") {
     ECSManager ecs;
+    REQUIRE(ecs.countEntities() == 0);
     Entity a = ecs.createEntity();
+    REQUIRE(ecs.countEntities() == 1);
     Entity b = ecs.createEntity();
+    REQUIRE(ecs.countEntities() == 2);
     Entity c = ecs.createEntity();
+    REQUIRE(ecs.countEntities() == 3);
 
     SECTION("entity validity") {
         REQUIRE(ecs.isValidEntity(a));
@@ -27,6 +31,7 @@ TEST_CASE("ECSManager - entities", "[unit][ecs]") {
 
     SECTION("invalidate on deletion") {
         ecs.deleteEntity(b);
+        REQUIRE(ecs.countEntities() == 2);
         REQUIRE(ecs.isValidEntity(a));
         REQUIRE(!ecs.isValidEntity(b));
         REQUIRE(ecs.isValidEntity(c));
