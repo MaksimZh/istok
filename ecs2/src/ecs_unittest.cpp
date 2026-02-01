@@ -62,10 +62,14 @@ TEST_CASE("ECSManager - components", "[unit][ecs]") {
         REQUIRE(!ecs.has<A>(a));
         REQUIRE(!ecs.has<B>(a));
         REQUIRE(!ecs.has<C>(a));
+        REQUIRE(ecs.count<A>() == 0);
+        REQUIRE(ecs.count<B>() == 0);
+        REQUIRE(ecs.count<C>() == 0);
     }
 
     SECTION("single component") {
         ecs.insert(a, A{100});
+        REQUIRE(ecs.count<A>() == 1);
         REQUIRE(ecs.has<A>(a));
         REQUIRE(ecs.get<A>(a) == A{100});
         REQUIRE(!ecs.has<A>(b));
@@ -77,6 +81,9 @@ TEST_CASE("ECSManager - components", "[unit][ecs]") {
         ecs.insert(b, A{200});
         ecs.insert(b, B{201});
         ecs.insert(c, C{300});
+        REQUIRE(ecs.count<A>() == 2);
+        REQUIRE(ecs.count<B>() == 2);
+        REQUIRE(ecs.count<C>() == 1);
         REQUIRE(ecs.has<A>(a));
         REQUIRE(ecs.has<B>(a));
         REQUIRE(!ecs.has<C>(a));
@@ -96,6 +103,7 @@ TEST_CASE("ECSManager - components", "[unit][ecs]") {
     SECTION("remove single") {
         ecs.insert(a, A{100});
         ecs.remove<A>(a);
+        REQUIRE(ecs.count<A>() == 0);
         REQUIRE(!ecs.has<A>(a));
     }
 
@@ -104,7 +112,11 @@ TEST_CASE("ECSManager - components", "[unit][ecs]") {
         ecs.insert(b, A{101});
         ecs.insert(a, B{200});
         ecs.insert(b, B{201});
+        REQUIRE(ecs.count<A>() == 2);
+        REQUIRE(ecs.count<B>() == 2);
         ecs.remove<A>(a);
+        REQUIRE(ecs.count<A>() == 1);
+        REQUIRE(ecs.count<B>() == 2);
         REQUIRE(!ecs.has<A>(a));
         REQUIRE(ecs.has<A>(b));
         REQUIRE(ecs.has<B>(a));
@@ -119,7 +131,11 @@ TEST_CASE("ECSManager - components", "[unit][ecs]") {
         ecs.insert(b, A{101});
         ecs.insert(a, B{200});
         ecs.insert(b, B{201});
+        REQUIRE(ecs.count<A>() == 2);
+        REQUIRE(ecs.count<B>() == 2);
         ecs.removeAll<A>();
+        REQUIRE(ecs.count<A>() == 0);
+        REQUIRE(ecs.count<B>() == 2);
         REQUIRE(!ecs.has<A>(a));
         REQUIRE(!ecs.has<A>(b));
         REQUIRE(ecs.has<B>(a));

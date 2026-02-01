@@ -25,6 +25,7 @@ TEST_CASE("ComponentStorage - basics", "[unit][ecs]") {
 
     SECTION("insert first") {
         cs.insert(0, 42);
+        REQUIRE(cs.size() == 1);
         REQUIRE(cs.has(0));
         REQUIRE(!cs.has(1));
         REQUIRE(cs.get(0) == 42);
@@ -33,6 +34,7 @@ TEST_CASE("ComponentStorage - basics", "[unit][ecs]") {
 
     SECTION("insert middle") {
         cs.insert(2, 42);
+        REQUIRE(cs.size() == 1);
         REQUIRE(!cs.has(0));
         REQUIRE(!cs.has(1));
         REQUIRE(cs.has(2));
@@ -46,7 +48,9 @@ TEST_CASE("ComponentStorage - basics", "[unit][ecs]") {
         cs.insert(1, 41);
         cs.insert(2, 42);
         cs.insert(3, 43);
+        REQUIRE(cs.size() == 4);
         cs.remove(3);
+        REQUIRE(cs.size() == 3);
         REQUIRE(cs.has(0));
         REQUIRE(cs.has(1));
         REQUIRE(cs.has(2));
@@ -62,7 +66,9 @@ TEST_CASE("ComponentStorage - basics", "[unit][ecs]") {
         cs.insert(1, 41);
         cs.insert(2, 42);
         cs.insert(3, 43);
+        REQUIRE(cs.size() == 4);
         cs.remove(1);
+        REQUIRE(cs.size() == 3);
         REQUIRE(cs.has(0));
         REQUIRE(!cs.has(1));
         REQUIRE(cs.has(2));
@@ -78,7 +84,9 @@ TEST_CASE("ComponentStorage - basics", "[unit][ecs]") {
         cs.insert(1, 41);
         cs.insert(2, 42);
         cs.insert(3, 43);
+        REQUIRE(cs.size() == 4);
         cs.clear();
+        REQUIRE(cs.size() == 0);
         REQUIRE(!cs.has(0));
         REQUIRE(!cs.has(1));
         REQUIRE(!cs.has(2));
@@ -131,6 +139,7 @@ TEST_CASE("ComponentStorage - multi actions", "[unit][ecs]") {
     cs.insert(9, 109);
     cs.insert(6, 106);
     cs.insert(7, 107);
+    REQUIRE(cs.size() == 6);
     REQUIRE(indexSet(cs) == std::set<size_t>{0, 2, 3, 6, 7, 9});
     REQUIRE(cs.get(0) == 100);
     REQUIRE(cs.get(2) == 102);
@@ -141,10 +150,12 @@ TEST_CASE("ComponentStorage - multi actions", "[unit][ecs]") {
     cs.remove(2);
     cs.remove(9);
     cs.remove(6);
+    REQUIRE(cs.size() == 3);
     cs.insert(0, 200);
     cs.insert(5, 205);
     cs.insert(2, 202);
     cs.insert(8, 208);
+    REQUIRE(cs.size() == 6);
     REQUIRE(indexSet(cs) == std::set<size_t>{0, 2, 3, 5, 7, 8});
     REQUIRE(cs.get(0) == 200);
     REQUIRE(cs.get(2) == 202);
@@ -249,12 +260,16 @@ namespace {
 
 TEST_CASE("ComponentManager - basic", "[unit][ecs]") {
     ComponentManager cm;
+    REQUIRE(cm.count<A>() == 0);
+    REQUIRE(cm.count<B>() == 0);
+    REQUIRE(cm.count<C>() == 0);
     REQUIRE(!cm.has<A>(0));
     REQUIRE(!cm.has<B>(0));
     REQUIRE(!cm.has<C>(0));
 
     SECTION("insert single") {
         cm.insert(0, A{100});
+        REQUIRE(cm.count<A>() == 1);
         REQUIRE(cm.has<A>(0));
         REQUIRE(!cm.has<A>(1));
         REQUIRE(!cm.has<B>(0));
@@ -264,6 +279,7 @@ TEST_CASE("ComponentManager - basic", "[unit][ecs]") {
     SECTION("insert multiple") {
         cm.insert(0, A{100});
         cm.insert(1, A{101});
+        REQUIRE(cm.count<A>() == 2);
         REQUIRE(cm.has<A>(0));
         REQUIRE(cm.has<A>(1));
         REQUIRE(!cm.has<A>(2));
@@ -275,6 +291,8 @@ TEST_CASE("ComponentManager - basic", "[unit][ecs]") {
     SECTION("insert multiple components") {
         cm.insert(0, A{100});
         cm.insert(1, B{201});
+        REQUIRE(cm.count<A>() == 1);
+        REQUIRE(cm.count<B>() == 1);
         REQUIRE(cm.has<A>(0));
         REQUIRE(!cm.has<A>(1));
         REQUIRE(!cm.has<B>(0));
@@ -286,6 +304,7 @@ TEST_CASE("ComponentManager - basic", "[unit][ecs]") {
     SECTION("remove single") {
         cm.insert(0, A{100});
         cm.remove<A>(0);
+        REQUIRE(cm.count<A>() == 0);
         REQUIRE(!cm.has<A>(0));
     }
 
@@ -294,7 +313,11 @@ TEST_CASE("ComponentManager - basic", "[unit][ecs]") {
         cm.insert(1, A{101});
         cm.insert(0, B{200});
         cm.insert(1, B{201});
+        REQUIRE(cm.count<A>() == 2);
+        REQUIRE(cm.count<B>() == 2);
         cm.remove<A>(0);
+        REQUIRE(cm.count<A>() == 1);
+        REQUIRE(cm.count<B>() == 2);
         REQUIRE(!cm.has<A>(0));
         REQUIRE(cm.has<A>(1));
         REQUIRE(cm.has<B>(0));
@@ -309,7 +332,11 @@ TEST_CASE("ComponentManager - basic", "[unit][ecs]") {
         cm.insert(1, A{101});
         cm.insert(0, B{200});
         cm.insert(1, B{201});
+        REQUIRE(cm.count<A>() == 2);
+        REQUIRE(cm.count<B>() == 2);
         cm.removeAll<A>();
+        REQUIRE(cm.count<A>() == 0);
+        REQUIRE(cm.count<B>() == 2);
         REQUIRE(!cm.has<A>(0));
         REQUIRE(!cm.has<A>(1));
         REQUIRE(cm.has<B>(0));
@@ -323,7 +350,11 @@ TEST_CASE("ComponentManager - basic", "[unit][ecs]") {
         cm.insert(1, A{101});
         cm.insert(0, B{200});
         cm.insert(1, B{201});
+        REQUIRE(cm.count<A>() == 2);
+        REQUIRE(cm.count<B>() == 2);
         cm.clearIndex(0);
+        REQUIRE(cm.count<A>() == 1);
+        REQUIRE(cm.count<B>() == 1);
         REQUIRE(!cm.has<A>(0));
         REQUIRE(cm.has<A>(1));
         REQUIRE(!cm.has<B>(0));

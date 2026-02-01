@@ -47,6 +47,11 @@ public:
     }
 
     template <typename Component>
+    size_t count() const noexcept {
+        return componentManager_.count<Component>();
+    }
+
+    template <typename Component>
     void insert(Entity entity, Component&& component) noexcept {
         assert(isValidEntity(entity));
         componentManager_.insert(

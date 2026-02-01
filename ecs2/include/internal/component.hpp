@@ -235,6 +235,14 @@ public:
     }
 
     template <typename Component>
+    size_t count() const {
+        auto it = storages_.find(key<Component>());
+        return it != storages_.end()
+            ? as<Component>(*it->second).size()
+            : 0;
+    }
+
+    template <typename Component>
     Component& get(size_t index) {
         assert(has<Component>(index));
         return getStorage<Component>().get(index);
