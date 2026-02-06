@@ -1,5 +1,5 @@
-#add_executable(ecsbased ecsbased.cpp)
-#target_link_libraries(ecsbased PRIVATE logging ecs gui)
+add_executable(ecsbased ecsbased.cpp)
+target_link_libraries(ecsbased PRIVATE logging ecs gui)
 
-add_executable(experiment experiment.cpp)
-target_link_libraries(experiment PRIVATE logging ecs2)
+add_executable(second second.cpp)
+target_link_libraries(second PRIVATE logging ecs2 gui)
