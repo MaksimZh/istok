@@ -31,7 +31,7 @@ inline const static std::map<Level, std::string> logLevelStr = {
     {Level::debug, "DEBUG"},
     {Level::trace, "TRACE"},
     {Level::all, "ALL"},
-}; 
+};
 
 
 class Logger {
@@ -113,7 +113,7 @@ std::string format(
             return value; }; \
 
 #define WITH_LOGGER(name) WITH_LOGGER_PREFIX(name, "") \
-    
+
 #define CLASS_WITH_LOGGER_PREFIX(name, prefix) \
     static ::Istok::Logging::LoggerRegistry::Entry \
     istok_logging_get_logger() { \

@@ -50,9 +50,7 @@ public:
 
 private:
     CLASS_WITH_LOGGER_PREFIX("WinAPI", "WinAPI: ");
-
     HWND hWnd_;
-
     void clean();
 };
 

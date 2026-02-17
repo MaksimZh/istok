@@ -25,11 +25,11 @@ public:
             (*it)(*this);
         }
     }
-    
+
     bool isValidEntity(Entity entity) const noexcept {
         return entityManager_.isValidEntity(entity);
     }
-    
+
     Entity createEntity() noexcept {
         return entityManager_.createEntity();
     }
