@@ -49,6 +49,8 @@ private:
     std::unordered_map<UINT, EntityWindowMessageHandlerFunc> handlers_;
 };
 
+struct StopFlag {};
+
 int main() {
     SET_LOGGER(
         "",
@@ -61,7 +63,7 @@ int main() {
 
     auto master = ecs.createEntity();
     auto window = ecs.createEntity();
-    
+
     EntityWindowMessageDispatcher dispatcher;
     dispatcher.setHandler(
         WM_DESTROY,
@@ -77,31 +79,30 @@ int main() {
     auto handler = std::make_unique<WindowMessageHandlerProxy>(
         [&](WinAPI::WindowMessage message) -> LRESULT {
             assert(ecs.count<EntityWindowMessageDispatcher>() == 1);
-            // TODO: implement and use view<>
-            auto& dispatcher = ecs.get<EntityWindowMessageDispatcher>(master);
-            return dispatcher.handleMessage(window, message);
+            auto master = *ecs.view<EntityWindowMessageDispatcher>().begin();
+            return ecs.get<EntityWindowMessageDispatcher>(master)
+                .handleMessage(window, message);
         });
     wnd.setHandler(handler.get());
     ecs.insert(window, std::move(wnd));
     ecs.insert(window, std::move(handler));
 
-    ecs.addLoopSystem([](ECS::ECSManager& ecs) {
-        LOG_TRACE("loop");
+    ecs.addLoopSystem([master](ECS::ECSManager& ecs) {
+        MSG msg;
+        GetMessage(&msg, NULL, 0, 0);
+        if (msg.message == WM_QUIT) {
+            LOG_DEBUG("WM_QUIT message received");
+            ecs.insert(master, StopFlag{});
+        }
+        TranslateMessage(&msg);
+        DispatchMessage(&msg);
     });
     ecs.addCleanupSystem([](ECS::ECSManager& ecs) {
         LOG_TRACE("cleanup");
     });
 
-    while (true) {
+    while (ecs.count<StopFlag>() == 0) {
         ecs.iterate();
-        MSG msg;
-        GetMessage(&msg, NULL, 0, 0);
-        if (msg.message == WM_QUIT) {
-            LOG_DEBUG("WM_QUIT message received");
-            break;
-        }
-        TranslateMessage(&msg);
-        DispatchMessage(&msg);
     }
 
     LOG_TRACE("end");
