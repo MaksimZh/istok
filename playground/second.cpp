@@ -1,5 +1,6 @@
 #include "internal/entity.hpp"
 #include "internal/window.hpp"
+#include <cassert>
 #include <logging.hpp>
 #include <ecs.hpp>
 #include <memory>
@@ -52,11 +53,14 @@ int main() {
     SET_LOGGER(
         "",
         Logging::TerminalLogger::GetInstance(),
-        Logging::Level::all);
+        Logging::Level::debug);
     WITH_LOGGER_PREFIX("", "App: ");
     LOG_TRACE("begin");
 
     ECS::ECSManager ecs;
+
+    auto master = ecs.createEntity();
+    auto window = ecs.createEntity();
     
     EntityWindowMessageDispatcher dispatcher;
     dispatcher.setHandler(
@@ -66,16 +70,20 @@ int main() {
             PostQuitMessage(0);
             return 0;
         });
-
-    auto dummyEntity = ecs.createEntity();
+    ecs.insert(master, std::move(dispatcher));
 
     WinAPI::WndHandle wnd({100, 100, 400, 300});
     ShowWindow(wnd.getHWnd(), SW_SHOW);
-    WindowMessageHandlerProxy handler(
+    auto handler = std::make_unique<WindowMessageHandlerProxy>(
         [&](WinAPI::WindowMessage message) -> LRESULT {
-            return dispatcher.handleMessage(dummyEntity, message);
+            assert(ecs.count<EntityWindowMessageDispatcher>() == 1);
+            // TODO: implement and use view<>
+            auto& dispatcher = ecs.get<EntityWindowMessageDispatcher>(master);
+            return dispatcher.handleMessage(window, message);
         });
-    wnd.setHandler(&handler);
+    wnd.setHandler(handler.get());
+    ecs.insert(window, std::move(wnd));
+    ecs.insert(window, std::move(handler));
 
     ecs.addLoopSystem([](ECS::ECSManager& ecs) {
         LOG_TRACE("loop");
@@ -89,7 +97,7 @@ int main() {
         MSG msg;
         GetMessage(&msg, NULL, 0, 0);
         if (msg.message == WM_QUIT) {
-            LOG_TRACE("WM_QUIT message received");
+            LOG_DEBUG("WM_QUIT message received");
             break;
         }
         TranslateMessage(&msg);
