@@ -176,11 +176,11 @@ public:
 
     MockUnique(const MockUnique&) = delete;
     MockUnique& operator=(const MockUnique&) = delete;
-    
+
     MockUnique(MockUnique&& other) : status_(other.status_) {
         other.status_ = nullptr;
     }
-    
+
     MockUnique& operator=(MockUnique&& other) {
         if (this != &other) {
             clear();

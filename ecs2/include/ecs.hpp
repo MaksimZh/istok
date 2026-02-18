@@ -23,10 +23,10 @@ public:
     public:
         using element_type = size_t;
         using difference_type = ptrdiff_t;
-        
+
         Iterator(const EntityManager& entityManager, IndexView::iterator index)
         : entityManager_(&entityManager), index_(index) {}
-        
+
         Entity operator*() const noexcept {
             return entityManager_->entityFromIndex(*index_);
         }
@@ -45,28 +45,28 @@ public:
         bool operator==(const Iterator& other) const noexcept {
             return index_ == other.index_;
         }
-    
+
     private:
         const EntityManager* entityManager_;
         IndexView::iterator index_;
     };
-    
+
     using iterator = Iterator;
-    
+
     iterator begin() noexcept {
         return Iterator(*entityManager_, view_.begin());
     }
-    
+
     iterator end() noexcept {
         return Iterator(*entityManager_, view_.end());
     }
 
     using const_iterator = Iterator;
-    
+
     const_iterator begin() const noexcept {
         return Iterator(*entityManager_, view_.begin());
     }
-    
+
     const_iterator end() const noexcept {
         return Iterator(*entityManager_, view_.end());
     }
@@ -83,7 +83,7 @@ public:
 
 private:
     const EntityManager* entityManager_;
-    const IndexView& view_;
+    const IndexView view_;
 };
 
 }  // namespace Internal
