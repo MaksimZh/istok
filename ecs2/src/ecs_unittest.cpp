@@ -1,8 +1,10 @@
 // Copyright 2026 Maksim Sergeevich Zholudev. All rights reserved
+#include "internal/entity.hpp"
 #include <catch.hpp>
 
 #include <catch2/catch_test_macros.hpp>
 #include <ecs.hpp>
+#include <unordered_set>
 
 using namespace Istok::ECS;
 
@@ -233,10 +235,11 @@ TEST_CASE("ECSManager - component lifecycle", "[unit][ecs]") {
 
 
 namespace {
+using EntitySet = std::unordered_set<Entity, Entity::Hasher>;
 
 template <typename T>
-std::set<size_t> toSet(const T& x) {
-    return std::set<size_t>(x.begin(), x.end());
+EntitySet toEntitySet(const T& x) {
+    return EntitySet(x.begin(), x.end());
 }
 
 }  // namespace
@@ -264,18 +267,18 @@ TEST_CASE("ECSManager - view", "[unit][ecs]") {
     ecs.insert(e4, C{0});
     ecs.insert(e6, C{0});
 
-    REQUIRE(toSet(ecs.view<A>()) == std::set<size_t>{0, 1, 2, 3});
-    REQUIRE(toSet(ecs.view<B>()) == std::set<size_t>{2, 3, 4, 5});
-    REQUIRE(toSet(ecs.view<C>()) == std::set<size_t>{0, 2, 4, 6});
-    REQUIRE(toSet(ecs.view<A, B>()) == std::set<size_t>{2, 3});
-    REQUIRE(toSet(ecs.view<B, A>()) == std::set<size_t>{2, 3});
-    REQUIRE(toSet(ecs.view<B, C>()) == std::set<size_t>{2, 4});
-    REQUIRE(toSet(ecs.view<C, B>()) == std::set<size_t>{2, 4});
-    REQUIRE(toSet(ecs.view<A, C>()) == std::set<size_t>{0, 2});
-    REQUIRE(toSet(ecs.view<C, A>()) == std::set<size_t>{0, 2});
-    REQUIRE(toSet(ecs.view<A, B, C>()) == std::set<size_t>{2});
-    REQUIRE(toSet(ecs.view<B, C, A>()) == std::set<size_t>{2});
-    REQUIRE(toSet(ecs.view<C, A, B>()) == std::set<size_t>{2});
+    REQUIRE(toEntitySet(ecs.view<A>()) == EntitySet{e0, e1, e2, e3});
+    REQUIRE(toEntitySet(ecs.view<B>()) == EntitySet{e2, e3, e4, e5});
+    REQUIRE(toEntitySet(ecs.view<C>()) == EntitySet{e0, e2, e4, e6});
+    REQUIRE(toEntitySet(ecs.view<A, B>()) == EntitySet{e2, e3});
+    REQUIRE(toEntitySet(ecs.view<B, A>()) == EntitySet{e2, e3});
+    REQUIRE(toEntitySet(ecs.view<B, C>()) == EntitySet{e2, e4});
+    REQUIRE(toEntitySet(ecs.view<C, B>()) == EntitySet{e2, e4});
+    REQUIRE(toEntitySet(ecs.view<A, C>()) == EntitySet{e0, e2});
+    REQUIRE(toEntitySet(ecs.view<C, A>()) == EntitySet{e0, e2});
+    REQUIRE(toEntitySet(ecs.view<A, B, C>()) == EntitySet{e2});
+    REQUIRE(toEntitySet(ecs.view<B, C, A>()) == EntitySet{e2});
+    REQUIRE(toEntitySet(ecs.view<C, A, B>()) == EntitySet{e2});
 }
 
 TEST_CASE("ECSManager - empty view", "[unit][ecs]") {
@@ -285,14 +288,14 @@ TEST_CASE("ECSManager - empty view", "[unit][ecs]") {
     auto e2 = ecs.createEntity();
     auto e3 = ecs.createEntity();
 
-    REQUIRE(toSet(ecs.view<A>()) == std::set<size_t>{});
+    REQUIRE(toEntitySet(ecs.view<A>()) == EntitySet{});
 
     ecs.insert(e0, A{10});
     ecs.insert(e1, A{11});
     ecs.insert(e2, B{22});
     ecs.insert(e3, B{23});
 
-    REQUIRE(toSet(ecs.view<A, B>()) == std::set<size_t>{});
+    REQUIRE(toEntitySet(ecs.view<A, B>()) == EntitySet{});
 }
 
 

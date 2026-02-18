@@ -173,15 +173,15 @@ public:
     
     iterator begin() noexcept {
         return Iterator(
-            master_.indices().begin(),
-            master_.indices().end(),
+            master_->indices().begin(),
+            master_->indices().end(),
             pos_);
     }
     
     iterator end() noexcept {
         return Iterator(
-            master_.indices().end(),
-            master_.indices().end(),
+            master_->indices().end(),
+            master_->indices().end(),
             pos_);
     }
 
@@ -189,15 +189,15 @@ public:
     
     const_iterator begin() const noexcept {
         return Iterator(
-            master_.indices().begin(),
-            master_.indices().end(),
+            master_->indices().begin(),
+            master_->indices().end(),
             pos_);
     }
     
     const_iterator end() const noexcept {
         return Iterator(
-            master_.indices().end(),
-            master_.indices().end(),
+            master_->indices().end(),
+            master_->indices().end(),
             pos_);
     }
 
@@ -205,15 +205,15 @@ public:
         const Master& master,
         const PosFilter& pos,
         const NegFilter& neg
-    ) : master_(master), pos_(pos) {}
+    ) : master_(&master), pos_(pos) {}
 
-    ComponentView(const ComponentView&) = delete;
-    ComponentView& operator=(const ComponentView&) = delete;
-    ComponentView(ComponentView&&) = delete;
-    ComponentView& operator=(ComponentView&&) = delete;
+    ComponentView(const ComponentView&) = default;
+    ComponentView& operator=(const ComponentView&) = default;
+    ComponentView(ComponentView&&) = default;
+    ComponentView& operator=(ComponentView&&) = default;
 
 private:
-    const Master& master_;
+    const Master* master_;
     PosFilter pos_;
 };
 

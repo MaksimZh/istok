@@ -51,20 +51,20 @@ public:
     EntityManager(EntityManager&&) noexcept = default;
     EntityManager& operator=(EntityManager&&) noexcept = default;
 
-    bool isValidEntity(Entity entity) const {
+    bool isValidEntity(Entity entity) const noexcept {
         return entity.index_ < entities_.size()
             && std::bit_cast<Entity>(entities_[entity.index_]) == entity;
     }
 
-    bool isValidIndex(size_t index) const {
+    bool isValidIndex(size_t index) const noexcept {
         return index < entities_.size() && !isLink(index);
     }
 
-    size_t size() const {
+    size_t size() const noexcept {
         return size_;
     }
     
-    Entity createEntity() {
+    Entity createEntity() noexcept {
         ++size_;
         if (freeIndex_ == entities_.size()) {
             entities_.push_back(Entity(freeIndex_, 0));
@@ -76,12 +76,12 @@ public:
         return getEntity(index);
     }
 
-    Entity entityFromIndex(size_t index) {
+    Entity entityFromIndex(size_t index) const noexcept {
         assert(isValidIndex(index));
         return getEntity(index);
     }
 
-    void deleteEntity(Entity entity) {
+    void deleteEntity(Entity entity) noexcept {
         assert(isValidEntity(entity));
         --size_;
         setLink(entity.index_, freeIndex_);
@@ -93,27 +93,27 @@ private:
     size_t freeIndex_ = 0;
     size_t size_ = 0;
 
-    bool isLink(size_t index) const {
+    bool isLink(size_t index) const noexcept {
         assert(index >= 0);
         assert(index < entities_.size());
         return entities_[index].index_ < 0;
     }
 
-    Entity getEntity(size_t index) const {
+    Entity getEntity(size_t index) const noexcept {
         assert(index >= 0);
         assert(index < entities_.size());
         assert(!isLink(index));
         return entities_[index];
     }
 
-    size_t getLink(size_t index) const {
+    size_t getLink(size_t index) const noexcept {
         assert(index >= 0);
         assert(index < entities_.size());
         assert(isLink(index));
         return -entities_[index].index_ - 1;
     }
 
-    void setLink(size_t index, size_t target) {
+    void setLink(size_t index, size_t target) noexcept {
         assert(index >= 0);
         assert(index < entities_.size());
         assert(target >= 0);
@@ -121,7 +121,7 @@ private:
         entities_[index].index_ = -target - 1;
     }
 
-    void reviveEntity(size_t index) {
+    void reviveEntity(size_t index) noexcept {
         assert(index >= 0);
         assert(index < entities_.size());
         assert(isLink(index));

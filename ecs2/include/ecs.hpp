@@ -14,6 +14,80 @@ namespace Istok::ECS {
 class ECSManager;
 using System = std::function<void(ECSManager&)>;
 
+namespace Internal {
+
+template <typename IndexView>
+class EntityView {
+public:
+    class Iterator {
+    public:
+        using element_type = size_t;
+        using difference_type = ptrdiff_t;
+        
+        Iterator(const EntityManager& entityManager, IndexView::iterator index)
+        : entityManager_(&entityManager), index_(index) {}
+        
+        Entity operator*() const noexcept {
+            return entityManager_->entityFromIndex(*index_);
+        }
+
+        Iterator& operator++() noexcept {
+            ++index_;
+            return *this;
+        }
+
+        Iterator operator++(int) noexcept {
+            auto tmp = *this;
+            ++(*this);
+            return tmp;
+        }
+
+        bool operator==(const Iterator& other) const noexcept {
+            return index_ == other.index_;
+        }
+    
+    private:
+        const EntityManager* entityManager_;
+        IndexView::iterator index_;
+    };
+    
+    using iterator = Iterator;
+    
+    iterator begin() noexcept {
+        return Iterator(*entityManager_, view_.begin());
+    }
+    
+    iterator end() noexcept {
+        return Iterator(*entityManager_, view_.end());
+    }
+
+    using const_iterator = Iterator;
+    
+    const_iterator begin() const noexcept {
+        return Iterator(*entityManager_, view_.begin());
+    }
+    
+    const_iterator end() const noexcept {
+        return Iterator(*entityManager_, view_.end());
+    }
+
+    EntityView(
+        const EntityManager& entityManager,
+        IndexView view
+    ) : entityManager_(&entityManager), view_(view) {}
+
+    EntityView(const EntityView&) = delete;
+    EntityView& operator=(const EntityView&) = delete;
+    EntityView(EntityView&&) = delete;
+    EntityView& operator=(EntityView&&) = delete;
+
+private:
+    const EntityManager* entityManager_;
+    const IndexView& view_;
+};
+
+}  // namespace Internal
+
 class ECSManager {
 public:
     ~ECSManager() {
@@ -82,8 +156,10 @@ public:
     }
 
     template<typename... Components>
-    auto view() {
-        return componentManager_.view<Components...>();
+    auto view() noexcept {
+        return Internal::EntityView(
+            entityManager_,
+            componentManager_.view<Components...>());
     }
 
     void addLoopSystem(System system) {
