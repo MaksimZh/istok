@@ -1,7 +1,12 @@
 // Copyright 2026 Maksim Sergeevich Zholudev. All rights reserved
 #include "logging.hpp"
+#include <cstddef>
 #include <internal/window.hpp>
+#include <minwindef.h>
+#include <stringapiset.h>
 #include <type_traits>
+#include <winnls.h>
+#include <winnt.h>
 #include <winuser.h>
 
 namespace Istok::WinAPI {
@@ -62,41 +67,112 @@ std::string toString(T x) noexcept {
     return std::format("{:#x}", reinterpret_cast<uintptr_t>(x));
 }
 
+std::string toString(LPCWSTR w) {
+    if (!w) {
+        return std::string();
+    }
+    int bufferSize = WideCharToMultiByte(
+        CP_UTF8, NULL, w, -1, nullptr, 0, NULL, NULL);
+    if (bufferSize == 0) {
+        return std::string();
+    }
+    std::string result(bufferSize - 1, '\0');
+    WideCharToMultiByte(
+        CP_UTF8, NULL, w, -1, result.data(), bufferSize, NULL, NULL);
+    return result;
+}
+
+std::string formatAsWINDOWPOS(LPARAM lParam) {
+    auto wp = reinterpret_cast<WINDOWPOS*>(lParam);
+    return std::format(
+        "{{[{}], ({:d}, {:d}), ({:d} x {:d}), {:#x}}}",
+        toString(wp->hwndInsertAfter),
+        wp->x, wp->y, wp->cx, wp->cy, wp->flags);
+}
+
+std::string formatAsRECT(LPARAM lParam) {
+    auto wp = reinterpret_cast<RECT*>(lParam);
+    return std::format(
+        "{{{:d}, {:d}, {:d}, {:d}}}",
+        wp->left, wp->top, wp->right, wp->bottom);
+}
+
 std::string fancyMessage(
     HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam
 ) noexcept {
+    const std::string prefix = std::format("[{}].", toString(hWnd));
     switch (msg) {
-    case 0x0001: return std::format("WM_CREATE({})", toString(hWnd));
-    case 0x0002: return std::format("WM_DESTROY({})", toString(hWnd));
-    case 0x0003: return std::format("WM_MOVE({})", toString(hWnd));
-    case 0x0005: return std::format("WM_SIZE({})", toString(hWnd));
-    case 0x0006: return std::format("WM_ACTIVATE({})", toString(hWnd));
-    case 0x0007: return std::format("WM_SETFOCUS({})", toString(hWnd));
-    case 0x0010: return std::format("WM_CLOSE({})", toString(hWnd));
-    case 0x0018: return std::format(
-        "WM_SHOWWINDOW({}, wParam={:s}, lParam={:d})",
-        toString(hWnd), static_cast<bool>(wParam), lParam);
-    case 0x001c: return std::format("WM_ACTIVATEAPP({})", toString(hWnd));
-    case 0x0024: return std::format("WM_GETMINMAXINFO({})", toString(hWnd));
-    case 0x0046: return std::format("WM_WINDOWPOSCHANGING({})", toString(hWnd));
-    case 0x007f: return std::format("WM_GETICON({})", toString(hWnd));
-    case 0x0081: return std::format("WM_NCCREATE({})", toString(hWnd));
-    case 0x0083: return std::format(
-        "WM_NCCALCSIZE({}, wParam={:s})",
-        toString(hWnd), static_cast<bool>(wParam));
-    case 0x0085: return std::format("WM_NCPAINT({})", toString(hWnd));
-    case 0x0086: return std::format("WM_NCACTIVATE({})", toString(hWnd));
+    case 0x0001:
+        return std::format("{}WM_CREATE(\"{}\")", prefix,
+            toString(reinterpret_cast<CREATESTRUCT*>(lParam)->lpszName));
+    case 0x0002:
+        return std::format("{}WM_DESTROY", prefix);
+    case 0x0003:
+        return std::format("{}WM_MOVE({:d}, {:d})", prefix,
+            LOWORD(lParam), HIWORD(lParam));
+    case 0x0005:
+        return std::format("{}WM_SIZE({:d}, ({:d} x {:d}))", prefix,
+            wParam, LOWORD(lParam), HIWORD(lParam));
+    case 0x0006:
+        return std::format("{}WM_ACTIVATE([{:d}|{:s}], [{}])", prefix,
+            LOWORD(wParam), static_cast<bool>(HIWORD(wParam)),
+            toString(reinterpret_cast<HWND>(lParam)));
+    case 0x0007:
+        return std::format("{}WM_SETFOCUS([{}])", prefix,
+            toString(reinterpret_cast<HWND>(wParam)));
+    case 0x0008:
+        return std::format("{}WM_KILLFOCUS([{}])", prefix,
+            toString(reinterpret_cast<HWND>(wParam)));
+    case 0x000f:
+        return std::format("{}WM_PAINT", prefix);
+    case 0x0010:
+        return std::format("{}WM_CLOSE", prefix);
+    case 0x0014:
+        return std::format("{}WM_ERASEBKGND({:#x})", prefix, wParam);
+    case 0x0018:
+        return std::format("{}WM_SHOWWINDOW({:s}, {:d})", prefix,
+            static_cast<bool>(wParam), lParam);
+    case 0x001c:
+        return std::format("{}WM_ACTIVATEAPP({:s}, {:#x})", prefix,
+            static_cast<bool>(wParam), lParam);
+    case 0x0024:
+        return std::format("{}WM_GETMINMAXINFO", prefix);
+    case 0x0046:
+        return std::format("{}WM_WINDOWPOSCHANGING({})", prefix,
+            formatAsWINDOWPOS(lParam));
+    case 0x0047:
+        return std::format("{}WM_WINDOWPOSCHANGED", prefix,
+            formatAsWINDOWPOS(lParam));
+    case 0x007f:
+        return std::format("{}WM_GETICON({:d})", prefix, wParam);
+    case 0x0081:
+        return std::format("{}WM_NCCREATE(...)", prefix);
+    case 0x0083:
+        return std::format("{}WM_NCCALCSIZE({:s}, ...)", prefix,
+            static_cast<bool>(wParam));
+    case 0x0085:
+        return std::format("{}WM_NCPAINT(...)", prefix);
+    case 0x0086:
+        return std::format("{}WM_NCACTIVATE({:s}, {})", prefix,
+            static_cast<bool>(wParam),
+            toString(reinterpret_cast<HWND>(lParam)));
+    case 0x0214:
+        return std::format("{}WM_SIZING({:d}, {})", prefix,
+            wParam, formatAsRECT(lParam));
+    case 0x0216:
+        return std::format("{}WM_MOVING({})", prefix,
+            formatAsRECT(lParam));
     default: return std::format(
-        "WindowMessage({}, {:#x}, {:#x}, {:#x})",
-        toString(hWnd), msg, wParam, lParam);
+        "{}WindowMessage({:#x}, {:#x}, {:#x})",
+        prefix, msg, wParam, lParam);
     }
 }
 
 LRESULT CALLBACK windowProc(
     HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam
 ) noexcept {
-    WITH_LOGGER_PREFIX("WinAPI", "WinAPI: ");
-    LOG_TRACE("windowProc <- {}", fancyMessage(hWnd, msg, wParam, lParam));
+    WITH_LOGGER_PREFIX("WinAPI", "windowProc: ");
+    LOG_TRACE("{}", fancyMessage(hWnd, msg, wParam, lParam));
     if (auto* handler = reinterpret_cast<WinAPI::WindowMessageHandler*>(
             GetWindowLongPtr(hWnd, GWLP_USERDATA))
     ) {

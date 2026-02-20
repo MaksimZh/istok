@@ -55,7 +55,7 @@ int main() {
     SET_LOGGER(
         "",
         Logging::TerminalLogger::GetInstance(),
-        Logging::Level::debug);
+        Logging::Level::trace);
     WITH_LOGGER_PREFIX("", "App: ");
     LOG_TRACE("begin");
 
