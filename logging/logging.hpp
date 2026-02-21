@@ -101,6 +101,38 @@ std::string format(
     ::Istok::Logging:: \
         LoggerRegistry::getGlobalInstance().set(name, logger_ref, maxLevel)
 
+#define SET_LOGOFF(name) \
+    SET_LOGGER(name, ::Istok::Logging::NoneLogger::GetInstance(), \
+        ::Istok::Logging::Level::off)
+
+#define SET_LOGTERM_CRITICAL(name) \
+    SET_LOGGER(name, ::Istok::Logging::TerminalLogger::GetInstance(), \
+        ::Istok::Logging::Level::critical)
+
+#define SET_LOGTERM_ERROR(name) \
+    SET_LOGGER(name, ::Istok::Logging::TerminalLogger::GetInstance(), \
+        ::Istok::Logging::Level::error)
+
+#define SET_LOGTERM_WARNING(name) \
+    SET_LOGGER(name, ::Istok::Logging::TerminalLogger::GetInstance(), \
+        ::Istok::Logging::Level::warning)
+
+#define SET_LOGTERM_INFO(name) \
+    SET_LOGGER(name, ::Istok::Logging::TerminalLogger::GetInstance(), \
+        ::Istok::Logging::Level::info)
+
+#define SET_LOGTERM_DEBUG(name) \
+    SET_LOGGER(name, ::Istok::Logging::TerminalLogger::GetInstance(), \
+        ::Istok::Logging::Level::debug)
+
+#define SET_LOGTERM_TRACE(name) \
+    SET_LOGGER(name, ::Istok::Logging::TerminalLogger::GetInstance(), \
+        ::Istok::Logging::Level::trace)
+
+#define SET_LOGTERM_ALL(name) \
+    SET_LOGGER(name, ::Istok::Logging::TerminalLogger::GetInstance(), \
+        ::Istok::Logging::Level::all)
+
 #define WITH_LOGGER_PREFIX(name, prefix) \
     static auto istok_logging_get_logger = \
         []() { \

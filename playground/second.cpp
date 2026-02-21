@@ -7,6 +7,7 @@
 #include <minwindef.h>
 #include <unordered_map>
 #include <winapi.hpp>
+#include <winbase.h>
 #include <winuser.h>
 
 using namespace Istok;
@@ -38,6 +39,7 @@ public:
         if (it == handlers_.end()) {
             return WinAPI::handleMessageByDefault(message);
         }
+        LOG_TRACE("@{}:{}", entity.index(), WinAPI::formatMessage(message));
         return it->second(entity, message);
     }
 
@@ -46,6 +48,7 @@ public:
     }
 
 private:
+    CLASS_WITH_LOGGER_PREFIX("WMDispatcher", "WMDispatcher: ");
     std::unordered_map<UINT, EntityWindowMessageHandlerFunc> handlers_;
 };
 
@@ -75,14 +78,8 @@ std::unique_ptr<WinAPI::WindowMessageHandler> makeWindowMessageHandler(
 };
 
 int main() {
-    SET_LOGGER(
-        "",
-        Logging::TerminalLogger::GetInstance(),
-        Logging::Level::trace);
-    SET_LOGGER(
-        "WinAPI.WndProc",
-        Logging::TerminalLogger::GetInstance(),
-        Logging::Level::off);
+    SET_LOGTERM_TRACE("");
+    SET_LOGOFF("WinAPI.WndProc");
     WITH_LOGGER_PREFIX("", "App: ");
     LOG_TRACE("begin");
 
