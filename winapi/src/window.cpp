@@ -163,7 +163,7 @@ std::string fancyMessage(
         return std::format("{}WM_MOVING({})", prefix,
             formatAsRECT(lParam));
     default: return std::format(
-        "{}WindowMessage({:#x}, {:#x}, {:#x})",
+        "{}msg({:#x})({:#016x}, {:#016x})",
         prefix, msg, wParam, lParam);
     }
 }
