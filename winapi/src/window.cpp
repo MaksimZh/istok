@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <internal/window.hpp>
 #include <minwindef.h>
+#include <string>
 #include <stringapiset.h>
 #include <type_traits>
 #include <winnls.h>
@@ -97,7 +98,7 @@ std::string formatAsRECT(LPARAM lParam) {
         wp->left, wp->top, wp->right, wp->bottom);
 }
 
-std::string fancyMessage(
+std::string formatMessage(
     HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam
 ) noexcept {
     const std::string prefix = std::format("[{}].", toString(hWnd));
@@ -171,8 +172,8 @@ std::string fancyMessage(
 LRESULT CALLBACK windowProc(
     HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam
 ) noexcept {
-    WITH_LOGGER_PREFIX("WinAPI", "windowProc: ");
-    LOG_TRACE("{}", fancyMessage(hWnd, msg, wParam, lParam));
+    WITH_LOGGER_PREFIX("WinAPI.WndProc", "WndProc: ");
+    LOG_TRACE("{}", formatMessage(hWnd, msg, wParam, lParam));
     if (auto* handler = reinterpret_cast<WinAPI::WindowMessageHandler*>(
             GetWindowLongPtr(hWnd, GWLP_USERDATA))
     ) {
@@ -183,6 +184,12 @@ LRESULT CALLBACK windowProc(
 }
 
 }  // namespace
+
+
+std::string formatMessage(const WindowMessage& message) {
+    return formatMessage(
+        message.hWnd, message.msg, message.wParam, message.lParam);
+}
 
 
 LRESULT handleMessageByDefault(const WindowMessage& message) noexcept {

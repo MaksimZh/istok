@@ -51,11 +51,38 @@ private:
 
 struct StopFlag {};
 
+template <typename Component>
+Component* getUniqueComponent(ECS::ECSManager& ecs) {
+    if (ecs.count<Component>() != 1) {
+        return nullptr;
+    }
+    auto holder = *ecs.view<Component>().begin();
+    return &ecs.get<Component>(holder);
+}
+
+std::unique_ptr<WinAPI::WindowMessageHandler> makeWindowMessageHandler(
+    ECS::ECSManager& ecs, ECS::Entity entity
+) {
+    auto* dispatcherComponent = getUniqueComponent<
+        std::unique_ptr<EntityWindowMessageDispatcher>
+        >(ecs);
+    assert(dispatcherComponent);
+    auto* dispatcherPtr = dispatcherComponent->get();
+    return std::make_unique<WindowMessageHandlerProxy>(
+        [entity, dispatcherPtr](WinAPI::WindowMessage message) -> LRESULT {
+        return dispatcherPtr->handleMessage(entity, message);
+    });
+};
+
 int main() {
     SET_LOGGER(
         "",
         Logging::TerminalLogger::GetInstance(),
         Logging::Level::trace);
+    SET_LOGGER(
+        "WinAPI.WndProc",
+        Logging::TerminalLogger::GetInstance(),
+        Logging::Level::off);
     WITH_LOGGER_PREFIX("", "App: ");
     LOG_TRACE("begin");
 
@@ -64,8 +91,8 @@ int main() {
     auto master = ecs.createEntity();
     auto window = ecs.createEntity();
 
-    EntityWindowMessageDispatcher dispatcher;
-    dispatcher.setHandler(
+    auto dispatcher = std::make_unique<EntityWindowMessageDispatcher>();
+    dispatcher->setHandler(
         WM_DESTROY,
         [](ECS::Entity entity, WinAPI::WindowMessage message) -> LRESULT {
             assert(message.msg == WM_DESTROY);
@@ -76,13 +103,7 @@ int main() {
 
     WinAPI::WndHandle wnd({100, 100, 400, 300});
     ShowWindow(wnd.getHWnd(), SW_SHOW);
-    auto handler = std::make_unique<WindowMessageHandlerProxy>(
-        [&](WinAPI::WindowMessage message) -> LRESULT {
-            assert(ecs.count<EntityWindowMessageDispatcher>() == 1);
-            auto master = *ecs.view<EntityWindowMessageDispatcher>().begin();
-            return ecs.get<EntityWindowMessageDispatcher>(master)
-                .handleMessage(window, message);
-        });
+    auto handler = makeWindowMessageHandler(ecs, window);
     wnd.setHandler(handler.get());
     ecs.insert(window, std::move(wnd));
     ecs.insert(window, std::move(handler));

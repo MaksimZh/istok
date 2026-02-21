@@ -23,6 +23,7 @@ struct WindowMessage {
     LPARAM lParam;
 };
 
+std::string formatMessage(const WindowMessage& message);
 LRESULT handleMessageByDefault(const WindowMessage& message) noexcept;
 
 
