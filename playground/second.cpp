@@ -55,11 +55,8 @@ private:
     std::unordered_map<UINT, EntityWindowMessageHandlerFunc> handlers_;
 };
 
-enum class GUIState {
-    quit,
-    application,
-    system
-};
+struct QuitFlag { bool value; };
+struct ProcessingMessageFlag { bool value; };
 
 template <typename Component>
 Component& getUnique(ECS::ECSManager& ecs) {
@@ -82,44 +79,56 @@ std::unique_ptr<WinAPI::WindowMessageHandler> makeWindowMessageHandler(
 
 void messageLoopIteration(ECS::ECSManager& ecs) {
     WITH_LOGGER_PREFIX("GUI", "GUI: ");
-    if (getUnique<GUIState>(ecs) != GUIState::application) {
-        LOG_TRACE("message loop iteration skipped");
+    if (getUnique<ProcessingMessageFlag>(ecs).value) {
+        LOG_TRACE("GetMessage skipped");
         return;
     }
+    getUnique<ProcessingMessageFlag>(ecs).value = true;
     MSG msg;
     GetMessage(&msg, NULL, 0, 0);
     if (msg.message == WM_QUIT) {
         LOG_DEBUG("WM_QUIT message received");
-        getUnique<GUIState>(ecs) = GUIState::quit;
+        getUnique<QuitFlag>(ecs).value = true;
         return;
     }
     TranslateMessage(&msg);
-    getUnique<GUIState>(ecs) = GUIState::system;
     DispatchMessage(&msg);
-    getUnique<GUIState>(ecs) = GUIState::application;
+    getUnique<ProcessingMessageFlag>(ecs).value = false;
 }
+
+namespace WindowHandler {
+
+struct Close {
+    std::function<void()> func;
+};
+
+} // namespace WindowHandler
 
 int main() {
     SET_LOGTERM_TRACE("");
     SET_LOGOFF("WinAPI.WndProc");
     WITH_LOGGER_PREFIX("", "App: ");
-    LOG_TRACE("begin");
 
+    LOG_TRACE("begin");
     ECS::ECSManager ecs;
 
     auto master = ecs.createEntity();
     auto window = ecs.createEntity();
 
+    ecs.insert(master, ProcessingMessageFlag{false});
     auto dispatcher = std::make_unique<EntityWindowMessageDispatcher>(ecs);
     dispatcher->setHandler(
-        WM_DESTROY,
+        WM_CLOSE,
         [](
             ECS::ECSManager& ecs,
             ECS::Entity entity,
             WinAPI::WindowMessage message
         ) -> LRESULT {
-            assert(message.msg == WM_DESTROY);
-            PostQuitMessage(0);
+            assert(message.msg == WM_CLOSE);
+            if (!ecs.has<WindowHandler::Close>(entity)) {
+                return WinAPI::handleMessageByDefault(message);
+            }
+            ecs.get<WindowHandler::Close>(entity).func();
             return 0;
         });
     dispatcher->setHandler(
@@ -141,14 +150,18 @@ int main() {
     wnd.setHandler(handler.get());
     ecs.insert(window, std::move(wnd));
     ecs.insert(window, std::move(handler));
+    ecs.insert(window, WindowHandler::Close([&ecs]() {
+        LOG_DEBUG("close handler");
+        getUnique<QuitFlag>(ecs).value = true;
+    }));
 
     ecs.addLoopSystem(messageLoopIteration);
     ecs.addCleanupSystem([](ECS::ECSManager& ecs) {
         LOG_TRACE("cleanup");
     });
 
-    ecs.insert(master, GUIState::application);
-    while (getUnique<GUIState>(ecs) != GUIState::quit) {
+    ecs.insert(master, QuitFlag{false});
+    while (!getUnique<QuitFlag>(ecs).value) {
         ecs.iterate();
     }
 
