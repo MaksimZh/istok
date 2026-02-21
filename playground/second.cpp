@@ -27,11 +27,13 @@ private:
     WindowMessageHandlerFunc func_;
 };
 
-using EntityWindowMessageHandlerFunc =
-    std::function<LRESULT(ECS::Entity, WinAPI::WindowMessage)>;
+using EntityWindowMessageHandlerFunc = std::function<
+    LRESULT(ECS::ECSManager&, ECS::Entity, WinAPI::WindowMessage)>;
 
 class EntityWindowMessageDispatcher {
 public:
+    EntityWindowMessageDispatcher(ECS::ECSManager& ecs) : ecs_(ecs) {}
+
     LRESULT handleMessage(
         ECS::Entity entity, WinAPI::WindowMessage message
     ) noexcept {
@@ -40,7 +42,7 @@ public:
             return WinAPI::handleMessageByDefault(message);
         }
         LOG_TRACE("@{}:{}", entity.index(), WinAPI::formatMessage(message));
-        return it->second(entity, message);
+        return it->second(ecs_, entity, message);
     }
 
     void setHandler(UINT msg, EntityWindowMessageHandlerFunc func) {
@@ -48,34 +50,54 @@ public:
     }
 
 private:
-    CLASS_WITH_LOGGER_PREFIX("WMDispatcher", "WMDispatcher: ");
+    CLASS_WITH_LOGGER_PREFIX("GUI.WMDispatcher", "GUI: ");
+    ECS::ECSManager& ecs_;
     std::unordered_map<UINT, EntityWindowMessageHandlerFunc> handlers_;
 };
 
-struct StopFlag {};
+enum class GUIState {
+    quit,
+    application,
+    system
+};
 
 template <typename Component>
-Component* getUniqueComponent(ECS::ECSManager& ecs) {
-    if (ecs.count<Component>() != 1) {
-        return nullptr;
-    }
+Component& getUnique(ECS::ECSManager& ecs) {
+    assert(ecs.count<Component>() == 1);
     auto holder = *ecs.view<Component>().begin();
-    return &ecs.get<Component>(holder);
+    return ecs.get<Component>(holder);
 }
 
 std::unique_ptr<WinAPI::WindowMessageHandler> makeWindowMessageHandler(
     ECS::ECSManager& ecs, ECS::Entity entity
 ) {
-    auto* dispatcherComponent = getUniqueComponent<
-        std::unique_ptr<EntityWindowMessageDispatcher>
-        >(ecs);
-    assert(dispatcherComponent);
-    auto* dispatcherPtr = dispatcherComponent->get();
+    using Dispatcher = std::unique_ptr<EntityWindowMessageDispatcher>;
+    assert(ecs.count<Dispatcher>() == 1);
+    auto* dispatcherPtr = getUnique<Dispatcher>(ecs).get();
     return std::make_unique<WindowMessageHandlerProxy>(
         [entity, dispatcherPtr](WinAPI::WindowMessage message) -> LRESULT {
         return dispatcherPtr->handleMessage(entity, message);
     });
 };
+
+void messageLoopIteration(ECS::ECSManager& ecs) {
+    WITH_LOGGER_PREFIX("GUI", "GUI: ");
+    if (getUnique<GUIState>(ecs) != GUIState::application) {
+        LOG_TRACE("message loop iteration skipped");
+        return;
+    }
+    MSG msg;
+    GetMessage(&msg, NULL, 0, 0);
+    if (msg.message == WM_QUIT) {
+        LOG_DEBUG("WM_QUIT message received");
+        getUnique<GUIState>(ecs) = GUIState::quit;
+        return;
+    }
+    TranslateMessage(&msg);
+    getUnique<GUIState>(ecs) = GUIState::system;
+    DispatchMessage(&msg);
+    getUnique<GUIState>(ecs) = GUIState::application;
+}
 
 int main() {
     SET_LOGTERM_TRACE("");
@@ -88,12 +110,27 @@ int main() {
     auto master = ecs.createEntity();
     auto window = ecs.createEntity();
 
-    auto dispatcher = std::make_unique<EntityWindowMessageDispatcher>();
+    auto dispatcher = std::make_unique<EntityWindowMessageDispatcher>(ecs);
     dispatcher->setHandler(
         WM_DESTROY,
-        [](ECS::Entity entity, WinAPI::WindowMessage message) -> LRESULT {
+        [](
+            ECS::ECSManager& ecs,
+            ECS::Entity entity,
+            WinAPI::WindowMessage message
+        ) -> LRESULT {
             assert(message.msg == WM_DESTROY);
             PostQuitMessage(0);
+            return 0;
+        });
+    dispatcher->setHandler(
+        WM_SIZE,
+        [](
+            ECS::ECSManager& ecs,
+            ECS::Entity entity,
+            WinAPI::WindowMessage message
+        ) -> LRESULT {
+            assert(message.msg == WM_SIZE);
+            ecs.iterate();
             return 0;
         });
     ecs.insert(master, std::move(dispatcher));
@@ -105,21 +142,13 @@ int main() {
     ecs.insert(window, std::move(wnd));
     ecs.insert(window, std::move(handler));
 
-    ecs.addLoopSystem([master](ECS::ECSManager& ecs) {
-        MSG msg;
-        GetMessage(&msg, NULL, 0, 0);
-        if (msg.message == WM_QUIT) {
-            LOG_DEBUG("WM_QUIT message received");
-            ecs.insert(master, StopFlag{});
-        }
-        TranslateMessage(&msg);
-        DispatchMessage(&msg);
-    });
+    ecs.addLoopSystem(messageLoopIteration);
     ecs.addCleanupSystem([](ECS::ECSManager& ecs) {
         LOG_TRACE("cleanup");
     });
 
-    while (ecs.count<StopFlag>() == 0) {
+    ecs.insert(master, GUIState::application);
+    while (getUnique<GUIState>(ecs) != GUIState::quit) {
         ecs.iterate();
     }
 
