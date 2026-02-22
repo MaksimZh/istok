@@ -104,6 +104,46 @@ struct Close {
 
 } // namespace WindowHandler
 
+LRESULT wmCloseHandler(
+    ECS::ECSManager& ecs, ECS::Entity entity, WinAPI::WindowMessage message
+) {
+    assert(message.msg == WM_CLOSE);
+    if (!ecs.has<WindowHandler::Close>(entity)) {
+        return WinAPI::handleMessageByDefault(message);
+    }
+    ecs.get<WindowHandler::Close>(entity).func();
+    return 0;
+}
+
+LRESULT wmSizeHandler(
+    ECS::ECSManager& ecs, ECS::Entity entity, WinAPI::WindowMessage message
+) {
+    assert(message.msg == WM_SIZE);
+    ecs.iterate();
+    return 0;
+}
+
+void setupMessageDispatcher(ECS::ECSManager& ecs, ECS::Entity master) {
+    auto dispatcher = std::make_unique<EntityWindowMessageDispatcher>(ecs);
+    dispatcher->setHandler(WM_CLOSE, wmCloseHandler);
+    dispatcher->setHandler(WM_SIZE, wmSizeHandler);
+    ecs.insert(master, std::move(dispatcher));
+}
+
+void setupMessageLoop(ECS::ECSManager& ecs, ECS::Entity master) {
+    ecs.insert(master, ProcessingMessageFlag{false});
+    ecs.addLoopSystem(messageLoopIteration);
+}
+
+void initGUI(ECS::ECSManager& ecs) {
+    WITH_LOGGER_PREFIX("GUI", "GUI: ")
+    auto master = ecs.createEntity();
+    LOG_DEBUG("Created master entity @{}", master.index());
+    setupMessageDispatcher(ecs, master);
+    setupMessageLoop(ecs, master);
+}
+
+
 int main() {
     SET_LOGTERM_TRACE("");
     SET_LOGOFF("WinAPI.WndProc");
@@ -111,38 +151,11 @@ int main() {
 
     LOG_TRACE("begin");
     ECS::ECSManager ecs;
+    initGUI(ecs);
+    bool runFlag = true;
 
-    auto master = ecs.createEntity();
     auto window = ecs.createEntity();
-
-    ecs.insert(master, ProcessingMessageFlag{false});
-    auto dispatcher = std::make_unique<EntityWindowMessageDispatcher>(ecs);
-    dispatcher->setHandler(
-        WM_CLOSE,
-        [](
-            ECS::ECSManager& ecs,
-            ECS::Entity entity,
-            WinAPI::WindowMessage message
-        ) -> LRESULT {
-            assert(message.msg == WM_CLOSE);
-            if (!ecs.has<WindowHandler::Close>(entity)) {
-                return WinAPI::handleMessageByDefault(message);
-            }
-            ecs.get<WindowHandler::Close>(entity).func();
-            return 0;
-        });
-    dispatcher->setHandler(
-        WM_SIZE,
-        [](
-            ECS::ECSManager& ecs,
-            ECS::Entity entity,
-            WinAPI::WindowMessage message
-        ) -> LRESULT {
-            assert(message.msg == WM_SIZE);
-            ecs.iterate();
-            return 0;
-        });
-    ecs.insert(master, std::move(dispatcher));
+    LOG_DEBUG("Creating window @{}", window.index());
 
     WinAPI::WndHandle wnd({100, 100, 400, 300});
     ShowWindow(wnd.getHWnd(), SW_SHOW);
@@ -150,18 +163,16 @@ int main() {
     wnd.setHandler(handler.get());
     ecs.insert(window, std::move(wnd));
     ecs.insert(window, std::move(handler));
-    ecs.insert(window, WindowHandler::Close([&ecs]() {
+    ecs.insert(window, WindowHandler::Close([&ecs, &runFlag]() {
         LOG_DEBUG("close handler");
-        getUnique<QuitFlag>(ecs).value = true;
+        runFlag = false;
     }));
 
-    ecs.addLoopSystem(messageLoopIteration);
     ecs.addCleanupSystem([](ECS::ECSManager& ecs) {
         LOG_TRACE("cleanup");
     });
 
-    ecs.insert(master, QuitFlag{false});
-    while (!getUnique<QuitFlag>(ecs).value) {
+    while (runFlag) {
         ecs.iterate();
     }
 
