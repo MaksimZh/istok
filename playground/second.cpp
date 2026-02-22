@@ -104,6 +104,7 @@ struct Close {
 
 } // namespace WindowHandler
 
+
 LRESULT wmCloseHandler(
     ECS::ECSManager& ecs, ECS::Entity entity, WinAPI::WindowMessage message
 ) {
@@ -135,18 +136,49 @@ void setupMessageLoop(ECS::ECSManager& ecs, ECS::Entity master) {
     ecs.addLoopSystem(messageLoopIteration);
 }
 
+
+struct NewWindowMarker {};
+
+struct Location {
+    WinAPI::Rect<int> rect;
+};
+
+void createWindows(ECS::ECSManager& ecs) {
+    WITH_LOGGER_PREFIX("GUI", "GUI: ");
+    for (auto window : ecs.view<NewWindowMarker, Location>()) {
+        LOG_DEBUG("Creating window @{}", window.index());
+        WinAPI::WndHandle wnd(ecs.get<Location>(window).rect);
+        ShowWindow(wnd.getHWnd(), SW_SHOW);
+        auto handler = makeWindowMessageHandler(ecs, window);
+        wnd.setHandler(handler.get());
+        ecs.insert(window, std::move(wnd));
+        ecs.insert(window, std::move(handler));
+    }
+}
+
+void cleanNewWindowMarkers(ECS::ECSManager& ecs) {
+    ecs.removeAll<NewWindowMarker>();
+}
+
+void destroyWindows(ECS::ECSManager& ecs) {
+    ecs.removeAll<WinAPI::WndHandle>();
+}
+
 void initGUI(ECS::ECSManager& ecs) {
-    WITH_LOGGER_PREFIX("GUI", "GUI: ")
+    WITH_LOGGER_PREFIX("GUI", "GUI: ");
     auto master = ecs.createEntity();
     LOG_DEBUG("Created master entity @{}", master.index());
     setupMessageDispatcher(ecs, master);
+    ecs.addLoopSystem(createWindows);
+    ecs.addCleanupSystem(destroyWindows);
+    ecs.addLoopSystem(cleanNewWindowMarkers);
     setupMessageLoop(ecs, master);
 }
 
 
 int main() {
     SET_LOGTERM_TRACE("");
-    SET_LOGOFF("WinAPI.WndProc");
+    //SET_LOGOFF("WinAPI.WndProc");
     WITH_LOGGER_PREFIX("", "App: ");
 
     LOG_TRACE("begin");
@@ -155,22 +187,17 @@ int main() {
     bool runFlag = true;
 
     auto window = ecs.createEntity();
-    LOG_DEBUG("Creating window @{}", window.index());
-
-    WinAPI::WndHandle wnd({100, 100, 400, 300});
-    ShowWindow(wnd.getHWnd(), SW_SHOW);
-    auto handler = makeWindowMessageHandler(ecs, window);
-    wnd.setHandler(handler.get());
-    ecs.insert(window, std::move(wnd));
-    ecs.insert(window, std::move(handler));
+    ecs.insert(window, NewWindowMarker{});
+    ecs.insert(window, Location{{1100, 100, 1500, 500}});
     ecs.insert(window, WindowHandler::Close([&ecs, &runFlag]() {
-        LOG_DEBUG("close handler");
-        runFlag = false;
+        auto second = ecs.createEntity();
+        ecs.insert(second, NewWindowMarker{});
+        ecs.insert(second, Location{{1200, 200, 1400, 400}});
+        ecs.insert(second, WindowHandler::Close([&runFlag]() {
+            LOG_DEBUG("close handler");
+            runFlag = false;
+        }));
     }));
-
-    ecs.addCleanupSystem([](ECS::ECSManager& ecs) {
-        LOG_TRACE("cleanup");
-    });
 
     while (runFlag) {
         ecs.iterate();

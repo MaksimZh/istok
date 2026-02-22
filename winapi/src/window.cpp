@@ -213,7 +213,7 @@ WndHandle::WndHandle(Rect<int> screenLocation) {
         LOG_ERROR("Window creation failed.");
         return;
     }
-    LOG_DEBUG("Created window: {}", toString(hWnd));
+    LOG_DEBUG("Created window: [{}]", toString(hWnd));
     hWnd_ = hWnd;
 }
 
@@ -236,7 +236,7 @@ WndHandle& WndHandle::operator=(WndHandle&& source) {
 }
 
 void WndHandle::setHandler(WindowMessageHandler* handler) {
-    LOG_DEBUG("Set handler {} for window {}",
+    LOG_DEBUG("Set handler {} for window [{}]",
         toString(handler), toString(hWnd_));
     SetWindowLongPtr(
         hWnd_, GWLP_USERDATA,
@@ -245,9 +245,10 @@ void WndHandle::setHandler(WindowMessageHandler* handler) {
 
 void WndHandle::clean() {
     if (hWnd_) {
-        LOG_DEBUG("Destroying window: {}", toString(hWnd_));
+        LOG_DEBUG("Destroying window [{}]", toString(hWnd_));
         setHandler(nullptr);
         DestroyWindow(hWnd_);
+        LOG_DEBUG("Window [{}] destroyed", toString(hWnd_));
     }
 }
 
