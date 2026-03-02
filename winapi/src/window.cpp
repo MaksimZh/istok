@@ -240,7 +240,7 @@ LRESULT handleMessageByDefault(const WindowMessage& message) noexcept {
 }
 
 
-WndHandle::WndHandle(Rect<int> screenLocation, WindowMessageHandler handler) {
+WndHandle::WndHandle(Rect<int> screenLocation) {
     static WinAPI::WindowClass windowClass(windowProc, L"Istok");
     HWND hWnd = CreateWindowEx(
         NULL,
@@ -257,10 +257,6 @@ WndHandle::WndHandle(Rect<int> screenLocation, WindowMessageHandler handler) {
     }
     LOG_DEBUG("Created window: [{}]", toString(hWnd));
     hWnd_ = hWnd;
-    handler_ = std::make_unique<WindowMessageHandler>(handler);
-    SetWindowLongPtr(
-        hWnd_, GWLP_USERDATA,
-        reinterpret_cast<LONG_PTR>(handler_.get()));
 }
 
 WndHandle::~WndHandle() {
@@ -277,6 +273,18 @@ WndHandle& WndHandle::operator=(WndHandle&& source) {
         takeFrom(source);
     }
     return *this;
+}
+
+void WndHandle::setMessageHandler(WindowMessageHandler handler) {
+    handler_ = std::make_unique<WindowMessageHandler>(handler);
+    SetWindowLongPtr(
+        hWnd_, GWLP_USERDATA,
+        reinterpret_cast<LONG_PTR>(handler_.get()));
+}
+
+void WndHandle::resetMessageHandler() {
+    SetWindowLongPtr(hWnd_, GWLP_USERDATA, NULL);
+    handler_.reset();
 }
 
 void WndHandle::takeFrom(WndHandle& source) {

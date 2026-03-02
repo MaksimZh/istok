@@ -5,12 +5,9 @@
 #include <ecs.hpp>
 #include <memory>
 #include <unordered_map>
-#include <windef.h>
-#include <winuser.h>
+#include <windows.h>
 
 using namespace Istok;
-
-struct NewWindowMarker {};
 
 class EntityWindowMessageDispatcher {
 public:
@@ -22,9 +19,6 @@ public:
     LRESULT handleMessage(
         ECS::Entity entity, WinAPI::WindowMessage message
     ) noexcept {
-        if (ecs_.has<NewWindowMarker>(entity)) {
-            return WinAPI::handleMessageByDefault(message);
-        }
         auto it = handlers_.find(message.msg);
         if (it == handlers_.end()) {
             return WinAPI::handleMessageByDefault(message);
@@ -80,7 +74,6 @@ struct Close {
 
 } // namespace WindowHandler
 
-
 LRESULT wmCloseHandler(
     ECS::ECSManager& ecs, ECS::Entity entity, WinAPI::WindowMessage message
 ) {
@@ -117,20 +110,37 @@ struct Location {
     WinAPI::Rect<int> rect;
 };
 
+struct NewWindowMarker {};
+
 void createWindows(ECS::ECSManager& ecs) {
+    WITH_LOGGER_PREFIX("GUI", "GUI: ");
+    for (auto entity : ecs.view<NewWindowMarker, Location>()) {
+        LOG_DEBUG("Creating window @{}", entity.index());
+        WinAPI::WndHandle wnd(ecs.get<Location>(entity).rect);
+        ShowWindow(wnd.getHWnd(), SW_SHOW);
+        ecs.insert(entity, std::move(wnd));
+    }
+}
+
+void setMessageHandlers(ECS::ECSManager& ecs) {
     WITH_LOGGER_PREFIX("GUI", "GUI: ");
     using Dispatcher = std::unique_ptr<EntityWindowMessageDispatcher>;
     assert(ecs.count<Dispatcher>() == 1);
     auto* dispatcherPtr = getUnique<Dispatcher>(ecs).get();
-    for (auto entity : ecs.view<NewWindowMarker, Location>()) {
-        LOG_DEBUG("Creating window @{}", entity.index());
-        WinAPI::WndHandle wnd(
-            ecs.get<Location>(entity).rect,
+    for (auto entity : ecs.view<NewWindowMarker, WinAPI::WndHandle>()) {
+        LOG_DEBUG("Set message handler @{}", entity.index());
+        ecs.get<WinAPI::WndHandle>(entity).setMessageHandler(
             [entity, dispatcherPtr](WinAPI::WindowMessage message) -> LRESULT {
                 return dispatcherPtr->handleMessage(entity, message);
             });
-        ShowWindow(wnd.getHWnd(), SW_SHOW);
-        ecs.insert(entity, std::move(wnd));
+    }
+}
+
+void showWindows(ECS::ECSManager& ecs) {
+    WITH_LOGGER_PREFIX("GUI", "GUI: ");
+    for (auto entity : ecs.view<NewWindowMarker, WinAPI::WndHandle>()) {
+        LOG_DEBUG("Show window @{}", entity.index());
+        ShowWindow(ecs.get<WinAPI::WndHandle>(entity).getHWnd(), SW_SHOW);
     }
 }
 
@@ -149,6 +159,8 @@ void initGUI(ECS::ECSManager& ecs) {
     setupMessageDispatcher(ecs, master);
     ecs.addLoopSystem(createWindows);
     ecs.addCleanupSystem(destroyWindows);
+    ecs.addLoopSystem(showWindows);
+    ecs.addLoopSystem(setMessageHandlers);
     ecs.addLoopSystem(cleanNewWindowMarkers);
     setupMessageLoop(ecs, master);
 }

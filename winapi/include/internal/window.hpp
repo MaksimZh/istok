@@ -33,7 +33,7 @@ using WindowMessageHandler = std::function<LRESULT(WindowMessage)>;
 class WndHandle {
 public:
     WndHandle() = default;
-    WndHandle(Rect<int> screenLocation, WindowMessageHandler handler);
+    WndHandle(Rect<int> screenLocation);
     ~WndHandle();
 
     WndHandle(const WndHandle&) = delete;
@@ -43,6 +43,9 @@ public:
 
     operator bool() const noexcept { return !!hWnd_; }
     HWND getHWnd() const { return hWnd_; }
+
+    void setMessageHandler(WindowMessageHandler handler);
+    void resetMessageHandler();
 
 private:
     CLASS_WITH_LOGGER_PREFIX("WinAPI", "WinAPI: ");
