@@ -173,6 +173,10 @@ std::string formatMessage(
     case 0x00a0:
         return std::format("{}WM_NCMOUSEMOVE({:d}, {})", prefix,
             wParam, formatAsPOINTS(lParam));
+    case 0x011f:
+        return std::format("{}WM_MENUSELECT(...)", prefix);
+    case 0x0121:
+        return std::format("{}WM_ENTERIDLE(...)", prefix);
     case 0x0200:
         return std::format("{}WM_MOUSEMOVE({:#x}, {})", prefix,
             wParam, formatAsPOINTS(lParam));
@@ -192,10 +196,12 @@ std::string formatMessage(
 
 void logWindowProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     static std::set<UINT> mouseMessages = {
+        WM_ENTERIDLE,
         WM_SETCURSOR,
+        WM_MOUSEMOVE,
         WM_NCHITTEST,
         WM_NCMOUSEMOVE,
-        WM_MOUSEMOVE,
+        WM_NCMOUSELEAVE,
     };
     if (mouseMessages.contains(msg)) {
         WITH_LOGGER_PREFIX("WinAPI.WndProc.MouseMove", "WndProc: ");
