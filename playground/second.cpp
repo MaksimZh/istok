@@ -178,31 +178,32 @@ void initGUI(ECS::ECSManager& ecs) {
 
 int main() {
     SET_LOGTERM_TRACE("");
-    //SET_LOGOFF("WinAPI.WndProc");
+    SET_LOGOFF("WinAPI.WndProc.MouseMove");
     WITH_LOGGER_PREFIX("", "App: ");
 
     LOG_TRACE("begin");
-    ECS::ECSManager ecs;
-    initGUI(ecs);
-    bool runFlag = true;
+    {  // Scope to log on proper shutdown.
+        ECS::ECSManager ecs;
+        initGUI(ecs);
+        bool runFlag = true;
 
-    auto window = ecs.createEntity();
-    ecs.insert(window, NewWindowMarker{});
-    ecs.insert(window, Location{{1100, 100, 1500, 500}});
-    ecs.insert(window, WindowHandler::Close([&ecs, &runFlag]() {
-        auto second = ecs.createEntity();
-        ecs.insert(second, NewWindowMarker{});
-        ecs.insert(second, Location{{1200, 200, 1400, 400}});
-        ecs.insert(second, WindowHandler::Close([&runFlag]() {
-            LOG_DEBUG("close handler");
-            runFlag = false;
+        auto window = ecs.createEntity();
+        ecs.insert(window, NewWindowMarker{});
+        ecs.insert(window, Location{{1100, 100, 1500, 500}});
+        ecs.insert(window, WindowHandler::Close([&ecs, &runFlag]() {
+            auto second = ecs.createEntity();
+            ecs.insert(second, NewWindowMarker{});
+            ecs.insert(second, Location{{1200, 200, 1400, 400}});
+            ecs.insert(second, WindowHandler::Close([&runFlag]() {
+                LOG_DEBUG("close handler");
+                runFlag = false;
+            }));
         }));
-    }));
 
-    while (runFlag) {
-        ecs.iterate();
-    }
-
+        while (runFlag) {
+            ecs.iterate();
+        }
+    }  // Scope to log on proper shutdown.
     LOG_TRACE("end");
     return 0;
 }

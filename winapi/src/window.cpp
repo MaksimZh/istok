@@ -1,13 +1,12 @@
 // Copyright 2026 Maksim Sergeevich Zholudev. All rights reserved
+#include "internal/window.hpp"
+
 #include "logging.hpp"
-#include <cstddef>
-#include <internal/window.hpp>
-#include <minwindef.h>
+
+#include <set>
 #include <string>
-#include <stringapiset.h>
-#include <type_traits>
-#include <winnls.h>
-#include <winnt.h>
+#include <windows.h>
+#include <windowsx.h>
 #include <winuser.h>
 
 namespace Istok::WinAPI {
@@ -91,11 +90,17 @@ std::string formatAsWINDOWPOS(LPARAM lParam) {
         wp->x, wp->y, wp->cx, wp->cy, wp->flags);
 }
 
+std::string formatAsPOINTS(LPARAM lParam) {
+    return std::format(
+        "({:d}, {:d})",
+        GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+}
+
 std::string formatAsRECT(LPARAM lParam) {
-    auto wp = reinterpret_cast<RECT*>(lParam);
+    auto rect = reinterpret_cast<RECT*>(lParam);
     return std::format(
         "{{{:d}, {:d}, {:d}, {:d}}}",
-        wp->left, wp->top, wp->right, wp->bottom);
+        rect->left, rect->top, rect->right, rect->bottom);
 }
 
 std::string formatMessage(
@@ -136,6 +141,10 @@ std::string formatMessage(
     case 0x001c:
         return std::format("{}WM_ACTIVATEAPP({:s}, {:#x})", prefix,
             static_cast<bool>(wParam), lParam);
+    case 0x0020:
+        return std::format("{}WM_SETCURSOR([{}], [{:d}|{:#04x}])", prefix,
+            toString(reinterpret_cast<HWND>(wParam)),
+            LOWORD(lParam), HIWORD(lParam));
     case 0x0024:
         return std::format("{}WM_GETMINMAXINFO", prefix);
     case 0x0046:
@@ -148,32 +157,60 @@ std::string formatMessage(
         return std::format("{}WM_GETICON({:d})", prefix, wParam);
     case 0x0081:
         return std::format("{}WM_NCCREATE(...)", prefix);
+    case 0x0082:
+        return std::format("{}WM_NCDESTROY", prefix);
     case 0x0083:
         return std::format("{}WM_NCCALCSIZE({:s}, ...)", prefix,
             static_cast<bool>(wParam));
+    case 0x0084:
+        return std::format("{}WM_NCHITTEST({})", prefix,
+            formatAsPOINTS(lParam));
     case 0x0085:
         return std::format("{}WM_NCPAINT(...)", prefix);
     case 0x0086:
         return std::format("{}WM_NCACTIVATE({:s}, {})", prefix,
             static_cast<bool>(wParam),
             toString(reinterpret_cast<HWND>(lParam)));
+    case 0x00a0:
+        return std::format("{}WM_NCMOUSEMOVE({:d}, {})", prefix,
+            wParam, formatAsPOINTS(lParam));
+    case 0x0200:
+        return std::format("{}WM_MOUSEMOVE({:#x}, {})", prefix,
+            wParam, formatAsPOINTS(lParam));
     case 0x0214:
         return std::format("{}WM_SIZING({:d}, {})", prefix,
             wParam, formatAsRECT(lParam));
     case 0x0216:
         return std::format("{}WM_MOVING({})", prefix,
             formatAsRECT(lParam));
+    case 0x02a2:
+        return std::format("{}WM_NCMOUSELEAVE", prefix);
     default: return std::format(
-        "{}msg({:#x})({:#016x}, {:#016x})",
+        "{}msg({:#06x})({:#018x}, {:#018x})",
         prefix, msg, wParam, lParam);
+    }
+}
+
+void logWindowProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
+    static std::set<UINT> mouseMessages = {
+        WM_SETCURSOR,
+        WM_NCHITTEST,
+        WM_NCMOUSEMOVE,
+        WM_MOUSEMOVE,
+    };
+    if (mouseMessages.contains(msg)) {
+        WITH_LOGGER_PREFIX("WinAPI.WndProc.MouseMove", "WndProc: ");
+        LOG_TRACE("{}", formatMessage(hWnd, msg, wParam, lParam));
+    } else {
+        WITH_LOGGER_PREFIX("WinAPI.WndProc", "WndProc: ");
+        LOG_TRACE("{}", formatMessage(hWnd, msg, wParam, lParam));
     }
 }
 
 LRESULT CALLBACK windowProc(
     HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam
 ) noexcept {
-    WITH_LOGGER_PREFIX("WinAPI.WndProc", "WndProc: ");
-    LOG_TRACE("{}", formatMessage(hWnd, msg, wParam, lParam));
+    logWindowProc(hWnd, msg, wParam, lParam);
     if (auto* handler = reinterpret_cast<WinAPI::WindowMessageHandler*>(
             GetWindowLongPtr(hWnd, GWLP_USERDATA))
     ) {
@@ -248,7 +285,6 @@ void WndHandle::clean() {
         LOG_DEBUG("Destroying window [{}]", toString(hWnd_));
         setHandler(nullptr);
         DestroyWindow(hWnd_);
-        LOG_DEBUG("Window [{}] destroyed", toString(hWnd_));
     }
 }
 
