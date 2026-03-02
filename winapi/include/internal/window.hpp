@@ -3,6 +3,7 @@
 
 #include <logging.hpp>
 
+#include <functional>
 #include <windows.h>
 
 namespace Istok::WinAPI {
@@ -26,12 +27,7 @@ struct WindowMessage {
 std::string formatMessage(const WindowMessage& message);
 LRESULT handleMessageByDefault(const WindowMessage& message) noexcept;
 
-
-class WindowMessageHandler {
-public:
-    virtual ~WindowMessageHandler() = default;
-    virtual LRESULT handleMessage(WindowMessage message) noexcept = 0;
-};
+using WindowMessageHandler = std::function<LRESULT(WindowMessage)>;
 
 class WndHandle {
 public:

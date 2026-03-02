@@ -4,34 +4,15 @@
 #include <logging.hpp>
 #include <ecs.hpp>
 #include <memory>
-#include <minwindef.h>
 #include <unordered_map>
-#include <winapi.hpp>
-#include <winbase.h>
-#include <winuser.h>
 
 using namespace Istok;
 
-using WindowMessageHandlerFunc = std::function<LRESULT(WinAPI::WindowMessage)>;
-
-class WindowMessageHandlerProxy : public WinAPI::WindowMessageHandler {
-public:
-    explicit WindowMessageHandlerProxy(WindowMessageHandlerFunc func)
-    : func_(func) {}
-
-    LRESULT handleMessage(WinAPI::WindowMessage message) noexcept override {
-        return func_(message);
-    }
-
-private:
-    WindowMessageHandlerFunc func_;
-};
-
-using EntityWindowMessageHandlerFunc = std::function<
-    LRESULT(ECS::ECSManager&, ECS::Entity, WinAPI::WindowMessage)>;
-
 class EntityWindowMessageDispatcher {
 public:
+    using Handler = std::function<
+        LRESULT(ECS::ECSManager&, ECS::Entity, WinAPI::WindowMessage)>;
+
     EntityWindowMessageDispatcher(ECS::ECSManager& ecs) : ecs_(ecs) {}
 
     LRESULT handleMessage(
@@ -45,14 +26,14 @@ public:
         return it->second(ecs_, entity, message);
     }
 
-    void setHandler(UINT msg, EntityWindowMessageHandlerFunc func) {
+    void setHandler(UINT msg, Handler func) {
         handlers_[msg] = func;
     }
 
 private:
     CLASS_WITH_LOGGER_PREFIX("GUI.WMDispatcher", "GUI: ");
     ECS::ECSManager& ecs_;
-    std::unordered_map<UINT, EntityWindowMessageHandlerFunc> handlers_;
+    std::unordered_map<UINT, Handler> handlers_;
 };
 
 struct QuitFlag { bool value; };
@@ -71,7 +52,7 @@ std::unique_ptr<WinAPI::WindowMessageHandler> makeWindowMessageHandler(
     using Dispatcher = std::unique_ptr<EntityWindowMessageDispatcher>;
     assert(ecs.count<Dispatcher>() == 1);
     auto* dispatcherPtr = getUnique<Dispatcher>(ecs).get();
-    return std::make_unique<WindowMessageHandlerProxy>(
+    return std::make_unique<WinAPI::WindowMessageHandler>(
         [entity, dispatcherPtr](WinAPI::WindowMessage message) -> LRESULT {
         return dispatcherPtr->handleMessage(entity, message);
     });

@@ -7,7 +7,6 @@
 #include <string>
 #include <windows.h>
 #include <windowsx.h>
-#include <winuser.h>
 
 namespace Istok::WinAPI {
 
@@ -214,8 +213,7 @@ LRESULT CALLBACK windowProc(
     if (auto* handler = reinterpret_cast<WinAPI::WindowMessageHandler*>(
             GetWindowLongPtr(hWnd, GWLP_USERDATA))
     ) {
-        return handler->handleMessage(
-            WinAPI::WindowMessage(hWnd, msg, wParam, lParam));
+        return (*handler)(WinAPI::WindowMessage(hWnd, msg, wParam, lParam));
     }
     return DefWindowProc(hWnd, msg, wParam, lParam);
 }
