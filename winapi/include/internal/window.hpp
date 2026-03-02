@@ -4,6 +4,7 @@
 #include <logging.hpp>
 
 #include <functional>
+#include <memory>
 #include <windows.h>
 
 namespace Istok::WinAPI {
@@ -32,7 +33,7 @@ using WindowMessageHandler = std::function<LRESULT(WindowMessage)>;
 class WndHandle {
 public:
     WndHandle() = default;
-    WndHandle(Rect<int> screenLocation);
+    WndHandle(Rect<int> screenLocation, WindowMessageHandler handler);
     ~WndHandle();
 
     WndHandle(const WndHandle&) = delete;
@@ -43,11 +44,12 @@ public:
     operator bool() const noexcept { return !!hWnd_; }
     HWND getHWnd() const { return hWnd_; }
 
-    void setHandler(WindowMessageHandler* handler);
-
 private:
     CLASS_WITH_LOGGER_PREFIX("WinAPI", "WinAPI: ");
     HWND hWnd_;
+    std::unique_ptr<WindowMessageHandler> handler_;
+
+    void takeFrom(WndHandle& source);
     void clean();
 };
 

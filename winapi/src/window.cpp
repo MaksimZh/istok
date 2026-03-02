@@ -3,6 +3,7 @@
 
 #include "logging.hpp"
 
+#include <memory>
 #include <set>
 #include <string>
 #include <windows.h>
@@ -239,7 +240,7 @@ LRESULT handleMessageByDefault(const WindowMessage& message) noexcept {
 }
 
 
-WndHandle::WndHandle(Rect<int> screenLocation) {
+WndHandle::WndHandle(Rect<int> screenLocation, WindowMessageHandler handler) {
     static WinAPI::WindowClass windowClass(windowProc, L"Istok");
     HWND hWnd = CreateWindowEx(
         NULL,
@@ -256,6 +257,10 @@ WndHandle::WndHandle(Rect<int> screenLocation) {
     }
     LOG_DEBUG("Created window: [{}]", toString(hWnd));
     hWnd_ = hWnd;
+    handler_ = std::make_unique<WindowMessageHandler>(handler);
+    SetWindowLongPtr(
+        hWnd_, GWLP_USERDATA,
+        reinterpret_cast<LONG_PTR>(handler_.get()));
 }
 
 WndHandle::~WndHandle() {
@@ -263,31 +268,27 @@ WndHandle::~WndHandle() {
 }
 
 WndHandle::WndHandle(WndHandle&& source) {
-    hWnd_ = source.hWnd_;
-    source.hWnd_ = nullptr;
+    takeFrom(source);
 }
 
 WndHandle& WndHandle::operator=(WndHandle&& source) {
     if (&source != this) {
         clean();
-        hWnd_ = source.hWnd_;
-        source.hWnd_ = nullptr;
+        takeFrom(source);
     }
     return *this;
 }
 
-void WndHandle::setHandler(WindowMessageHandler* handler) {
-    LOG_DEBUG("Set handler {} for window [{}]",
-        toString(handler), toString(hWnd_));
-    SetWindowLongPtr(
-        hWnd_, GWLP_USERDATA,
-        reinterpret_cast<LONG_PTR>(handler));
+void WndHandle::takeFrom(WndHandle& source) {
+    hWnd_ = source.hWnd_;
+    handler_ = std::move(source.handler_);
+    source.hWnd_ = nullptr;
 }
 
 void WndHandle::clean() {
     if (hWnd_) {
         LOG_DEBUG("Destroying window [{}]", toString(hWnd_));
-        setHandler(nullptr);
+        SetWindowLongPtr(hWnd_, GWLP_USERDATA, NULL);
         DestroyWindow(hWnd_);
     }
 }
