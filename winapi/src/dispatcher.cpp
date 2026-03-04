@@ -14,8 +14,8 @@ LRESULT WindowMessageDispatcher::handleMessage(
     return it->second(ecs_, entity, message);
 }
 
-void WindowMessageDispatcher::setHandler(UINT msg, Handler func) {
-    handlers_[msg] = func;
+void WindowMessageDispatcher::setHandler(UINT msg, Handler&& func) {
+    handlers_[msg] = std::move(func);
 }
 
 }  // namespace Istok::WinAPI

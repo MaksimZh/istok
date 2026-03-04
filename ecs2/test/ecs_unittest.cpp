@@ -304,7 +304,8 @@ TEST_CASE("ECSManager - loop systems", "[unit][ecs]") {
     SECTION("single") {
         auto a = ecs.createEntity();
         ecs.insert(a, A{100});
-        ecs.addLoopSystem([a](ECSManager& ecs) { ecs.get<A>(a).value++; });
+        ecs.addLoopSystem([a](ECSManager& ecs) noexcept {
+            ecs.get<A>(a).value++; });
         REQUIRE(ecs.get<A>(a) == A{100});
         ecs.iterate();
         REQUIRE(ecs.get<A>(a) == A{101});
@@ -316,8 +317,10 @@ TEST_CASE("ECSManager - loop systems", "[unit][ecs]") {
         auto a = ecs.createEntity();
         ecs.insert(a, A{100});
         ecs.insert(a, B{200});
-        ecs.addLoopSystem([a](ECSManager& ecs) { ecs.get<A>(a).value++; });
-        ecs.addLoopSystem([a](ECSManager& ecs) { ecs.get<B>(a).value++; });
+        ecs.addLoopSystem([a](ECSManager& ecs) noexcept {
+            ecs.get<A>(a).value++; });
+        ecs.addLoopSystem([a](ECSManager& ecs) noexcept {
+            ecs.get<B>(a).value++; });
         REQUIRE(ecs.get<A>(a) == A{100});
         REQUIRE(ecs.get<B>(a) == B{200});
         ecs.iterate();
@@ -337,8 +340,8 @@ TEST_CASE("ECSManager - cleanup systems", "[unit][ecs]") {
             ECSManager ecs;
             auto a = ecs.createEntity();
             ecs.insert(a, A{100});
-            ecs.addCleanupSystem(
-                [a, &av](ECSManager& ecs) { av = ecs.get<A>(a).value; });
+            ecs.addCleanupSystem([a, &av](ECSManager& ecs) noexcept {
+                av = ecs.get<A>(a).value; });
             REQUIRE(av == 0);
         }
         REQUIRE(av == 100);
@@ -351,10 +354,10 @@ TEST_CASE("ECSManager - cleanup systems", "[unit][ecs]") {
             ECSManager ecs;
             auto a = ecs.createEntity();
             ecs.insert(a, A{100});
-            ecs.addCleanupSystem(
-                [&av, &bv](ECSManager& ecs) { bv = av + 1; });
-            ecs.addCleanupSystem(
-                [a, &av](ECSManager& ecs) { av = ecs.get<A>(a).value; });
+            ecs.addCleanupSystem([&av, &bv](ECSManager& ecs) noexcept {
+                bv = av + 1; });
+            ecs.addCleanupSystem([a, &av](ECSManager& ecs) noexcept {
+                av = ecs.get<A>(a).value; });
             REQUIRE(av == 0);
             REQUIRE(bv == 0);
         }
@@ -372,12 +375,14 @@ TEST_CASE("ECSManager - all systems", "[unit][ecs]") {
         auto a = ecs.createEntity();
         ecs.insert(a, A{100});
         ecs.insert(a, B{200});
-        ecs.addLoopSystem([a](ECSManager& ecs) { ecs.get<A>(a).value++; });
-        ecs.addLoopSystem([a](ECSManager& ecs) { ecs.get<B>(a).value++; });
-        ecs.addCleanupSystem(
-            [a, &av, &bv](ECSManager& ecs) { bv = av + ecs.get<B>(a).value; });
-        ecs.addCleanupSystem(
-            [a, &av](ECSManager& ecs) { av = ecs.get<A>(a).value; });
+        ecs.addLoopSystem([a](ECSManager& ecs) noexcept {
+            ecs.get<A>(a).value++; });
+        ecs.addLoopSystem([a](ECSManager& ecs) noexcept {
+            ecs.get<B>(a).value++; });
+        ecs.addCleanupSystem([a, &av, &bv](ECSManager& ecs) noexcept {
+            bv = av + ecs.get<B>(a).value; });
+        ecs.addCleanupSystem([a, &av](ECSManager& ecs) noexcept {
+            av = ecs.get<A>(a).value; });
         REQUIRE(ecs.get<A>(a) == A{100});
         REQUIRE(ecs.get<B>(a) == B{200});
         ecs.iterate();

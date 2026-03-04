@@ -15,8 +15,8 @@ namespace Istok::WinAPI {
 
 class WindowMessageDispatcher {
 public:
-    using Handler = std::function<
-        LRESULT(ECS::ECSManager&, ECS::Entity, WinAPI::WindowMessage)>;
+    using Handler = std::move_only_function<LRESULT(
+        ECS::ECSManager&, ECS::Entity, WinAPI::WindowMessage) noexcept>;
 
     WindowMessageDispatcher(ECS::ECSManager& ecs) : ecs_(ecs) {}
 
@@ -24,7 +24,7 @@ public:
         ECS::Entity entity, WinAPI::WindowMessage message
     ) noexcept;
 
-    void setHandler(UINT msg, Handler func);
+    void setHandler(UINT msg, Handler&& func);
 
 private:
     CLASS_WITH_LOGGER_PREFIX("GUI.WMDispatcher", "GUI: ");

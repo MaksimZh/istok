@@ -29,7 +29,8 @@ struct WindowMessage {
 std::string formatMessage(const WindowMessage& message);
 LRESULT handleMessageByDefault(const WindowMessage& message) noexcept;
 
-using WindowMessageHandler = std::function<LRESULT(WindowMessage)>;
+using WindowMessageHandler =
+    std::move_only_function<LRESULT(WindowMessage) noexcept>;
 
 class WndHandle {
 public:
@@ -45,7 +46,7 @@ public:
     operator bool() const noexcept { return !!hWnd_; }
     HWND getHWnd() const { return hWnd_; }
 
-    void setMessageHandler(WindowMessageHandler handler);
+    void setMessageHandler(WindowMessageHandler&& handler);
     void resetMessageHandler();
 
 private:

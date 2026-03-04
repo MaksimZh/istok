@@ -1,4 +1,5 @@
 #include <cassert>
+#include <functional>
 #include <memory>
 
 #include <windows.h>
@@ -19,7 +20,7 @@ Component& getUnique(ECS::ECSManager& ecs) {
     return ecs.get<Component>(holder);
 }
 
-void messageLoopIteration(ECS::ECSManager& ecs) {
+void messageLoopIteration(ECS::ECSManager& ecs) noexcept {
     WITH_LOGGER_PREFIX("GUI", "GUI: ");
     if (getUnique<ProcessingMessageFlag>(ecs).value) {
         LOG_TRACE("GetMessage skipped");
@@ -41,14 +42,14 @@ void messageLoopIteration(ECS::ECSManager& ecs) {
 namespace WindowHandler {
 
 struct Close {
-    std::function<void()> func;
+    std::move_only_function<void() noexcept> func;
 };
 
 } // namespace WindowHandler
 
 LRESULT wmCloseHandler(
     ECS::ECSManager& ecs, ECS::Entity entity, WinAPI::WindowMessage message
-) {
+) noexcept {
     assert(message.msg == WM_CLOSE);
     if (!ecs.has<WindowHandler::Close>(entity)) {
         return WinAPI::handleMessageByDefault(message);
@@ -59,7 +60,7 @@ LRESULT wmCloseHandler(
 
 LRESULT wmSizeHandler(
     ECS::ECSManager& ecs, ECS::Entity entity, WinAPI::WindowMessage message
-) {
+) noexcept {
     assert(message.msg == WM_SIZE);
     ecs.iterate();
     return 0;
@@ -84,7 +85,7 @@ struct Location {
 
 struct NewWindowMarker {};
 
-void createWindows(ECS::ECSManager& ecs) {
+void createWindows(ECS::ECSManager& ecs) noexcept {
     WITH_LOGGER_PREFIX("GUI", "GUI: ");
     for (auto entity : ecs.view<NewWindowMarker, Location>()) {
         LOG_DEBUG("Creating window @{}", entity.index());
@@ -94,7 +95,7 @@ void createWindows(ECS::ECSManager& ecs) {
     }
 }
 
-void setMessageHandlers(ECS::ECSManager& ecs) {
+void setMessageHandlers(ECS::ECSManager& ecs) noexcept {
     WITH_LOGGER_PREFIX("GUI", "GUI: ");
     using Dispatcher = std::unique_ptr<WinAPI::WindowMessageDispatcher>;
     assert(ecs.count<Dispatcher>() == 1);
@@ -102,13 +103,13 @@ void setMessageHandlers(ECS::ECSManager& ecs) {
     for (auto entity : ecs.view<NewWindowMarker, WinAPI::WndHandle>()) {
         LOG_DEBUG("Set message handler @{}", entity.index());
         ecs.get<WinAPI::WndHandle>(entity).setMessageHandler(
-            [entity, dispatcherPtr](WinAPI::WindowMessage message) -> LRESULT {
+            [entity, dispatcherPtr](WinAPI::WindowMessage message) noexcept -> LRESULT {
                 return dispatcherPtr->handleMessage(entity, message);
             });
     }
 }
 
-void showWindows(ECS::ECSManager& ecs) {
+void showWindows(ECS::ECSManager& ecs) noexcept {
     WITH_LOGGER_PREFIX("GUI", "GUI: ");
     for (auto entity : ecs.view<NewWindowMarker, WinAPI::WndHandle>()) {
         LOG_DEBUG("Show window @{}", entity.index());
@@ -116,15 +117,15 @@ void showWindows(ECS::ECSManager& ecs) {
     }
 }
 
-void cleanNewWindowMarkers(ECS::ECSManager& ecs) {
+void cleanNewWindowMarkers(ECS::ECSManager& ecs) noexcept {
     ecs.removeAll<NewWindowMarker>();
 }
 
-void destroyWindows(ECS::ECSManager& ecs) {
+void destroyWindows(ECS::ECSManager& ecs) noexcept {
     ecs.removeAll<WinAPI::WndHandle>();
 }
 
-void initGUI(ECS::ECSManager& ecs) {
+void initGUI(ECS::ECSManager& ecs) noexcept {
     WITH_LOGGER_PREFIX("GUI", "GUI: ");
     auto master = ecs.createEntity();
     LOG_DEBUG("Created master entity @{}", master.index());
@@ -152,11 +153,11 @@ int main() {
         auto window = ecs.createEntity();
         ecs.insert(window, NewWindowMarker{});
         ecs.insert(window, Location{{1100, 100, 1500, 500}});
-        ecs.insert(window, WindowHandler::Close([&ecs, &runFlag]() {
+        ecs.insert(window, WindowHandler::Close([&ecs, &runFlag]() noexcept {
             auto second = ecs.createEntity();
             ecs.insert(second, NewWindowMarker{});
             ecs.insert(second, Location{{1200, 200, 1400, 400}});
-            ecs.insert(second, WindowHandler::Close([&runFlag]() {
+            ecs.insert(second, WindowHandler::Close([&runFlag]() noexcept {
                 LOG_DEBUG("close handler");
                 runFlag = false;
             }));

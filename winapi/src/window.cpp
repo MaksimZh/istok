@@ -273,11 +273,11 @@ WndHandle& WndHandle::operator=(WndHandle&& source) {
     return *this;
 }
 
-void WndHandle::setMessageHandler(WindowMessageHandler handler) {
+void WndHandle::setMessageHandler(WindowMessageHandler&& handler) {
     if (!hWnd_) {
         return;
     }
-    handler_ = std::make_unique<WindowMessageHandler>(handler);
+    handler_ = std::make_unique<WindowMessageHandler>(std::move(handler));
     SetWindowLongPtr(
         hWnd_, GWLP_USERDATA,
         reinterpret_cast<LONG_PTR>(handler_.get()));

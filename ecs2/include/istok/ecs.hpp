@@ -11,7 +11,7 @@
 namespace Istok::ECS {
 
 class ECSManager;
-using System = std::function<void(ECSManager&)>;
+using System = std::move_only_function<void(ECSManager&) noexcept>;
 
 namespace Internal {
 
@@ -161,12 +161,12 @@ public:
             componentManager_.view<Components...>());
     }
 
-    void addLoopSystem(System system) {
-        loopSystems_.push_back(system);
+    void addLoopSystem(System&& system) {
+        loopSystems_.push_back(std::move(system));
     }
 
-    void addCleanupSystem(System system) {
-        cleanupSystems_.push_back(system);
+    void addCleanupSystem(System&& system) {
+        cleanupSystems_.push_back(std::move(system));
     }
 
     void iterate() {
