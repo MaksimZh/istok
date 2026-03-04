@@ -1,7 +1,5 @@
 // Copyright 2026 Maksim Sergeevich Zholudev. All rights reserved
-#include "winapi/window.hpp"
-
-#include "logging.hpp"
+#include "istok/winapi/window.hpp"
 
 #include <memory>
 #include <set>

@@ -1,5 +1,5 @@
 // Copyright 2026 Maksim Sergeevich Zholudev. All rights reserved
-#include "ecs/component.hpp"
+#include "istok/ecs/component.hpp"
 
 #include <catch.hpp>
 

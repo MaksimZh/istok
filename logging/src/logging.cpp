@@ -2,7 +2,7 @@
 // Copyright 2025 Maksim Sergeevich Zholudev. All rights reserved
 #pragma once
 
-#include "logging.hpp"
+#include "istok/logging.hpp"
 
 #include <iostream>
 #include <cassert>

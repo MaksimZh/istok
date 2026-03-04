@@ -3,9 +3,9 @@
 
 #include <windows.h>
 
-#include <logging.hpp>
-#include <ecs.hpp>
-#include <winapi.hpp>
+#include <istok/logging.hpp>
+#include <istok/ecs.hpp>
+#include <istok/winapi.hpp>
 
 using namespace Istok;
 

@@ -1,7 +1,8 @@
 // test_logging.cpp
 // Copyright 2025 Maksim Sergeevich Zholudev. All rights reserved
+#include "istok/logging.hpp"
+
 #include <catch.hpp>
-#include <logging.hpp>
 
 #include <vector>
 #include <string>

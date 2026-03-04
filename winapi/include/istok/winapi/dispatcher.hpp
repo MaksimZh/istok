@@ -5,10 +5,10 @@
 
 #include <windows.h>
 
-#include <logging.hpp>
-#include <ecs.hpp>
+#include <istok/ecs.hpp>
+#include <istok/logging.hpp>
 
-#include "winapi/window.hpp"
+#include "window.hpp"
 
 
 namespace Istok::WinAPI {

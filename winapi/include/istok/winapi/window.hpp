@@ -5,7 +5,7 @@
 #include <memory>
 #include <windows.h>
 
-#include <logging.hpp>
+#include <istok/logging.hpp>
 
 
 namespace Istok::WinAPI {
