@@ -7,6 +7,8 @@
 
 #include <istok/logging.hpp>
 
+#include "istok/winapi/messages.hpp"
+
 
 namespace Istok::WinAPI {
 
@@ -18,16 +20,6 @@ struct Rect {
     T bottom;
 };
 
-
-struct WindowMessage {
-    HWND hWnd;
-    UINT msg;
-    WPARAM wParam;
-    LPARAM lParam;
-};
-
-std::string formatMessage(const WindowMessage& message);
-LRESULT handleMessageByDefault(const WindowMessage& message) noexcept;
 
 using WindowMessageHandler =
     std::move_only_function<LRESULT(WindowMessage) noexcept>;

@@ -39,22 +39,14 @@ void messageLoopIteration(ECS::ECSManager& ecs) noexcept {
     getUnique<ProcessingMessageFlag>(ecs).value = false;
 }
 
-namespace WindowHandler {
-
-struct Close {
-    std::move_only_function<void() noexcept> func;
-};
-
-} // namespace WindowHandler
-
 LRESULT wmCloseHandler(
     ECS::ECSManager& ecs, ECS::Entity entity, WinAPI::WindowMessage message
 ) noexcept {
     assert(message.msg == WM_CLOSE);
-    if (!ecs.has<WindowHandler::Close>(entity)) {
+    if (!ecs.has<EventHandlers::Close>(entity)) {
         return WinAPI::handleMessageByDefault(message);
     }
-    ecs.get<WindowHandler::Close>(entity).func();
+    ecs.get<EventHandlers::Close>(entity).func();
     return 0;
 }
 
@@ -141,7 +133,7 @@ void initGUI(ECS::ECSManager& ecs) noexcept {
 
 int main() {
     SET_LOGTERM_TRACE("");
-    SET_LOGOFF("WinAPI.WndProc.MouseMove");
+    SET_LOGOFF("WinAPI.WndProc");
 
     WITH_LOGGER_PREFIX("", "App: ");
     LOG_TRACE("begin");
@@ -153,11 +145,11 @@ int main() {
         auto window = ecs.createEntity();
         ecs.insert(window, NewWindowMarker{});
         ecs.insert(window, Location{{1100, 100, 1500, 500}});
-        ecs.insert(window, WindowHandler::Close([&ecs, &runFlag]() noexcept {
+        ecs.insert(window, EventHandlers::Close([&ecs, &runFlag]() noexcept {
             auto second = ecs.createEntity();
             ecs.insert(second, NewWindowMarker{});
             ecs.insert(second, Location{{1200, 200, 1400, 400}});
-            ecs.insert(second, WindowHandler::Close([&runFlag]() noexcept {
+            ecs.insert(second, EventHandlers::Close([&runFlag]() noexcept {
                 LOG_DEBUG("close handler");
                 runFlag = false;
             }));

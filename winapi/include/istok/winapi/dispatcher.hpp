@@ -8,7 +8,7 @@
 #include <istok/ecs.hpp>
 #include <istok/logging.hpp>
 
-#include "window.hpp"
+#include "istok/winapi/messages.hpp"
 
 
 namespace Istok::WinAPI {
