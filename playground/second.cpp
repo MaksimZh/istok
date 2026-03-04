@@ -20,25 +20,6 @@ Component& getUnique(ECS::ECSManager& ecs) {
     return ecs.get<Component>(holder);
 }
 
-void messageLoopIteration(ECS::ECSManager& ecs) noexcept {
-    WITH_LOGGER_PREFIX("GUI", "GUI: ");
-    if (getUnique<ProcessingMessageFlag>(ecs).value) {
-        LOG_TRACE("GetMessage skipped");
-        return;
-    }
-    getUnique<ProcessingMessageFlag>(ecs).value = true;
-    MSG msg;
-    GetMessage(&msg, NULL, 0, 0);
-    if (msg.message == WM_QUIT) {
-        LOG_DEBUG("WM_QUIT message received");
-        getUnique<QuitFlag>(ecs).value = true;
-        return;
-    }
-    TranslateMessage(&msg);
-    DispatchMessage(&msg);
-    getUnique<ProcessingMessageFlag>(ecs).value = false;
-}
-
 LRESULT wmCloseHandler(
     ECS::ECSManager& ecs, ECS::Entity entity, WinAPI::WindowMessage message
 ) noexcept {
@@ -64,12 +45,6 @@ void setupMessageDispatcher(ECS::ECSManager& ecs, ECS::Entity master) {
     dispatcher->setHandler(WM_SIZE, wmSizeHandler);
     ecs.insert(master, std::move(dispatcher));
 }
-
-void setupMessageLoop(ECS::ECSManager& ecs, ECS::Entity master) {
-    ecs.insert(master, ProcessingMessageFlag{false});
-    ecs.addLoopSystem(messageLoopIteration);
-}
-
 
 struct Location {
     WinAPI::Rect<int> rect;
@@ -117,7 +92,7 @@ void destroyWindows(ECS::ECSManager& ecs) noexcept {
     ecs.removeAll<WinAPI::WndHandle>();
 }
 
-void initGUI(ECS::ECSManager& ecs) noexcept {
+void initGUI(ECS::ECSManager& ecs, WinAPI::QuitCallback&& quit) noexcept {
     WITH_LOGGER_PREFIX("GUI", "GUI: ");
     auto master = ecs.createEntity();
     LOG_DEBUG("Created master entity @{}", master.index());
@@ -127,7 +102,8 @@ void initGUI(ECS::ECSManager& ecs) noexcept {
     ecs.addLoopSystem(showWindows);
     ecs.addLoopSystem(setMessageHandlers);
     ecs.addLoopSystem(cleanNewWindowMarkers);
-    setupMessageLoop(ecs, master);
+    ecs.addBottomLoopSystem(
+        WinAPI::createMessageLoopSystem(master, std::move(quit)));
 }
 
 
@@ -139,21 +115,23 @@ int main() {
     LOG_TRACE("begin");
     {  // Scope to log on proper shutdown.
         ECS::ECSManager ecs;
-        initGUI(ecs);
         bool runFlag = true;
+        auto quit = [&runFlag]() noexcept {
+            LOG_DEBUG("Quit");
+            runFlag = false;
+        };
+        initGUI(ecs, quit);
 
         auto window = ecs.createEntity();
         ecs.insert(window, NewWindowMarker{});
         ecs.insert(window, Location{{1100, 100, 1500, 500}});
-        ecs.insert(window, EventHandlers::Close([&ecs, &runFlag]() noexcept {
-            auto second = ecs.createEntity();
-            ecs.insert(second, NewWindowMarker{});
-            ecs.insert(second, Location{{1200, 200, 1400, 400}});
-            ecs.insert(second, EventHandlers::Close([&runFlag]() noexcept {
-                LOG_DEBUG("close handler");
-                runFlag = false;
+        ecs.insert(window, EventHandlers::Close(
+            [&ecs, &runFlag, quit]() noexcept {
+                auto second = ecs.createEntity();
+                ecs.insert(second, NewWindowMarker{});
+                ecs.insert(second, Location{{1200, 200, 1400, 400}});
+                ecs.insert(second, EventHandlers::Close(quit));
             }));
-        }));
 
         while (runFlag) {
             ecs.iterate();
