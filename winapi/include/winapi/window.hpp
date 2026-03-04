@@ -1,11 +1,12 @@
 // Copyright 2026 Maksim Sergeevich Zholudev. All rights reserved
 #pragma once
 
-#include <logging.hpp>
-
 #include <functional>
 #include <memory>
 #include <windows.h>
+
+#include <logging.hpp>
+
 
 namespace Istok::WinAPI {
 

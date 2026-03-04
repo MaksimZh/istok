@@ -1,13 +1,12 @@
 // Copyright 2026 Maksim Sergeevich Zholudev. All rights reserved
 #pragma once
 
-#include "internal/entity.hpp"
-#include "internal/component.hpp"
 #include <cassert>
 #include <functional>
-#include <utility>
 #include <vector>
 
+#include "ecs/entity.hpp"
+#include "ecs/component.hpp"
 
 namespace Istok::ECS {
 

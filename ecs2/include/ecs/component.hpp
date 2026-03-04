@@ -1,5 +1,6 @@
 // Copyright 2026 Maksim Sergeevich Zholudev. All rights reserved
 #pragma once
+
 #include <cassert>
 #include <cstddef>
 #include <vector>
@@ -22,7 +23,7 @@ class ComponentStorage : public AbstractComponentStorage {
 public:
     ComponentStorage() = default;
     ~ComponentStorage() = default;
-    
+
     ComponentStorage(const ComponentStorage&) = delete;
     ComponentStorage& operator=(const ComponentStorage&) = delete;
     ComponentStorage(ComponentStorage&&) noexcept = default;
@@ -124,7 +125,7 @@ public:
     public:
         using element_type = size_t;
         using difference_type = ptrdiff_t;
-        
+
         Iterator(
             std::span<const size_t>::iterator current,
             std::span<const size_t>::iterator sentinel,
@@ -133,7 +134,7 @@ public:
             assert(current_ <= sentinel_);
             seek();
         }
-        
+
         size_t operator*() const noexcept {
             assert(current_ < sentinel_);
             return *current_;
@@ -156,7 +157,7 @@ public:
             assert(pos_ == other.pos_);
             return current_ == other.current_;
         }
-    
+
     private:
         std::span<const size_t>::iterator current_;
         std::span<const size_t>::iterator sentinel_;
@@ -168,16 +169,16 @@ public:
             }
         }
     };
-    
+
     using iterator = Iterator;
-    
+
     iterator begin() noexcept {
         return Iterator(
             master_->indices().begin(),
             master_->indices().end(),
             pos_);
     }
-    
+
     iterator end() noexcept {
         return Iterator(
             master_->indices().end(),
@@ -186,14 +187,14 @@ public:
     }
 
     using const_iterator = Iterator;
-    
+
     const_iterator begin() const noexcept {
         return Iterator(
             master_->indices().begin(),
             master_->indices().end(),
             pos_);
     }
-    
+
     const_iterator end() const noexcept {
         return Iterator(
             master_->indices().end(),
@@ -221,7 +222,7 @@ class ComponentManager {
 public:
     ComponentManager() = default;
     ~ComponentManager() = default;
-    
+
     ComponentManager(const ComponentManager&) = delete;
     ComponentManager& operator=(const ComponentManager&) = delete;
     ComponentManager(ComponentManager&&) noexcept = default;
@@ -304,7 +305,7 @@ private:
         assert(it != storages_.end());
         return as<Component>(*it->second);
     }
-    
+
     template <typename Component>
     ComponentStorage<Component>& ensureStorage() {
         auto k = key<Component>();

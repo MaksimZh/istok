@@ -1,9 +1,7 @@
 // Copyright 2026 Maksim Sergeevich Zholudev. All rights reserved
-#include <catch.hpp>
+#include "ecs/entity.hpp"
 
-#include <catch2/catch_test_macros.hpp>
-#include <cstddef>
-#include <internal/entity.hpp>
+#include <catch.hpp>
 
 #include <set>
 
@@ -25,7 +23,7 @@ TEST_CASE("EntityManager - basics", "[unit][ecs]") {
         REQUIRE(b.index() == 1);
         REQUIRE(c.index() == 2);
     }
-    
+
     SECTION("entity validity") {
         REQUIRE(em.isValidEntity(a));
         REQUIRE(em.isValidEntity(b));

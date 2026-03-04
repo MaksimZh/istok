@@ -1,13 +1,12 @@
 // Copyright 2026 Maksim Sergeevich Zholudev. All rights reserved
-#include <catch.hpp>
+#include "ecs/component.hpp"
 
-#include <catch2/catch_test_macros.hpp>
-#include <cstdlib>
-#include <internal/component.hpp>
+#include <catch.hpp>
 
 #include <set>
 
 using namespace Istok::ECS::Internal;
+
 
 namespace {
 

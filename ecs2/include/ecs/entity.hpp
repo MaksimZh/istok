@@ -21,7 +21,7 @@ struct Entity final {
             return std::bit_cast<size_t>(entity);
         }
     };
-       
+
     bool operator==(const Entity& other) const = default;
 
     size_t index() const {
@@ -30,7 +30,7 @@ struct Entity final {
 
 private:
     friend class Internal::EntityManager;
-    
+
     int32_t index_;
     int32_t generation_;
 
@@ -45,7 +45,7 @@ class EntityManager final {
 public:
     EntityManager() = default;
     ~EntityManager() = default;
-    
+
     EntityManager(const EntityManager&) = delete;
     EntityManager& operator=(const EntityManager&) = delete;
     EntityManager(EntityManager&&) noexcept = default;
@@ -63,7 +63,7 @@ public:
     size_t size() const noexcept {
         return size_;
     }
-    
+
     Entity createEntity() noexcept {
         ++size_;
         if (freeIndex_ == entities_.size()) {
