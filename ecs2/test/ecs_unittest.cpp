@@ -3,6 +3,7 @@
 
 #include <catch.hpp>
 
+#include <string>
 #include <unordered_set>
 
 using namespace Istok::ECS;
@@ -301,99 +302,98 @@ TEST_CASE("ECSManager - empty view", "[unit][ecs]") {
 TEST_CASE("ECSManager - loop systems", "[unit][ecs]") {
     ECSManager ecs;
 
-    SECTION("single") {
+    SECTION("single top") {
         auto a = ecs.createEntity();
-        ecs.insert(a, A{100});
-        ecs.addLoopSystem([a](ECSManager& ecs) noexcept {
-            ecs.get<A>(a).value++; });
-        REQUIRE(ecs.get<A>(a) == A{100});
+        ecs.insert(a, std::string("a"));
+        SECTION("top") {
+            ecs.addLoopSystem([a](ECSManager& ecs) noexcept {
+                ecs.get<std::string>(a) += "1"; });
+        }
+        SECTION("bottom") {
+            ecs.addBottomLoopSystem([a](ECSManager& ecs) noexcept {
+                ecs.get<std::string>(a) += "1"; });
+        }
+        REQUIRE(ecs.get<std::string>(a) == "a");
         ecs.iterate();
-        REQUIRE(ecs.get<A>(a) == A{101});
+        REQUIRE(ecs.get<std::string>(a) == "a1");
         ecs.iterate();
-        REQUIRE(ecs.get<A>(a) == A{102});
+        REQUIRE(ecs.get<std::string>(a) == "a11");
     }
 
     SECTION("multiple") {
         auto a = ecs.createEntity();
-        ecs.insert(a, A{100});
-        ecs.insert(a, B{200});
+        ecs.insert(a, std::string("a"));
         ecs.addLoopSystem([a](ECSManager& ecs) noexcept {
-            ecs.get<A>(a).value++; });
+            ecs.get<std::string>(a) += "1"; });
         ecs.addLoopSystem([a](ECSManager& ecs) noexcept {
-            ecs.get<B>(a).value++; });
-        REQUIRE(ecs.get<A>(a) == A{100});
-        REQUIRE(ecs.get<B>(a) == B{200});
+            ecs.get<std::string>(a) += "2"; });
+        ecs.addBottomLoopSystem([a](ECSManager& ecs) noexcept {
+            ecs.get<std::string>(a) += "3"; });
+        ecs.addBottomLoopSystem([a](ECSManager& ecs) noexcept {
+            ecs.get<std::string>(a) += "4"; });
+        REQUIRE(ecs.get<std::string>(a) == "a");
         ecs.iterate();
-        REQUIRE(ecs.get<A>(a) == A{101});
-        REQUIRE(ecs.get<B>(a) == B{201});
+        REQUIRE(ecs.get<std::string>(a) == "a1243");
         ecs.iterate();
-        REQUIRE(ecs.get<A>(a) == A{102});
-        REQUIRE(ecs.get<B>(a) == B{202});
+        REQUIRE(ecs.get<std::string>(a) == "a12431243");
     }
 }
 
 
 TEST_CASE("ECSManager - cleanup systems", "[unit][ecs]") {
     SECTION("single") {
-        int av = 0;
+        std::string log = "x";
         {
             ECSManager ecs;
             auto a = ecs.createEntity();
-            ecs.insert(a, A{100});
-            ecs.addCleanupSystem([a, &av](ECSManager& ecs) noexcept {
-                av = ecs.get<A>(a).value; });
-            REQUIRE(av == 0);
+            ecs.insert(a, std::string("a"));
+            ecs.addCleanupSystem([a, &log](ECSManager& ecs) noexcept {
+                log += ecs.get<std::string>(a); });
+            REQUIRE(log == "x");
         }
-        REQUIRE(av == 100);
+        REQUIRE(log == "xa");
     }
 
     SECTION("multiple") {
-        int av = 0;
-        int bv = 0;
+        std::string log = "x";
         {
             ECSManager ecs;
             auto a = ecs.createEntity();
-            ecs.insert(a, A{100});
-            ecs.addCleanupSystem([&av, &bv](ECSManager& ecs) noexcept {
-                bv = av + 1; });
-            ecs.addCleanupSystem([a, &av](ECSManager& ecs) noexcept {
-                av = ecs.get<A>(a).value; });
-            REQUIRE(av == 0);
-            REQUIRE(bv == 0);
+            ecs.insert(a, std::string("a"));
+            ecs.addCleanupSystem([a, &log](ECSManager& ecs) noexcept {
+                log += ecs.get<std::string>(a) + "1"; });
+            ecs.addCleanupSystem([a, &log](ECSManager& ecs) noexcept {
+                log += ecs.get<std::string>(a) + "2"; });
+            REQUIRE(log == "x");
         }
-        REQUIRE(av == 100);
-        REQUIRE(bv == 101);
+        REQUIRE(log == "xa2a1");
     }
 }
 
 
 TEST_CASE("ECSManager - all systems", "[unit][ecs]") {
-    int av = 0;
-    int bv = 0;
+    std::string log = "x";
     {
         ECSManager ecs;
         auto a = ecs.createEntity();
-        ecs.insert(a, A{100});
-        ecs.insert(a, B{200});
-        ecs.addLoopSystem([a](ECSManager& ecs) noexcept {
-            ecs.get<A>(a).value++; });
-        ecs.addLoopSystem([a](ECSManager& ecs) noexcept {
-            ecs.get<B>(a).value++; });
-        ecs.addCleanupSystem([a, &av, &bv](ECSManager& ecs) noexcept {
-            bv = av + ecs.get<B>(a).value; });
-        ecs.addCleanupSystem([a, &av](ECSManager& ecs) noexcept {
-            av = ecs.get<A>(a).value; });
-        REQUIRE(ecs.get<A>(a) == A{100});
-        REQUIRE(ecs.get<B>(a) == B{200});
+        ecs.insert(a, std::string("a"));
+        ecs.addLoopSystem([a, &log](ECSManager& ecs) noexcept {
+            log += ecs.get<std::string>(a) + "1"; });
+        ecs.addLoopSystem([a, &log](ECSManager& ecs) noexcept {
+            log += ecs.get<std::string>(a) + "2"; });
+        ecs.addBottomLoopSystem([a, &log](ECSManager& ecs) noexcept {
+            log += ecs.get<std::string>(a) + "3"; });
+        ecs.addBottomLoopSystem([a, &log](ECSManager& ecs) noexcept {
+            log += ecs.get<std::string>(a) + "4"; });
+        ecs.addCleanupSystem([a, &log](ECSManager& ecs) noexcept {
+            log += ecs.get<std::string>(a) + "5"; });
+        ecs.addCleanupSystem([a, &log](ECSManager& ecs) noexcept {
+            log += ecs.get<std::string>(a) + "6"; });
+        REQUIRE(log == "x");
         ecs.iterate();
-        REQUIRE(ecs.get<A>(a) == A{101});
-        REQUIRE(ecs.get<B>(a) == B{201});
+        REQUIRE(log == "xa1a2a4a3");
         ecs.iterate();
-        REQUIRE(ecs.get<A>(a) == A{102});
-        REQUIRE(ecs.get<B>(a) == B{202});
-        REQUIRE(av == 0);
-        REQUIRE(bv == 0);
+        REQUIRE(log == "xa1a2a4a3a1a2a4a3");
     }
-    REQUIRE(av == 102);
-    REQUIRE(bv == 304);
+    REQUIRE(log == "xa1a2a4a3a1a2a4a3a6a5");
 }

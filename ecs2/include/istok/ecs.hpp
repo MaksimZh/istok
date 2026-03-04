@@ -87,15 +87,12 @@ private:
 
 }  // namespace Internal
 
+
 class ECSManager {
 public:
     ~ECSManager() {
-        for (
-            auto it = cleanupSystems_.rbegin();
-            it != cleanupSystems_.rend();
-            ++it
-        ) {
-            (*it)(*this);
+        for (auto& s : cleanupSystems_) {
+            s(*this);
         }
     }
 
@@ -161,16 +158,25 @@ public:
             componentManager_.view<Components...>());
     }
 
-    void addLoopSystem(System&& system) {
+    void addLoopSystem(System&& system) noexcept {
         loopSystems_.push_back(std::move(system));
     }
 
-    void addCleanupSystem(System&& system) {
-        cleanupSystems_.push_back(std::move(system));
+    void addBottomLoopSystem(System&& system) noexcept {
+        bottomLoopSystems_.insert(
+            bottomLoopSystems_.begin(), std::move(system));
     }
 
-    void iterate() {
+    void addCleanupSystem(System&& system) noexcept {
+        cleanupSystems_.insert(
+            cleanupSystems_.begin(), std::move(system));
+    }
+
+    void iterate() noexcept {
         for (auto& s : loopSystems_) {
+            s(*this);
+        }
+        for (auto& s : bottomLoopSystems_) {
             s(*this);
         }
     }
@@ -179,6 +185,7 @@ private:
     Internal::EntityManager entityManager_;
     Internal::ComponentManager componentManager_;
     std::vector<System> loopSystems_;
+    std::vector<System> bottomLoopSystems_;
     std::vector<System> cleanupSystems_;
 };
 
