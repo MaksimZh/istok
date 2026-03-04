@@ -1,4 +1,5 @@
-add_library(winapi STATIC ./src/window.cpp)
+file(GLOB winapi_src "./src/*.cpp")
+add_library(winapi STATIC ${winapi_src})
 target_include_directories(winapi PUBLIC ./include)
 target_link_libraries(winapi PUBLIC logging)
 target_link_libraries(winapi PUBLIC ecs2)

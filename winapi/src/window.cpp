@@ -1,5 +1,5 @@
 // Copyright 2026 Maksim Sergeevich Zholudev. All rights reserved
-#include "internal/window.hpp"
+#include "winapi/window.hpp"
 
 #include "logging.hpp"
 
@@ -276,6 +276,9 @@ WndHandle& WndHandle::operator=(WndHandle&& source) {
 }
 
 void WndHandle::setMessageHandler(WindowMessageHandler handler) {
+    if (!hWnd_) {
+        return;
+    }
     handler_ = std::make_unique<WindowMessageHandler>(handler);
     SetWindowLongPtr(
         hWnd_, GWLP_USERDATA,
@@ -283,6 +286,9 @@ void WndHandle::setMessageHandler(WindowMessageHandler handler) {
 }
 
 void WndHandle::resetMessageHandler() {
+    if (!hWnd_ || !handler_) {
+        return;
+    }
     SetWindowLongPtr(hWnd_, GWLP_USERDATA, NULL);
     handler_.reset();
 }
@@ -294,11 +300,12 @@ void WndHandle::takeFrom(WndHandle& source) {
 }
 
 void WndHandle::clean() {
-    if (hWnd_) {
-        LOG_DEBUG("Destroying window [{}]", toString(hWnd_));
-        SetWindowLongPtr(hWnd_, GWLP_USERDATA, NULL);
-        DestroyWindow(hWnd_);
+    if (!hWnd_) {
+        return;
     }
+    LOG_DEBUG("Destroying window [{}]", toString(hWnd_));
+    SetWindowLongPtr(hWnd_, GWLP_USERDATA, NULL);
+    DestroyWindow(hWnd_);
 }
 
 }  // namespace Istok::WinAPI

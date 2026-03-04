@@ -1,3 +1,4 @@
 #pragma once
 
-#include "internal/window.hpp"
+#include "winapi/dispatcher.hpp"
+#include "winapi/window.hpp"

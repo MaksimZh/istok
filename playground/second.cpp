@@ -1,41 +1,13 @@
-#include "internal/entity.hpp"
-#include "internal/window.hpp"
 #include <cassert>
-#include <logging.hpp>
-#include <ecs.hpp>
 #include <memory>
-#include <unordered_map>
+
 #include <windows.h>
 
+#include <logging.hpp>
+#include <ecs.hpp>
+#include <winapi.hpp>
+
 using namespace Istok;
-
-class EntityWindowMessageDispatcher {
-public:
-    using Handler = std::function<
-        LRESULT(ECS::ECSManager&, ECS::Entity, WinAPI::WindowMessage)>;
-
-    EntityWindowMessageDispatcher(ECS::ECSManager& ecs) : ecs_(ecs) {}
-
-    LRESULT handleMessage(
-        ECS::Entity entity, WinAPI::WindowMessage message
-    ) noexcept {
-        auto it = handlers_.find(message.msg);
-        if (it == handlers_.end()) {
-            return WinAPI::handleMessageByDefault(message);
-        }
-        LOG_TRACE("@{}:{}", entity.index(), WinAPI::formatMessage(message));
-        return it->second(ecs_, entity, message);
-    }
-
-    void setHandler(UINT msg, Handler func) {
-        handlers_[msg] = func;
-    }
-
-private:
-    CLASS_WITH_LOGGER_PREFIX("GUI.WMDispatcher", "GUI: ");
-    ECS::ECSManager& ecs_;
-    std::unordered_map<UINT, Handler> handlers_;
-};
 
 struct QuitFlag { bool value; };
 struct ProcessingMessageFlag { bool value; };
@@ -94,7 +66,7 @@ LRESULT wmSizeHandler(
 }
 
 void setupMessageDispatcher(ECS::ECSManager& ecs, ECS::Entity master) {
-    auto dispatcher = std::make_unique<EntityWindowMessageDispatcher>(ecs);
+    auto dispatcher = std::make_unique<WinAPI::WindowMessageDispatcher>(ecs);
     dispatcher->setHandler(WM_CLOSE, wmCloseHandler);
     dispatcher->setHandler(WM_SIZE, wmSizeHandler);
     ecs.insert(master, std::move(dispatcher));
@@ -124,7 +96,7 @@ void createWindows(ECS::ECSManager& ecs) {
 
 void setMessageHandlers(ECS::ECSManager& ecs) {
     WITH_LOGGER_PREFIX("GUI", "GUI: ");
-    using Dispatcher = std::unique_ptr<EntityWindowMessageDispatcher>;
+    using Dispatcher = std::unique_ptr<WinAPI::WindowMessageDispatcher>;
     assert(ecs.count<Dispatcher>() == 1);
     auto* dispatcherPtr = getUnique<Dispatcher>(ecs).get();
     for (auto entity : ecs.view<NewWindowMarker, WinAPI::WndHandle>()) {
@@ -169,8 +141,8 @@ void initGUI(ECS::ECSManager& ecs) {
 int main() {
     SET_LOGTERM_TRACE("");
     SET_LOGOFF("WinAPI.WndProc.MouseMove");
-    WITH_LOGGER_PREFIX("", "App: ");
 
+    WITH_LOGGER_PREFIX("", "App: ");
     LOG_TRACE("begin");
     {  // Scope to log on proper shutdown.
         ECS::ECSManager ecs;
