@@ -4,7 +4,7 @@
 
 #include <windows.h>
 
-#include "istok/gui/winapi/delegate.hpp"
+#include "mock_delegate.hpp"
 
 using namespace Istok::GUI::WinAPI;
 
@@ -21,19 +21,6 @@ LRESULT CALLBACK windowProc(
     }
     return DefWindowProc(hWnd, msg, wParam, lParam);
 }
-
-bool operator==(const WindowMessage& a, const WindowMessage& b) {
-    return a.hWnd == b.hWnd
-        && a.msg == b.msg
-        && a.wParam == b.wParam
-        && a.lParam == b.lParam;
-}
-
-class MockDelegate : trompeloeil::mock_interface<WinAPIDelegate> {
-public:
-    MAKE_MOCK1(windowProc, LRESULT(WindowMessage), noexcept);
-    MAKE_MOCK1(defWindowProc, LRESULT(WindowMessage), noexcept);
-};
 
 }  // namespace
 
