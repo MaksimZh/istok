@@ -1,28 +1,13 @@
 // Copyright 2026 Maksim Sergeevich Zholudev. All rights reserved
 #include <catch.hpp>
 #include <catch2/trompeloeil.hpp>
+#include "winapi/windowproc.hpp"
 
 #include <windows.h>
 
 #include "mock_delegate.hpp"
 
 using namespace Istok::GUI::WinAPI;
-
-
-namespace {
-
-LRESULT CALLBACK windowProc(
-    HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam
-) noexcept {
-    if (auto* delegate = reinterpret_cast<WinAPIDelegate*>(
-        GetWindowLongPtr(hWnd, GWLP_USERDATA))
-    ) {
-        return delegate->windowProc(WindowMessage(hWnd, msg, wParam, lParam));
-    }
-    return DefWindowProc(hWnd, msg, wParam, lParam);
-}
-
-}  // namespace
 
 
 TEST_CASE("GUI - windowProc", "[unit][gui]") {
