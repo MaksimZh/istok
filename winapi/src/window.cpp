@@ -2,10 +2,8 @@
 #include "istok/winapi/window.hpp"
 
 #include <memory>
-#include <set>
 #include <string>
 #include <windows.h>
-#include <windowsx.h>
 
 #include "istok/winapi/messages.hpp"
 
@@ -61,36 +59,6 @@ public:
 private:
     LPCWSTR name = nullptr;
 };
-
-void logWindowProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
-    static std::set<UINT> mouseMessages = {
-        WM_ENTERIDLE,
-        WM_SETCURSOR,
-        WM_MOUSEMOVE,
-        WM_NCHITTEST,
-        WM_NCMOUSEMOVE,
-        WM_NCMOUSELEAVE,
-    };
-    if (mouseMessages.contains(msg)) {
-        WITH_LOGGER_PREFIX("WinAPI.WndProc.MouseMove", "WndProc: ");
-        LOG_TRACE("{}", formatMessage(hWnd, msg, wParam, lParam));
-    } else {
-        WITH_LOGGER_PREFIX("WinAPI.WndProc", "WndProc: ");
-        LOG_TRACE("{}", formatMessage(hWnd, msg, wParam, lParam));
-    }
-}
-
-LRESULT CALLBACK windowProc(
-    HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam
-) noexcept {
-    logWindowProc(hWnd, msg, wParam, lParam);
-    if (auto* handler = reinterpret_cast<WinAPI::WindowMessageHandler*>(
-            GetWindowLongPtr(hWnd, GWLP_USERDATA))
-    ) {
-        return (*handler)(WinAPI::WindowMessage(hWnd, msg, wParam, lParam));
-    }
-    return DefWindowProc(hWnd, msg, wParam, lParam);
-}
 
 }  // namespace
 

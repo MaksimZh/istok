@@ -1,7 +1,6 @@
 // Copyright 2026 Maksim Sergeevich Zholudev. All rights reserved
 #pragma once
 
-#include <functional>
 #include <memory>
 #include <windows.h>
 
@@ -20,9 +19,6 @@ struct Rect {
     T bottom;
 };
 
-
-using WindowMessageHandler =
-    std::move_only_function<LRESULT(WindowMessage) noexcept>;
 
 class WndHandle {
 public:

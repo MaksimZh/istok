@@ -24,10 +24,10 @@ LRESULT wmCloseHandler(
     ECS::ECSManager& ecs, ECS::Entity entity, WinAPI::WindowMessage message
 ) noexcept {
     assert(message.msg == WM_CLOSE);
-    if (!ecs.has<EventHandlers::Close>(entity)) {
+    if (!ecs.has<WinAPI::EventHandlers::Close>(entity)) {
         return WinAPI::handleMessageByDefault(message);
     }
-    ecs.get<EventHandlers::Close>(entity).func();
+    ecs.get<WinAPI::EventHandlers::Close>(entity).func();
     return 0;
 }
 
@@ -125,12 +125,12 @@ int main() {
         auto window = ecs.createEntity();
         ecs.insert(window, NewWindowMarker{});
         ecs.insert(window, Location{{1100, 100, 1500, 500}});
-        ecs.insert(window, EventHandlers::Close(
+        ecs.insert(window, WinAPI::EventHandlers::Close(
             [&ecs, &runFlag, quit]() noexcept {
                 auto second = ecs.createEntity();
                 ecs.insert(second, NewWindowMarker{});
                 ecs.insert(second, Location{{1200, 200, 1400, 400}});
-                ecs.insert(second, EventHandlers::Close(quit));
+                ecs.insert(second, WinAPI::EventHandlers::Close(quit));
             }));
 
         while (runFlag) {

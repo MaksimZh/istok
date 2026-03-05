@@ -2,6 +2,7 @@
 #pragma once
 
 #include <format>
+#include <functional>
 #include <string>
 #include <windows.h>
 
@@ -14,6 +15,9 @@ struct WindowMessage {
     LPARAM lParam;
 };
 
+using WindowMessageHandler =
+    std::move_only_function<LRESULT(WindowMessage) noexcept>;
+
 template <typename T>
 requires std::is_pointer_v<T>
 std::string toString(T x) noexcept {
@@ -22,9 +26,10 @@ std::string toString(T x) noexcept {
 
 std::string toString(LPCWSTR w) noexcept;
 
-std::string formatMessage(
-    HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) noexcept;
 std::string formatMessage(const WindowMessage& message) noexcept;
 LRESULT handleMessageByDefault(const WindowMessage& message) noexcept;
+
+LRESULT CALLBACK windowProc(
+    HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) noexcept;
 
 }  // namespace Istok::WinAPI

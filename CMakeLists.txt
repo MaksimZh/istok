@@ -12,6 +12,7 @@ add_definitions(-DUNICODE -D_UNICODE)
 #add_subdirectory(gui)
 
 add_subdirectory(ecs2)
+add_subdirectory(gui2)
 add_subdirectory(logging)
 add_subdirectory(winapi)
 

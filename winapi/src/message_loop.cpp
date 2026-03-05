@@ -5,8 +5,7 @@
 
 #include <istok/logging.hpp>
 
-#include "istok/winapi/event_handlers.hpp"
-#include "istok/winapi/messages.hpp"
+#include "istok/winapi/callback_types.hpp"
 
 
 namespace Istok::WinAPI {
@@ -35,25 +34,6 @@ void messageLoopIteration(
     TranslateMessage(&msg);
     DispatchMessage(&msg);
     ecs.remove<ProcessingMessageFlag>(master);
-}
-
-LRESULT wmCloseHandler(
-    ECS::ECSManager& ecs, ECS::Entity entity, WinAPI::WindowMessage message
-) noexcept {
-    assert(message.msg == WM_CLOSE);
-    if (!ecs.has<EventHandlers::Close>(entity)) {
-        return WinAPI::handleMessageByDefault(message);
-    }
-    ecs.get<EventHandlers::Close>(entity).func();
-    return 0;
-}
-
-LRESULT wmSizeHandler(
-    ECS::ECSManager& ecs, ECS::Entity entity, WinAPI::WindowMessage message
-) noexcept {
-    assert(message.msg == WM_SIZE);
-    ecs.iterate();
-    return 0;
 }
 
 }  // namespace
