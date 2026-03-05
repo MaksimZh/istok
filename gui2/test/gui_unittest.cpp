@@ -3,13 +3,25 @@
 
 #include <cstdint>
 #include <format>
-#include <tuple>
 
 #include <windows.h>
 
 #include "mock_api.hpp"
 
 namespace {
+
+template<typename T, typename U = int>
+concept WinAPIPolicy = requires(
+    U* ptr, HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam
+) {
+    {T::template setUserPointer<U>(hWnd, ptr)} noexcept;
+    {T::template getUserPointer<U>(hWnd)} noexcept -> std::same_as<U*>;
+
+    {T::DefWindowProc(hWnd, msg, wParam, lParam)} noexcept
+        -> std::same_as<LRESULT>;
+};
+
+static_assert(WinAPIPolicy<MockWinAPI>);
 
 struct WindowMessage {
     HWND hWnd;
