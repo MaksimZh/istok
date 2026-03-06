@@ -30,16 +30,18 @@ struct MockHandlerChecker {
 
 
 TEST_CASE("WindowProc - handler", "[unit][winapi]") {
-    WindowMessage message{
+    const WindowMessage message{
         reinterpret_cast<HWND>(1), WM_SIZE, SIZE_MAXIMIZED, MAKELPARAM(5, 7)};
     MockHandlerChecker checker;
     WindowMessageHandler handler(
         [&checker](WindowMessage m) noexcept { return checker.call(m); });
     {
+        const LRESULT handlerReturn = 42;
         REQUIRE_CALL(MockHandlerStorage::instance, get(message.hWnd))
             .LR_RETURN(handler);
-        REQUIRE_CALL(checker, call(message)).RETURN(42);
+        REQUIRE_CALL(checker, call(message)).RETURN(handlerReturn);
         REQUIRE(windowProc<MockHandlerStorage>(
-            message.hWnd, message.msg, message.wParam, message.lParam) == 42);
+            message.hWnd, message.msg, message.wParam, message.lParam)
+            == handlerReturn);
     }
 }
