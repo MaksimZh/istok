@@ -16,7 +16,7 @@ TEST_CASE("WindowMessageDispatcher - handlers", "[unit][winapi]") {
     WindowMessageDispatcher dispatcher(winapi, ecs);
     WindowMessage message{
         reinterpret_cast<HWND>(1), WM_SIZE, SIZE_MAXIMIZED, MAKELPARAM(5, 7)};
-    auto entity = ecs.createEntity();
+    ECS::Entity entity = ecs.createEntity();
     {
         REQUIRE_CALL(winapi, defWindowProc(message)).RETURN(42);
         REQUIRE(dispatcher.handleMessage(entity, message) == 42);

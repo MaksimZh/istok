@@ -4,6 +4,8 @@ target_sources(gui PRIVATE
     dispatcher.hpp
     message.cpp
     message.hpp
+    message_loop.cpp
+    message_loop.hpp
     window.cpp
     window.hpp
     windowproc.cpp

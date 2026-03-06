@@ -18,4 +18,4 @@ void WindowMessageDispatcher::setHandler(UINT msg, Handler&& func) {
     handlers_[msg] = std::move(func);
 }
 
-}  // namespace Istok::WinAPI
+}  // namespace Istok::GUI::WinAPI

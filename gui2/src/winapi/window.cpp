@@ -75,4 +75,4 @@ void Window::clear() {
     hWnd_ = nullptr;
 }
 
-}  // namespace Istok::WinAPI
+}  // namespace Istok::GUI::WinAPI

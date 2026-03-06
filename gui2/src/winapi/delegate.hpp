@@ -20,6 +20,9 @@ public:
         setRawUserPointer(hWnd, reinterpret_cast<LONG_PTR>(ptr));
     }
     virtual void setRawUserPointer(HWND hWnd, LONG_PTR ptr) noexcept = 0;
+
+    virtual void getMessage(MSG& msg) noexcept = 0;
+    virtual void dispatchMessage(const MSG& msg) noexcept = 0;
 };
 
 }  // namespace Istok::GUI::WinAPI
