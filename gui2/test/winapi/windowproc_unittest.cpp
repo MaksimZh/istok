@@ -5,29 +5,46 @@
 
 #include <windows.h>
 
-#include "mock_delegate.hpp"
-
 using namespace Istok::GUI::WinAPI;
+
+namespace {
+
+struct MockHandlerStorageInstance {
+    MAKE_MOCK1(get, WindowMessageHandler&(HWND hWnd), noexcept);
+};
+
+struct MockHandlerStorage {
+    inline static thread_local MockHandlerStorageInstance instance;
+    static WindowMessageHandler& get(HWND hWnd) noexcept {
+        return instance.get(hWnd);
+    }
+};
+
+struct MockHandlerChecker {
+    MAKE_MOCK1(call, LRESULT(const WindowMessage&), noexcept);
+};
+
+bool operator==(const WindowMessage& a, const WindowMessage& b) {
+    return a.hWnd == b.hWnd
+        && a.msg == b.msg
+        && a.wParam == b.wParam
+        && a.lParam == b.lParam;
+}
+
+}  // namespace
 
 
 TEST_CASE("GUI - windowProc", "[unit][gui]") {
-    HINSTANCE hInstance = reinterpret_cast<HINSTANCE>(GetModuleHandle(NULL));
-    LPCWSTR className = L"test";
-    WNDCLASS wc{0};
-    wc.lpfnWndProc = windowProc;
-    wc.hInstance = hInstance;
-    wc.lpszClassName = className;
-    RegisterClass(&wc);
-    HWND hWnd = CreateWindow(
-        className, L"", NULL, 0, 0, 0, 0,
-        nullptr, nullptr, hInstance, nullptr);
-    REQUIRE(hWnd);
-    MockDelegate delegate;
-    SetWindowLongPtr(
-        hWnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(&delegate));
+    WindowMessage message{
+        reinterpret_cast<HWND>(1), WM_SIZE, SIZE_MAXIMIZED, MAKELPARAM(5, 7)};
+    MockHandlerChecker checker;
+    WindowMessageHandler handler(
+        [&checker](WindowMessage m) noexcept { return checker.call(m); });
     {
-        WindowMessage m{hWnd, WM_SIZE, SIZE_MAXIMIZED, MAKELPARAM(5, 7)};
-        REQUIRE_CALL(delegate, windowProc(m)).RETURN(42);
-        REQUIRE(windowProc(m.hWnd, m.msg, m.wParam, m.lParam) == 42);
+        REQUIRE_CALL(MockHandlerStorage::instance, get(message.hWnd))
+            .LR_RETURN(handler);
+        REQUIRE_CALL(checker, call(message)).RETURN(42);
+        REQUIRE(windowProc<MockHandlerStorage>(
+            message.hWnd, message.msg, message.wParam, message.lParam) == 42);
     }
 }
