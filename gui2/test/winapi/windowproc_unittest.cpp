@@ -34,7 +34,7 @@ bool operator==(const WindowMessage& a, const WindowMessage& b) {
 }  // namespace
 
 
-TEST_CASE("GUI - windowProc", "[unit][gui]") {
+TEST_CASE("WinAPI - windowProc", "[unit][winapi]") {
     WindowMessage message{
         reinterpret_cast<HWND>(1), WM_SIZE, SIZE_MAXIMIZED, MAKELPARAM(5, 7)};
     MockHandlerChecker checker;
