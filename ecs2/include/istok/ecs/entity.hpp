@@ -5,6 +5,8 @@
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
+#include <format>
+#include <string>
 #include <vector>
 
 
@@ -133,3 +135,13 @@ private:
 }  // namespace Internal
 
 }  // namespace Istok::ECS
+
+
+template <>
+struct std::formatter<Istok::ECS::Entity> : std::formatter<std::string> {
+    auto format(Istok::ECS::Entity entity, std::format_context& ctx) const {
+        return std::formatter<std::string>::format(
+            std::format("@{:d}", entity.index()),
+            ctx);
+    }
+};

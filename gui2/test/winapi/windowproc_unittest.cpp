@@ -5,6 +5,8 @@
 
 #include <windows.h>
 
+#include "utils.hpp"
+
 using namespace Istok::GUI::WinAPI;
 
 namespace {
@@ -24,17 +26,10 @@ struct MockHandlerChecker {
     MAKE_MOCK1(call, LRESULT(const WindowMessage&), noexcept);
 };
 
-bool operator==(const WindowMessage& a, const WindowMessage& b) {
-    return a.hWnd == b.hWnd
-        && a.msg == b.msg
-        && a.wParam == b.wParam
-        && a.lParam == b.lParam;
-}
-
 }  // namespace
 
 
-TEST_CASE("WinAPI - windowProc", "[unit][winapi]") {
+TEST_CASE("WindowProc - handler", "[unit][winapi]") {
     WindowMessage message{
         reinterpret_cast<HWND>(1), WM_SIZE, SIZE_MAXIMIZED, MAKELPARAM(5, 7)};
     MockHandlerChecker checker;
