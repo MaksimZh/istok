@@ -3,7 +3,7 @@
 
 namespace Istok::GUI::WinAPI {
 
-LRESULT WindowMessageDispatcher::handleMessage(
+LRESULT Dispatcher::handleMessage(
     ECS::Entity entity, const WinAPI::WindowMessage& message
 ) noexcept {
     auto it = handlers_.find(message.msg);
@@ -14,7 +14,7 @@ LRESULT WindowMessageDispatcher::handleMessage(
     return it->second(ecs_, entity, message);
 }
 
-void WindowMessageDispatcher::setHandler(UINT msg, Handler&& func) {
+void Dispatcher::setHandler(UINT msg, Handler&& func) {
     handlers_[msg] = std::move(func);
 }
 

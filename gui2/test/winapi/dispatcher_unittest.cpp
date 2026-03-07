@@ -9,16 +9,56 @@
 
 using namespace Istok;
 using namespace Istok::GUI::WinAPI;
+using trompeloeil::_;
 
-TEST_CASE("WindowMessageDispatcher - handlers", "[unit][winapi]") {
+namespace {
+
+struct MockHandler {
+    MAKE_MOCK3(
+        call,
+        LRESULT(ECS::ECSManager&, ECS::Entity, const WindowMessage&),
+        noexcept);
+};
+
+}  // namespace
+
+TEST_CASE("Dispatcher - handlers", "[unit][winapi]") {
     ECS::ECSManager ecs;
     MockWinAPI winapi;
-    WindowMessageDispatcher dispatcher(winapi, ecs);
-    WindowMessage message{
-        reinterpret_cast<HWND>(1), WM_SIZE, SIZE_MAXIMIZED, MAKELPARAM(5, 7)};
-    ECS::Entity entity = ecs.createEntity();
+    Dispatcher dispatcher(winapi, ecs);
+    const WindowMessage sizeMessage{
+        reinterpret_cast<HWND>(1), WM_SIZE,
+        SIZE_MAXIMIZED, MAKELPARAM(5, 7)};
+    const WindowMessage cursorMessage{
+        reinterpret_cast<HWND>(1), WM_SETCURSOR,
+        2, MAKELPARAM(HTCLIENT, WM_MOUSEMOVE)};
+    const ECS::Entity entity = ecs.createEntity();
+
     {
-        REQUIRE_CALL(winapi, defWindowProc(message)).RETURN(42);
-        REQUIRE(dispatcher.handleMessage(entity, message) == 42);
+        REQUIRE_CALL(winapi, defWindowProc(sizeMessage)).RETURN(42);
+        REQUIRE(dispatcher.handleMessage(entity, sizeMessage) == 42);
+    }
+
+    MockHandler handler;
+    dispatcher.setHandler(
+        WM_SIZE,
+        Dispatcher::Handler(
+            [&handler](
+                ECS::ECSManager& ecs, ECS::Entity entity,
+                const WindowMessage& message
+            ) noexcept {
+                return handler.call(ecs, entity, message);
+            }
+        ));
+    {
+        REQUIRE_CALL(handler, call(_, entity, sizeMessage))
+            .LR_WITH(&_1 == &ecs)
+            .RETURN(43);
+        FORBID_CALL(winapi, defWindowProc(_));
+        REQUIRE(dispatcher.handleMessage(entity, sizeMessage) == 43);
+    }
+    {
+        REQUIRE_CALL(winapi, defWindowProc(cursorMessage)).RETURN(44);
+        REQUIRE(dispatcher.handleMessage(entity, cursorMessage) == 44);
     }
 }
