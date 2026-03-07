@@ -1,5 +1,6 @@
 add_executable(winapi_unittest
     dispatcher_unittest.cpp
+    events_unittest.cpp
     message_loop_unittest.cpp
     utils.hpp
     window_unittest.cpp

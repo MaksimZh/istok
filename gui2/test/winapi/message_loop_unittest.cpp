@@ -22,7 +22,7 @@ TEST_CASE("Message loop - setup", "[unit][winapi]") {
     ECS::Entity master = ecs.createEntity();
     QuitCallback quit([]() noexcept {});
     ECS::System sys =
-        createMessageLoopSystem(&winapi, std::move(quit), master);
+        createMessageLoopSystem(winapi, std::move(quit), master);
 
     {
         REQUIRE_CALL(winapi, getMessage(_))

@@ -11,7 +11,7 @@ LRESULT Dispatcher::handleMessage(
         return winapi_.defWindowProc(message);
     }
     LOG_TRACE("@{}:{}", entity, message);
-    return it->second(ecs_, entity, message);
+    return it->second(winapi_, ecs_, entity, message);
 }
 
 void Dispatcher::setHandler(UINT msg, Handler&& func) {

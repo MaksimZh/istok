@@ -16,7 +16,7 @@ namespace {
 struct ProcessingMessageFlag {};
 
 void messageLoopIteration(
-    WinAPIDelegate* winapi,
+    WinAPIDelegate& winapi,
     QuitCallback&& quit,
     ECS::Entity master,
     ECS::ECSManager& ecs
@@ -27,15 +27,14 @@ void messageLoopIteration(
     }
     ecs.insert(master, ProcessingMessageFlag{});
     LOG_TRACE("Getting message.");
-    assert(winapi);
     MSG msg;
-    winapi->getMessage(msg);
+    winapi.getMessage(msg);
     if (msg.message == WM_QUIT) {
         LOG_DEBUG("WM_QUIT message received.");
         quit();
         return;
     }
-    winapi->dispatchMessage(msg);
+    winapi.dispatchMessage(msg);
     ecs.remove<ProcessingMessageFlag>(master);
 }
 
@@ -43,12 +42,12 @@ void messageLoopIteration(
 
 
 ECS::System createMessageLoopSystem(
-    WinAPIDelegate* winapi,
+    WinAPIDelegate& winapi,
     QuitCallback&& quit,
     ECS::Entity master
 ) noexcept {
     return ECS::System(
-        [winapi, q = std::move(quit), master](
+        [&winapi, q = std::move(quit), master](
             ECS::ECSManager& ecs
         ) mutable noexcept {
             messageLoopIteration(winapi, std::move(q), master, ecs);

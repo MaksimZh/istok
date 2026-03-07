@@ -10,7 +10,6 @@
 
 using namespace Istok;
 
-struct QuitFlag { bool value; };
 struct ProcessingMessageFlag { bool value; };
 
 template <typename Component>

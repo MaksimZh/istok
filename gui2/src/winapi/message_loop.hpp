@@ -9,6 +9,6 @@
 namespace Istok::GUI::WinAPI {
 
 ECS::System createMessageLoopSystem(
-    WinAPIDelegate* winapi, QuitCallback&& quit, ECS::Entity master) noexcept;
+    WinAPIDelegate& winapi, QuitCallback&& quit, ECS::Entity master) noexcept;
 
 }  // namespace Istok::GUI::WinAPI

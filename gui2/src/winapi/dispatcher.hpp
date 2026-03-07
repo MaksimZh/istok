@@ -17,7 +17,8 @@ namespace Istok::GUI::WinAPI {
 class Dispatcher {
 public:
     using Handler = std::move_only_function<LRESULT(
-        ECS::ECSManager&, ECS::Entity, WindowMessage) noexcept>;
+        WinAPIDelegate&, ECS::ECSManager&,
+        ECS::Entity, WindowMessage) noexcept>;
 
     Dispatcher(WinAPIDelegate& winapi, ECS::ECSManager& ecs)
     : winapi_(winapi), ecs_(ecs) {}
