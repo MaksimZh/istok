@@ -1,2 +1,2 @@
-add_executable(second second.cpp)
-target_link_libraries(second PRIVATE logging ecs gui)
+add_executable(demo demo.cpp)
+target_link_libraries(demo PRIVATE logging ecs gui)

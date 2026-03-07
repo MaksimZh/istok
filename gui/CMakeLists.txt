@@ -1,8 +1,17 @@
-find_package(GLEW REQUIRED)
-find_package(OpenGL REQUIRED)
+add_library(gui STATIC)
+target_include_directories(gui PUBLIC ./include)
+target_link_libraries(gui PUBLIC ecs)
+target_link_libraries(gui PUBLIC logging)
 
-add_library(gui STATIC
-    ./gui/winapi/window.cpp
+target_sources(gui PRIVATE
+    ./include/istok/gui.hpp
+    ./include/istok/gui/base.hpp
+    ./src/gui.cpp
 )
-target_include_directories(gui PUBLIC ./)
-target_link_libraries(gui PUBLIC logging tools ecs dwmapi opengl32 GLEW::GLEW)
+
+set(ISTOK_GUI_DIR ${CMAKE_CURRENT_SOURCE_DIR})
+add_subdirectory(test)
+
+if (WIN32)
+    add_subdirectory(src/winapi)
+endif (WIN32)
