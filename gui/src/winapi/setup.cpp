@@ -20,7 +20,7 @@ void createWindows(
     WinAPIDelegate& winapi, WindowMessageHandlerGenerator& handlerGenerator,
     ECS::ECSManager& ecs
 ) noexcept {
-    WITH_LOGGER_PREFIX("WinAPI", "WinAPI: ");
+    WITH_LOGGER_PREFIX("Istok.GUI.WinAPI", "WinAPI: ");
     for (auto entity : ecs.view<NewWindowMarker, WindowLocation>()) {
         LOG_DEBUG("Creating window {}", entity);
         Window window(winapi, ecs.get<WindowLocation>(entity).rect);
@@ -47,7 +47,7 @@ void destroyWindows(ECS::ECSManager& ecs) noexcept {
 
 
 void showWindows(WinAPIDelegate& winapi, ECS::ECSManager& ecs) noexcept {
-    WITH_LOGGER_PREFIX("WinAPI", "WinAPI: ");
+    WITH_LOGGER_PREFIX("Istok.GUI.WinAPI", "WinAPI: ");
     for (auto entity : ecs.view<ShowWindowMarker, Window>()) {
         LOG_DEBUG("Showing window {}", entity);
         HWND hWnd = ecs.get<Window>(entity).getHWnd();
@@ -72,7 +72,7 @@ void cleanNewWindowMarkers(ECS::ECSManager& ecs) noexcept {
 
 
 void setupGUIWinAPI(ECS::ECSManager& ecs, QuitCallback&& quit) {
-    WITH_LOGGER_PREFIX("WinAPI", "WinAPI: ");
+    WITH_LOGGER_PREFIX("Istok.GUI.WinAPI", "WinAPI: ");
     LOG_TRACE("Start GUI system setup.");
 
     auto master = ecs.createEntity();

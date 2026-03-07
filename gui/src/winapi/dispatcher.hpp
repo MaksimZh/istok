@@ -33,7 +33,7 @@ public:
     void setHandler(UINT msg, Handler&& handler);
 
 private:
-    CLASS_WITH_LOGGER_PREFIX("WinAPI.Dispatcher", "WinAPI: ");
+    CLASS_WITH_LOGGER_PREFIX("Istok.GUI.WinAPI.Dispatcher", "WinAPI: ");
     WinAPIDelegate& winapi_;
     ECS::ECSManager& ecs_;
     std::unordered_map<UINT, Handler> handlers_;

@@ -7,7 +7,7 @@ using namespace Istok::GUI;
 
 int main() {
     SET_LOGTERM_TRACE("");
-    SET_LOGOFF("WinAPI.WndProc");
+    SET_LOGOFF("GUI.WinAPI.WndProc");
 
     WITH_LOGGER_PREFIX("", "App: ");
     LOG_TRACE("begin");

@@ -21,12 +21,12 @@ void messageLoopIteration(
     ECS::Entity master,
     ECS::ECSManager& ecs
 ) noexcept {
-    WITH_LOGGER_PREFIX("WinAPI", "WinAPI: ");
+    WITH_LOGGER_PREFIX("Istok.GUI.WinAPI.MessageLoop", "WinAPI: ");
     if (ecs.has<ProcessingMessageFlag>(master)) {
+        LOG_TRACE("Skipping nested message loop iteration.");
         return;
     }
     ecs.insert(master, ProcessingMessageFlag{});
-    LOG_TRACE("Getting message.");
     MSG msg;
     winapi.getMessage(msg);
     if (msg.message == WM_QUIT) {

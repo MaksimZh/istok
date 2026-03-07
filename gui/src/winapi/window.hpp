@@ -32,7 +32,7 @@ public:
     void resetMessageHandler();
 
 private:
-    CLASS_WITH_LOGGER_PREFIX("WinAPI", "WinAPI: ");
+    CLASS_WITH_LOGGER_PREFIX("Istok.GUI.WinAPI", "WinAPI: ");
     WinAPIDelegate* winapi_ = nullptr;
     HWND hWnd_ = nullptr;
     std::unique_ptr<WindowMessageHandler> handler_;

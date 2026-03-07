@@ -18,10 +18,10 @@ void logWindowProc(const WindowMessage& message) {
         WM_NCMOUSELEAVE,
     };
     if (mouseMessages.contains(message.msg)) {
-        WITH_LOGGER_PREFIX("WinAPI.WndProc.MouseMove", "WndProc: ");
+        WITH_LOGGER_PREFIX("Istok.GUI.WinAPI.WndProc.MouseMove", "WndProc: ");
         LOG_TRACE("{}", message);
     } else {
-        WITH_LOGGER_PREFIX("WinAPI.WndProc", "WndProc: ");
+        WITH_LOGGER_PREFIX("Istok.GUI.WinAPI.WndProc", "WndProc: ");
         LOG_TRACE("{}", message);
     }
 }

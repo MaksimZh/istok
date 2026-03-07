@@ -40,7 +40,7 @@ public:
 
     WindowClass(WNDPROC lpfnWndProc, LPCWSTR className) noexcept
     : name(className) {
-        WITH_LOGGER_PREFIX("WinAPI", "WinAPI: ");
+        WITH_LOGGER_PREFIX("Istok.GUI.WinAPI", "WinAPI: ");
         WNDCLASSEX wcex{};
         wcex.cbSize = sizeof(WNDCLASSEX);
         wcex.style = CS_OWNDC;
