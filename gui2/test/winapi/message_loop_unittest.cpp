@@ -26,7 +26,13 @@ TEST_CASE("Message loop - setup", "[unit][winapi]") {
 
     {
         REQUIRE_CALL(winapi, getMessage(_))
-            .LR_SIDE_EFFECT(_1.message = WM_SIZE);
+            .LR_SIDE_EFFECT([&winapi, &ecs, &sys]{
+                // Nested runs must skip all actions
+                FORBID_CALL(winapi, getMessage(_));
+                FORBID_CALL(winapi, dispatchMessage(_));
+                sys(ecs);
+            }())
+            .SIDE_EFFECT(_1.message = WM_SIZE);
         REQUIRE_CALL(winapi, dispatchMessage(_))
             .WITH(_1.message == WM_SIZE);
         sys(ecs);
