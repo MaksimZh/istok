@@ -10,6 +10,8 @@ target_sources(gui PRIVATE
     message_loop.hpp
     real_winapi.cpp
     real_winapi.hpp
+    setup.cpp
+    setup.hpp
     window.cpp
     window.hpp
     windowproc.cpp

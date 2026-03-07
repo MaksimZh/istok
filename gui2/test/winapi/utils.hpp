@@ -23,6 +23,7 @@ public:
     MAKE_MOCK2(setRawUserPointer, void(HWND, LONG_PTR), noexcept);
     MAKE_MOCK1(getMessage, void(MSG&), noexcept);
     MAKE_MOCK1(dispatchMessage, void(const MSG& msg), noexcept);
+    MAKE_MOCK1(showWindow, void(HWND), noexcept);
 };
 
 }  // namespace Istok::GUI::WinAPI

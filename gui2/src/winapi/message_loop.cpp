@@ -5,7 +5,7 @@
 
 #include <istok/logging.hpp>
 
-#include "istok/gui/callback_types.hpp"
+#include "istok/gui/base.hpp"
 #include "delegate.hpp"
 
 
@@ -17,7 +17,7 @@ struct ProcessingMessageFlag {};
 
 void messageLoopIteration(
     WinAPIDelegate& winapi,
-    QuitCallback&& quit,
+    QuitCallback& quit,
     ECS::Entity master,
     ECS::ECSManager& ecs
 ) noexcept {
@@ -50,7 +50,7 @@ ECS::System createMessageLoopSystem(
         [&winapi, q = std::move(quit), master](
             ECS::ECSManager& ecs
         ) mutable noexcept {
-            messageLoopIteration(winapi, std::move(q), master, ecs);
+            messageLoopIteration(winapi, q, master, ecs);
         });
 }
 

@@ -15,6 +15,7 @@ public:
     void setRawUserPointer(HWND hWnd, LONG_PTR ptr) noexcept override;
     void getMessage(MSG& msg) noexcept override;
     void dispatchMessage(const MSG& msg) noexcept override;
+    void showWindow(HWND hWnd) noexcept override;
 };
 
 }  // namespace Istok::GUI::WinAPI

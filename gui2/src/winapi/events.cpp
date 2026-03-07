@@ -5,7 +5,7 @@
 
 #include <istok/ecs.hpp>
 
-#include "istok/gui/callback_types.hpp"
+#include "istok/gui/base.hpp"
 #include "delegate.hpp"
 #include "dispatcher.hpp"
 #include "message.hpp"

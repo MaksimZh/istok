@@ -113,4 +113,8 @@ void RealWinAPI::dispatchMessage(const MSG& msg) noexcept {
     DispatchMessage(&msg);
 }
 
+void RealWinAPI::showWindow(HWND hWnd) noexcept {
+    ShowWindow(hWnd, SW_SHOW);
+}
+
 }  // namespace Istok::GUI::WinAPI

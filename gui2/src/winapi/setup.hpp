@@ -4,11 +4,9 @@
 #include <istok/ecs.hpp>
 
 #include "istok/gui/base.hpp"
-#include "delegate.hpp"
 
 namespace Istok::GUI::WinAPI {
 
-ECS::System createMessageLoopSystem(
-    WinAPIDelegate& winapi, QuitCallback&& quit, ECS::Entity master) noexcept;
+void setupGUIWinAPI(ECS::ECSManager& ecs, QuitCallback&& quit);
 
 }  // namespace Istok::GUI::WinAPI

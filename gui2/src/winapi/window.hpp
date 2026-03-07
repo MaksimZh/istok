@@ -6,7 +6,7 @@
 
 #include <istok/logging.hpp>
 
-#include "istok/gui/geometry.hpp"
+#include "istok/gui/base.hpp"
 
 #include "delegate.hpp"
 #include "message.hpp"

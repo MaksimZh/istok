@@ -7,7 +7,7 @@
 
 #include <istok/ecs.hpp>
 
-#include "istok/gui/callback_types.hpp"
+#include "istok/gui/base.hpp"
 #include "utils.hpp"
 
 using namespace Istok;
@@ -16,7 +16,7 @@ using namespace Istok::GUI::WinAPI;
 using trompeloeil::_;
 
 
-TEST_CASE("Message loop - setup", "[unit][winapi]") {
+TEST_CASE("Message loop - run", "[unit][winapi]") {
     MockWinAPI winapi;
     ECS::ECSManager ecs;
     ECS::Entity master = ecs.createEntity();
@@ -36,5 +36,9 @@ TEST_CASE("Message loop - setup", "[unit][winapi]") {
         REQUIRE_CALL(winapi, dispatchMessage(_))
             .WITH(_1.message == WM_SIZE);
         sys(ecs);
+    }
+
+    {
+        // TODO: test quit
     }
 }

@@ -3,7 +3,7 @@
 
 #include <windows.h>
 
-#include "istok/gui/geometry.hpp"
+#include "istok/gui/base.hpp"
 #include "message.hpp"
 
 
@@ -23,6 +23,8 @@ public:
 
     virtual void getMessage(MSG& msg) noexcept = 0;
     virtual void dispatchMessage(const MSG& msg) noexcept = 0;
+
+    virtual void showWindow(HWND hWnd) noexcept = 0;
 };
 
 }  // namespace Istok::GUI::WinAPI

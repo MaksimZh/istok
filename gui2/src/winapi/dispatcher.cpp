@@ -10,7 +10,7 @@ LRESULT Dispatcher::handleMessage(
     if (it == handlers_.end()) {
         return winapi_.defWindowProc(message);
     }
-    LOG_TRACE("@{}:{}", entity, message);
+    LOG_TRACE("{}:{}", entity, message);
     return it->second(winapi_, ecs_, entity, message);
 }
 

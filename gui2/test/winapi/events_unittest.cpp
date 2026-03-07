@@ -7,7 +7,7 @@
 
 #include <istok/ecs.hpp>
 
-#include "istok/gui/callback_types.hpp"
+#include "istok/gui/base.hpp"
 #include "utils.hpp"
 
 using namespace Istok;
