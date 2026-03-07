@@ -1,5 +1,5 @@
 // Copyright 2026 Maksim Sergeevich Zholudev. All rights reserved
-#include "events.hpp"
+#include "dispatcher_setup.hpp"
 
 #include <memory>
 

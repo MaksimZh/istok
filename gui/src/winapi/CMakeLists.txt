@@ -2,8 +2,8 @@ target_sources(gui PRIVATE
     delegate.hpp
     dispatcher.cpp
     dispatcher.hpp
-    events.cpp
-    events.hpp
+    dispatcher_setup.cpp
+    dispatcher_setup.hpp
     message.cpp
     message.hpp
     message_loop.cpp

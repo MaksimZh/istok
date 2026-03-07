@@ -7,7 +7,7 @@
 
 #include "istok/gui/base.hpp"
 
-#include "events.hpp"
+#include "dispatcher_setup.hpp"
 #include "message_loop.hpp"
 #include "real_winapi.hpp"
 #include "window.hpp"
