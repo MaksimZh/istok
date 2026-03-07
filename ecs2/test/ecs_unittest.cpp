@@ -42,20 +42,22 @@ TEST_CASE("ECSManager - entities", "[unit][ecs]") {
 
 
 namespace {
-    struct A {
-        int value;
-        bool operator==(const A&) const = default;
-    };
 
-    struct B {
-        int value;
-        bool operator==(const B&) const = default;
-    };
+struct A {
+    int value;
+    bool operator==(const A&) const = default;
+};
 
-    struct C {
-        int value;
-        bool operator==(const C&) const = default;
-    };
+struct B {
+    int value;
+    bool operator==(const B&) const = default;
+};
+
+struct C {
+    int value;
+    bool operator==(const C&) const = default;
+};
+
 }  // namespace
 
 
@@ -201,6 +203,7 @@ private:
 };
 
 }  // namespace
+
 
 TEST_CASE("ECSManager - component lifecycle", "[unit][ecs]") {
     ECSManager ecs;

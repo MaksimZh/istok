@@ -11,6 +11,7 @@ using namespace Istok;
 using namespace Istok::GUI::WinAPI;
 using trompeloeil::_;
 
+
 namespace {
 
 struct MockHandler {
@@ -23,6 +24,7 @@ struct MockHandler {
 };
 
 }  // namespace
+
 
 TEST_CASE("Dispatcher - handlers", "[unit][winapi]") {
     MockWinAPI winapi;

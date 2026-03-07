@@ -9,6 +9,7 @@
 
 using namespace Istok::GUI::WinAPI;
 
+
 namespace {
 
 struct MockHandlerStorageInstance {

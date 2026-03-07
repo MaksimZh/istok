@@ -21,7 +21,7 @@ struct MockCloseHandler {
     MAKE_MOCK0(call, void(), noexcept);
 };
 
-};
+}  // namespace
 
 TEST_CASE("Events - handling", "[unit][winapi]") {
     MockWinAPI winapi;

@@ -11,6 +11,7 @@ using namespace Istok::GUI;
 using namespace Istok::GUI::WinAPI;
 using trompeloeil::_;
 
+
 namespace {
 
 bool operator==(const Rect<int>& a, const Rect<int>& b) {
@@ -20,7 +21,8 @@ bool operator==(const Rect<int>& a, const Rect<int>& b) {
         && a.bottom == b.bottom;
 }
 
-}
+}  // namespace
+
 
 TEST_CASE("Window - setup", "[unit][winapi]") {
     MockWinAPI winapi;
