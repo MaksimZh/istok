@@ -20,6 +20,7 @@ struct WindowLocation {
     Rect<int> rect;
 };
 
+struct CreateWindowMarker {};
 struct NewWindowMarker {};
 struct ShowWindowMarker {};
 

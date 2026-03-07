@@ -31,7 +31,9 @@ LRESULT sizeHandler(
     ECS::Entity entity, WindowMessage message
 ) noexcept {
     assert(message.msg == WM_SIZE);
-    ecs.iterate();
+    if (!ecs.has<NewWindowMarker>(entity)) {
+        ecs.iterate();
+    }
     return winapi.defWindowProc(message);
 }
 

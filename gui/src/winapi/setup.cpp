@@ -21,12 +21,15 @@ void createWindows(
     ECS::ECSManager& ecs
 ) noexcept {
     WITH_LOGGER_PREFIX("Istok.GUI.WinAPI", "WinAPI: ");
-    for (auto entity : ecs.view<NewWindowMarker, WindowLocation>()) {
+    ecs.removeAll<NewWindowMarker>();
+    for (auto entity : ecs.view<CreateWindowMarker, WindowLocation>()) {
         LOG_DEBUG("Creating window {}", entity);
         Window window(winapi, ecs.get<WindowLocation>(entity).rect);
         window.setMessageHandler(handlerGenerator(entity));
         ecs.insert(entity, std::move(window));
+        ecs.insert(entity, NewWindowMarker{});
     }
+    ecs.removeAll<CreateWindowMarker>();
 }
 
 ECS::System createCreateWindowSystem(
@@ -64,10 +67,6 @@ ECS::System createShowWindowSystem(WinAPIDelegate& winapi) {
     };
 }
 
-void cleanNewWindowMarkers(ECS::ECSManager& ecs) noexcept {
-    ecs.removeAll<NewWindowMarker>();
-}
-
 }  // namespace
 
 
@@ -87,7 +86,6 @@ void setupGUIWinAPI(ECS::ECSManager& ecs, QuitCallback&& quit) {
     ecs.addLoopSystem(
         createCreateWindowSystem(winapi, std::move(handlerGenerator)));
     ecs.addCleanupSystem(destroyWindows);
-    ecs.addLoopSystem(cleanNewWindowMarkers);
     ecs.addLoopSystem(createShowWindowSystem(winapi));
     ecs.addBottomLoopSystem(
         createMessageLoopSystem(winapi, std::move(quit), master));

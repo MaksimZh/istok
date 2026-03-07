@@ -17,7 +17,7 @@ using trompeloeil::_;
 
 namespace {
 
-struct MockCloseHandler {
+struct MockCall {
     MAKE_MOCK0(call, void(), noexcept);
 };
 
@@ -42,7 +42,7 @@ TEST_CASE("Events - handling", "[unit][winapi]") {
         REQUIRE(handler(closeMessage) == 42);
     }
 
-    MockCloseHandler closeHandler;
+    MockCall closeHandler;
     ecs.insert(entity, EventHandlers::Close{
         [&closeHandler]() noexcept { closeHandler.call(); }});
     {
@@ -52,6 +52,37 @@ TEST_CASE("Events - handling", "[unit][winapi]") {
     }
     {
         REQUIRE_CALL(winapi, defWindowProc(sizeMessage)).RETURN(42);
+        REQUIRE(handler(sizeMessage) == 42);
+    }
+}
+
+
+TEST_CASE("Events - size", "[unit][winapi]") {
+    MockWinAPI winapi;
+    ECS::ECSManager ecs;
+    const ECS::Entity master = ecs.createEntity();
+    const WindowMessage sizeMessage{
+        reinterpret_cast<HWND>(1), WM_SIZE,
+        SIZE_MAXIMIZED, MAKELPARAM(5, 7)};
+
+    WindowMessageHandlerGenerator handlerGenerator =
+        setupDispatcher(winapi, ecs, master);
+    const ECS::Entity entity = ecs.createEntity();
+    WindowMessageHandler handler = handlerGenerator(entity);
+
+    MockCall iteration;
+    ecs.addLoopSystem([&iteration](ECS::ECSManager& ecs) noexcept {
+        iteration.call(); });
+    {
+        REQUIRE_CALL(iteration, call());
+        REQUIRE_CALL(winapi, defWindowProc(_)).RETURN(42);
+        REQUIRE(handler(sizeMessage) == 42);
+    }
+
+    ecs.insert(entity, NewWindowMarker{});
+    {
+        FORBID_CALL(iteration, call());
+        REQUIRE_CALL(winapi, defWindowProc(_)).RETURN(42);
         REQUIRE(handler(sizeMessage) == 42);
     }
 }
