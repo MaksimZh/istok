@@ -28,25 +28,21 @@ TEST_CASE("Window - setup", "[unit][winapi]") {
     MockWinAPI winapi;
     const Rect<int> location{2, 3, 4, 5};
     const HWND hWnd = reinterpret_cast<HWND>(1);
+    const LRESULT handlerResult = 42;
+    WindowMessageHandler handler(
+        [](WindowMessage message) noexcept { return handlerResult; });
 
     Window window;
     REQUIRE(window.getHWnd() == nullptr);
 
     {
         REQUIRE_CALL(winapi, createWindow(location)).RETURN(hWnd);
-        window = Window(winapi, location);
-        REQUIRE(window.getHWnd() == hWnd);
-    }
-
-    const LRESULT handlerResult = 42;
-    WindowMessageHandler handler(
-        [](WindowMessage message) noexcept { return handlerResult; });
-    {
         WindowMessageHandler* storedHandler = nullptr;
         REQUIRE_CALL(winapi, setRawUserPointer(hWnd, _))
             .LR_SIDE_EFFECT(
                 storedHandler = reinterpret_cast<WindowMessageHandler*>(_2));
-        window.setMessageHandler(std::move(handler));
+        window = Window(winapi, location, std::move(handler));
+        REQUIRE(window.getHWnd() == hWnd);
         REQUIRE(storedHandler);
         REQUIRE((*storedHandler)(WindowMessage{}) == handlerResult);
     }

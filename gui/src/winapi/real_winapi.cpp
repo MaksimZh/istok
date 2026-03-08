@@ -95,6 +95,10 @@ HWND RealWinAPI::createWindow(const Rect<int>& location) noexcept {
         NULL, NULL, WinAPI::getHInstance(), nullptr);
 }
 
+void RealWinAPI::destroyWindow(HWND hWnd) noexcept {
+    DestroyWindow(hWnd);
+}
+
 LRESULT RealWinAPI::defWindowProc(const WindowMessage& message) noexcept {
     return DefWindowProc(
         message.hWnd, message.msg, message.wParam, message.lParam);

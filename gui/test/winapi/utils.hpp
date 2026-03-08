@@ -19,6 +19,7 @@ inline bool operator==(const WindowMessage& a, const WindowMessage& b) {
 class MockWinAPI : public trompeloeil::mock_interface<WinAPIDelegate> {
 public:
     MAKE_MOCK1(createWindow, HWND(const Rect<int>&), noexcept);
+    MAKE_MOCK1(destroyWindow, void(HWND), noexcept);
     MAKE_MOCK1(defWindowProc, LRESULT(const WindowMessage&), noexcept);
     MAKE_MOCK2(setRawUserPointer, void(HWND, LONG_PTR), noexcept);
     MAKE_MOCK1(getMessage, void(MSG&), noexcept);

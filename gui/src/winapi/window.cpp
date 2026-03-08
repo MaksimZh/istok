@@ -11,7 +11,10 @@
 
 namespace Istok::GUI::WinAPI {
 
-Window::Window(WinAPIDelegate& winapi, Rect<int> location) {
+Window::Window(
+    WinAPIDelegate& winapi,
+    Rect<int> location, WindowMessageHandler&& handler
+) noexcept {
     HWND hWnd = winapi.createWindow(location);
     if (!hWnd) {
         LOG_ERROR("Window creation failed.");
@@ -20,6 +23,8 @@ Window::Window(WinAPIDelegate& winapi, Rect<int> location) {
     LOG_DEBUG("Created window: {}", hWnd);
     winapi_ = &winapi;
     hWnd_ = hWnd;
+    handler_ = std::make_unique<WindowMessageHandler>(std::move(handler));
+    winapi_->setUserPointer(hWnd_, handler_.get());
 }
 
 Window::~Window() {
@@ -38,24 +43,6 @@ Window& Window::operator=(Window&& source) {
     return *this;
 }
 
-void Window::setMessageHandler(WindowMessageHandler&& handler) {
-    if (!hWnd_) {
-        return;
-    }
-    handler_ = std::make_unique<WindowMessageHandler>(std::move(handler));
-    assert(winapi_);
-    winapi_->setUserPointer(hWnd_, handler_.get());
-}
-
-void Window::resetMessageHandler() {
-    if (!hWnd_ || !handler_) {
-        return;
-    }
-    assert(winapi_);
-    winapi_->setRawUserPointer(hWnd_, NULL);
-    handler_.reset();
-}
-
 void Window::takeFrom(Window& source) {
     winapi_ = source.winapi_;
     hWnd_ = source.hWnd_;
@@ -69,8 +56,9 @@ void Window::clear() {
         return;
     }
     LOG_DEBUG("Destroying window {}", hWnd_);
-    SetWindowLongPtr(hWnd_, GWLP_USERDATA, NULL);
-    DestroyWindow(hWnd_);
+    assert(winapi_);
+    winapi_->setRawUserPointer(hWnd_, NULL);
+    winapi_->destroyWindow(hWnd_);
     winapi_ = nullptr;
     hWnd_ = nullptr;
 }

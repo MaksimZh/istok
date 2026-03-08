@@ -18,7 +18,9 @@ namespace Istok::GUI::WinAPI {
 class Window {
 public:
     Window() = default;
-    Window(WinAPIDelegate& winapi, Rect<int> screenLocation);
+    Window(
+        WinAPIDelegate& winapi,
+        Rect<int> screenLocation, WindowMessageHandler&& handler) noexcept;
     ~Window();
 
     Window(const Window&) = delete;
@@ -27,9 +29,6 @@ public:
     Window& operator=(Window&& source);
 
     HWND getHWnd() const { return hWnd_; }
-
-    void setMessageHandler(WindowMessageHandler&& handler);
-    void resetMessageHandler();
 
 private:
     CLASS_WITH_LOGGER_PREFIX("Istok.GUI.WinAPI", "WinAPI: ");

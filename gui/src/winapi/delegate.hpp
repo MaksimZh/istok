@@ -13,6 +13,7 @@ class WinAPIDelegate {
 public:
     virtual ~WinAPIDelegate() = default;
     virtual HWND createWindow(const Rect<int>& location) noexcept = 0;
+    virtual void destroyWindow(HWND hWnd) noexcept = 0;
     virtual LRESULT defWindowProc(const WindowMessage& message) noexcept = 0;
 
     template<typename T>

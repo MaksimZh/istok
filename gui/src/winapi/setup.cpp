@@ -32,8 +32,8 @@ void createWindows(
         ecs.get<std::unique_ptr<Dispatcher>>(master).get();
     for (auto entity : ecs.view<CreateWindowMarker, WindowLocation>()) {
         LOG_DEBUG("Creating window {}", entity);
-        Window window(winapi, ecs.get<WindowLocation>(entity).rect);
-        window.setMessageHandler(
+        Window window(
+            winapi, ecs.get<WindowLocation>(entity).rect,
             [entity, dispatcherPtr](const WindowMessage& message) noexcept {
                 return dispatcherPtr->handleMessage(entity, message);
             });
