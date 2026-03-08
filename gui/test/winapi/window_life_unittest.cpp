@@ -9,6 +9,7 @@
 
 #include "istok/gui/base.hpp"
 #include "winapi/dispatcher.hpp"
+#include "winapi/window.hpp"
 #include "utils.hpp"
 
 using namespace Istok;
@@ -18,8 +19,11 @@ using trompeloeil::_;
 
 namespace {
 
-struct MockCall {
-    MAKE_MOCK0(call, void(), noexcept);
+struct MockClose {
+    MAKE_MOCK4(
+        call,
+        LRESULT(WinAPIDelegate&, ECS::ECSManager&, ECS::Entity, WindowMessage),
+        noexcept);
 };
 
 }  // namespace
@@ -45,6 +49,17 @@ TEST_CASE("Window - life", "[unit][winapi]") {
     ecs.insert(master, std::make_unique<Dispatcher>(winapi, ecs));
     REQUIRE(setupWindowLife(winapi, ecs, master));
 
+    MockClose close;
+    ecs.get<std::unique_ptr<Dispatcher>>(master)
+        ->setHandler(
+            WM_CLOSE,
+            [&close](
+                WinAPIDelegate& winapi, ECS::ECSManager& ecs,
+                ECS::Entity entity, const WindowMessage& message
+            ) noexcept {
+                return close.call(winapi, ecs, entity, message);
+            });
+
     const ECS::Entity a = ecs.createEntity();
     const ECS::Entity b = ecs.createEntity();
     {
@@ -56,32 +71,48 @@ TEST_CASE("Window - life", "[unit][winapi]") {
     const Rect<int> rectA{1, 2, 3, 4};
     ecs.insert(a, CreateWindowMarker{});
     ecs.insert(a, WindowLocation{rectA});
-    WindowMessageHandler* handlerA;
+    WindowMessageHandler* handlerA = nullptr;
     {
         REQUIRE_CALL(winapi, createWindow(rectA)).RETURN(hWndA);
         REQUIRE_CALL(winapi, setRawUserPointer(hWndA, _))
             .LR_SIDE_EFFECT(
-                handlerA = reinterpret_cast<WindowMessageHandler*>(_1));
+                handlerA = reinterpret_cast<WindowMessageHandler*>(_2));
         ecs.iterate();
     }
+    REQUIRE(handlerA);
     REQUIRE(ecs.has<NewWindowMarker>(a));
-    // TODO: make Dispatcher an interface, make mock for it and test handler
+    REQUIRE(ecs.has<Window>(a));
+    REQUIRE(ecs.get<Window>(a).getHWnd() == hWndA);
+    {
+        const WindowMessage message{hWndA, WM_CLOSE, 0, 0};
+        const LRESULT result = 42;
+        REQUIRE_CALL(close, call(_, _, a, message)).RETURN(result);
+        REQUIRE((*handlerA)(message) == result);
+    }
 
     const HWND hWndB = reinterpret_cast<HWND>(2);
     const Rect<int> rectB{2, 3, 4, 5};
     ecs.insert(b, CreateWindowMarker{});
     ecs.insert(b, WindowLocation{rectB});
-    WindowMessageHandler* handlerB;
+    WindowMessageHandler* handlerB = nullptr;
     {
         REQUIRE_CALL(winapi, createWindow(rectB)).RETURN(hWndB);
         REQUIRE_CALL(winapi, setRawUserPointer(hWndB, _))
             .LR_SIDE_EFFECT(
-                handlerB = reinterpret_cast<WindowMessageHandler*>(_1));
+                handlerB = reinterpret_cast<WindowMessageHandler*>(_2));
         ecs.iterate();
     }
+    REQUIRE(handlerB);
     REQUIRE(!ecs.has<NewWindowMarker>(a));
     REQUIRE(ecs.has<NewWindowMarker>(b));
-    // TODO: make Dispatcher an interface, make mock for it and test handler
+    REQUIRE(ecs.has<Window>(b));
+    REQUIRE(ecs.get<Window>(b).getHWnd() == hWndB);
+    {
+        const WindowMessage message{hWndB, WM_CLOSE, 0, 0};
+        const LRESULT result = 43;
+        REQUIRE_CALL(close, call(_, _, b, message)).RETURN(result);
+        REQUIRE((*handlerB)(message) == result);
+    }
 
     {
         REQUIRE_CALL(winapi, setRawUserPointer(hWndB, NULL));

@@ -18,7 +18,7 @@ class Dispatcher {
 public:
     using Handler = std::move_only_function<LRESULT(
         WinAPIDelegate&, ECS::ECSManager&,
-        ECS::Entity, WindowMessage) noexcept>;
+        ECS::Entity, const WindowMessage&) noexcept>;
 
     Dispatcher(WinAPIDelegate& winapi, ECS::ECSManager& ecs)
     : winapi_(winapi), ecs_(ecs) {}
