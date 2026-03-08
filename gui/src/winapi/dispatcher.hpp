@@ -30,7 +30,7 @@ public:
 
     LRESULT handleMessage(
         ECS::Entity entity, const WindowMessage& message) noexcept;
-    void setHandler(UINT msg, Handler&& handler);
+    void setHandler(UINT msg, Handler&& handler) noexcept;
 
 private:
     CLASS_WITH_LOGGER_PREFIX("Istok.GUI.WinAPI.Dispatcher", "WinAPI: ");
