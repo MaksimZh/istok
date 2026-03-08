@@ -3,6 +3,7 @@ add_executable(winapi_unittest
     message_loop_unittest.cpp
     utils.hpp
     window_close_unittest.cpp
+    window_life_unittest.cpp
     window_size_unittest.cpp
     window_unittest.cpp
     windowproc_unittest.cpp

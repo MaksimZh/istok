@@ -12,18 +12,6 @@ using namespace Istok::GUI::WinAPI;
 using trompeloeil::_;
 
 
-namespace {
-
-bool operator==(const Rect<int>& a, const Rect<int>& b) {
-    return a.left == b.left
-        && a.top == b.top
-        && a.right == b.right
-        && a.bottom == b.bottom;
-}
-
-}  // namespace
-
-
 TEST_CASE("Window - empty", "[unit][winapi]") {
     Window window;
     REQUIRE(window.getHWnd() == nullptr);

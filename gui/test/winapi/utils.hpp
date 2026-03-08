@@ -9,6 +9,13 @@
 
 namespace Istok::GUI::WinAPI {
 
+inline bool operator==(const Rect<int>& a, const Rect<int>& b) {
+    return a.left == b.left
+        && a.top == b.top
+        && a.right == b.right
+        && a.bottom == b.bottom;
+}
+
 inline bool operator==(const WindowMessage& a, const WindowMessage& b) {
     return a.hWnd == b.hWnd
         && a.msg == b.msg
