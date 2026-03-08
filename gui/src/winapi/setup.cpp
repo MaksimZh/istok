@@ -8,10 +8,11 @@
 #include "istok/gui/base.hpp"
 
 #include "dispatcher.hpp"
-#include "dispatcher_setup.hpp"
 #include "message_loop.hpp"
 #include "real_winapi.hpp"
 #include "window.hpp"
+#include "window_close.hpp"
+#include "window_size.hpp"
 
 namespace Istok::GUI::WinAPI {
 
@@ -86,7 +87,15 @@ void setupGUIWinAPI(ECS::ECSManager& ecs, QuitCallback&& quit) {
     WinAPIDelegate& winapi = *winapiContainer;
     ecs.insert(master, std::move(winapiContainer));
 
-    setupDispatcher(winapi, ecs, master);
+    ecs.insert(master, std::make_unique<Dispatcher>(winapi, ecs));
+    if (auto result = setupWindowCloseHandling(winapi, ecs, master); !result) {
+        LOG_ERROR("Setup window close: {}", result.error());
+        return;
+    }
+    if (auto result = setupWindowSizeHandling(winapi, ecs, master); !result) {
+        LOG_ERROR("Setup window size: {}", result.error());
+        return;
+    }
     ecs.addLoopSystem(createCreateWindowSystem(winapi, master));
     ecs.addCleanupSystem(destroyWindows);
     ecs.addLoopSystem(createShowWindowSystem(winapi));
