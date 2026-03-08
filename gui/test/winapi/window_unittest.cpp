@@ -24,7 +24,13 @@ bool operator==(const Rect<int>& a, const Rect<int>& b) {
 }  // namespace
 
 
-TEST_CASE("Window - setup", "[unit][winapi]") {
+TEST_CASE("Window - empty", "[unit][winapi]") {
+    Window window;
+    REQUIRE(window.getHWnd() == nullptr);
+}
+
+
+TEST_CASE("Window - lifecycle", "[unit][winapi]") {
     MockWinAPI winapi;
     const Rect<int> location{2, 3, 4, 5};
     const HWND hWnd = reinterpret_cast<HWND>(1);
@@ -32,18 +38,21 @@ TEST_CASE("Window - setup", "[unit][winapi]") {
     WindowMessageHandler handler(
         [](WindowMessage message) noexcept { return handlerResult; });
 
-    Window window;
-    REQUIRE(window.getHWnd() == nullptr);
-
+    Window* window;
+    WindowMessageHandler* storedHandler = nullptr;
     {
         REQUIRE_CALL(winapi, createWindow(location)).RETURN(hWnd);
-        WindowMessageHandler* storedHandler = nullptr;
         REQUIRE_CALL(winapi, setRawUserPointer(hWnd, _))
             .LR_SIDE_EFFECT(
                 storedHandler = reinterpret_cast<WindowMessageHandler*>(_2));
-        window = Window(winapi, location, std::move(handler));
-        REQUIRE(window.getHWnd() == hWnd);
-        REQUIRE(storedHandler);
-        REQUIRE((*storedHandler)(WindowMessage{}) == handlerResult);
+        window = new Window(winapi, location, std::move(handler));
+    }
+    REQUIRE(window->getHWnd() == hWnd);
+    REQUIRE(storedHandler);
+    REQUIRE((*storedHandler)(WindowMessage{}) == handlerResult);
+    {
+        REQUIRE_CALL(winapi, setRawUserPointer(hWnd, NULL));
+        REQUIRE_CALL(winapi, destroyWindow(hWnd));
+        delete window;
     }
 }
