@@ -86,7 +86,7 @@ void setupGUIWinAPI(ECS::ECSManager& ecs, QuitCallback&& quit) {
     WinAPIDelegate& winapi = *winapiContainer;
     ecs.insert(master, std::move(winapiContainer));
 
-    //setupDispatcher(winapi, ecs, master);
+    setupDispatcher(winapi, ecs, master);
     ecs.addLoopSystem(createCreateWindowSystem(winapi, master));
     ecs.addCleanupSystem(destroyWindows);
     ecs.addLoopSystem(createShowWindowSystem(winapi));

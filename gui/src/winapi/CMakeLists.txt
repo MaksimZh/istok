@@ -14,6 +14,8 @@ target_sources(gui PRIVATE
     setup.hpp
     window.cpp
     window.hpp
+    window_close.cpp
+    window_close.hpp
     windowproc.cpp
     windowproc.hpp
 )
