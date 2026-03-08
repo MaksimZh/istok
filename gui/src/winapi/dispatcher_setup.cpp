@@ -40,7 +40,7 @@ LRESULT sizeHandler(
 }  // namespace
 
 
-WindowMessageHandlerGenerator setupDispatcher(
+void setupDispatcher(
     WinAPIDelegate& winapi, ECS::ECSManager& ecs, ECS::Entity master
 ) {
     auto dispatcher = std::make_unique<Dispatcher>(winapi, ecs);
@@ -48,15 +48,6 @@ WindowMessageHandlerGenerator setupDispatcher(
     dispatcher->setHandler(WM_SIZE, sizeHandler);
     auto* dispatcherPtr = dispatcher.get();
     ecs.insert(master, std::move(dispatcher));
-    return WindowMessageHandlerGenerator{
-        [dispatcherPtr](ECS::Entity entity) noexcept {
-            return WindowMessageHandler{
-                [entity, dispatcherPtr](
-                    const WindowMessage& message
-                ) noexcept {
-                    return dispatcherPtr->handleMessage(entity, message);
-                }};
-        }};
 }
 
 }  // namespace Istok::GUI::WinAPI

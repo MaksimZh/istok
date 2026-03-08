@@ -7,6 +7,7 @@
 
 #include "istok/gui/base.hpp"
 
+#include "dispatcher.hpp"
 #include "dispatcher_setup.hpp"
 #include "message_loop.hpp"
 #include "real_winapi.hpp"
@@ -17,15 +18,24 @@ namespace Istok::GUI::WinAPI {
 namespace {
 
 void createWindows(
-    WinAPIDelegate& winapi, WindowMessageHandlerGenerator& handlerGenerator,
+    WinAPIDelegate& winapi, ECS::Entity master,
     ECS::ECSManager& ecs
 ) noexcept {
     WITH_LOGGER_PREFIX("Istok.GUI.WinAPI", "WinAPI: ");
     ecs.removeAll<NewWindowMarker>();
+    if (!ecs.has<std::unique_ptr<Dispatcher>>(master)) {
+        LOG_ERROR("No Dispatcher on {}", master);
+        return;
+    }
+    Dispatcher* dispatcherPtr =
+        ecs.get<std::unique_ptr<Dispatcher>>(master).get();
     for (auto entity : ecs.view<CreateWindowMarker, WindowLocation>()) {
         LOG_DEBUG("Creating window {}", entity);
         Window window(winapi, ecs.get<WindowLocation>(entity).rect);
-        window.setMessageHandler(handlerGenerator(entity));
+        window.setMessageHandler(
+            [entity, dispatcherPtr](const WindowMessage& message) noexcept {
+                return dispatcherPtr->handleMessage(entity, message);
+            });
         ecs.insert(entity, std::move(window));
         ecs.insert(entity, NewWindowMarker{});
     }
@@ -33,15 +43,10 @@ void createWindows(
 }
 
 ECS::System createCreateWindowSystem(
-    WinAPIDelegate& winapi, WindowMessageHandlerGenerator&& handlerGenerator
+    WinAPIDelegate& winapi, ECS::Entity master
 ) {
-    return ECS::System{
-        [&winapi, hg = std::move(handlerGenerator)](
-            ECS::ECSManager& ecs
-        ) mutable noexcept {
-            createWindows(winapi, hg, ecs);
-        }
-    };
+    return ECS::System{[&winapi, master](ECS::ECSManager& ecs) noexcept {
+        createWindows(winapi, master, ecs); }};
 }
 
 void destroyWindows(ECS::ECSManager& ecs) noexcept {
@@ -81,10 +86,8 @@ void setupGUIWinAPI(ECS::ECSManager& ecs, QuitCallback&& quit) {
     WinAPIDelegate& winapi = *winapiContainer;
     ecs.insert(master, std::move(winapiContainer));
 
-    WindowMessageHandlerGenerator handlerGenerator =
-        setupDispatcher(winapi, ecs, master);
-    ecs.addLoopSystem(
-        createCreateWindowSystem(winapi, std::move(handlerGenerator)));
+    //setupDispatcher(winapi, ecs, master);
+    ecs.addLoopSystem(createCreateWindowSystem(winapi, master));
     ecs.addCleanupSystem(destroyWindows);
     ecs.addLoopSystem(createShowWindowSystem(winapi));
     ecs.addBottomLoopSystem(

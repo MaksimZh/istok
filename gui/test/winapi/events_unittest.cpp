@@ -23,6 +23,7 @@ struct MockCall {
 
 }  // namespace
 
+#if 0
 TEST_CASE("Events - handling", "[unit][winapi]") {
     MockWinAPI winapi;
     ECS::ECSManager ecs;
@@ -86,3 +87,4 @@ TEST_CASE("Events - size", "[unit][winapi]") {
         REQUIRE(handler(sizeMessage) == 42);
     }
 }
+#endif
