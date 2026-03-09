@@ -25,21 +25,24 @@ struct MockCall {
 }  // namespace
 
 TEST_CASE("Window - size", "[unit][winapi]") {
-    MockWinAPI winapi;
     ECS::ECSManager ecs;
-
-    const ECS::Entity deleted = ecs.createEntity();
-    ecs.deleteEntity(deleted);
-    REQUIRE(setupWindowSizeHandling(winapi, ecs, deleted).error_or("") ==
-        "Invalid master entity.");
-
     const ECS::Entity master = ecs.createEntity();
-    REQUIRE(setupWindowSizeHandling(winapi, ecs, master).error_or("") ==
-        "No Dispatcher found on master entity.");
+    REQUIRE_FALSE(setupWindowSizeHandling(ecs));
 
-    // TODO: test empty Dispatcher
+    ecs.insert(master, std::unique_ptr<WinAPIDelegate>());
+    REQUIRE_FALSE(setupWindowSizeHandling(ecs));
+
+    auto winapiContainer = std::make_unique<MockWinAPI>();
+    MockWinAPI& winapi = *winapiContainer;
+    ecs.insert(
+        master, std::unique_ptr<WinAPIDelegate>{std::move(winapiContainer)});
+    REQUIRE_FALSE(setupWindowSizeHandling(ecs));
+
+    ecs.insert(master, std::unique_ptr<Dispatcher>());
+    REQUIRE_FALSE(setupWindowSizeHandling(ecs));
+
     ecs.insert(master, std::make_unique<Dispatcher>(winapi, ecs));
-    REQUIRE(setupWindowSizeHandling(winapi, ecs, master));
+    REQUIRE(setupWindowSizeHandling(ecs));
 
     const ECS::Entity entity = ecs.createEntity();
     const WindowMessage sizeMessage{
