@@ -52,22 +52,32 @@ void destroyWindows(ECS::ECSManager& ecs) noexcept {
 }  // namespace
 
 
-std::expected<void, std::string> setupWindowLife(
-    WinAPIDelegate& winapi, ECS::ECSManager& ecs, ECS::Entity master
-) {
-    if (!ecs.isValidEntity(master)) {
-        return std::unexpected("Invalid master entity.");
+bool setupWindowLife(ECS::ECSManager& ecs) {
+    WITH_LOGGER_PREFIX("Istok.GUI.WinAPI", "WinAPI window life: ");
+    using WinAPIContainer = std::unique_ptr<WinAPIDelegate>;
+    using DispatcherContainer = std::unique_ptr<Dispatcher>;
+    if (ecs.count<WinAPIContainer>() != 1) {
+        LOG_ERROR("Single WinAPIDelegate expected.");
+        return false;
     }
-    if (!ecs.has<std::unique_ptr<Dispatcher>>(master)) {
-        return std::unexpected("No Dispatcher found on master entity.");
+    ECS::Entity master = *ecs.view<WinAPIContainer>().begin();
+    LOG_DEBUG("Detected master entity {}", master);
+    WinAPIDelegate* winapi = ecs.get<WinAPIContainer>(master).get();
+    if (!winapi) {
+        LOG_ERROR("Empty WinAPIDelegate found.");
+        return false;
+    }
+    if (!ecs.has<DispatcherContainer>(master)) {
+        LOG_ERROR("Dispatcher not found.");
+        return false;
     }
     auto& dispatcher = ecs.get<std::unique_ptr<Dispatcher>>(master);
     if (!dispatcher) {
-        return std::unexpected("Empty Dispatcher found on master entity.");
+        LOG_ERROR("Empty Dispatcher found.");
     }
-    ecs.addLoopSystem(makeCreateWindowsSystem(winapi, *dispatcher));
+    ecs.addLoopSystem(makeCreateWindowsSystem(*winapi, *dispatcher));
     ecs.addCleanupSystem(destroyWindows);
-    return {};
+    return true;
 }
 
 }  // namespace Istok::GUI::WinAPI

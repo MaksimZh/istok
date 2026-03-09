@@ -47,12 +47,13 @@ void setupGUIWinAPI(ECS::ECSManager& ecs, QuitCallback&& quit) {
     auto master = ecs.createEntity();
     LOG_DEBUG("Created master entity {}.", master);
 
-    ecs.insert(master, std::make_unique<RealWinAPI>());
-    WinAPIDelegate& winapi = *ecs.get<std::unique_ptr<RealWinAPI>>(master);
+    auto winapiContainer = std::make_unique<RealWinAPI>();
+    WinAPIDelegate& winapi = *winapiContainer;
+    ecs.insert(
+        master, std::unique_ptr<WinAPIDelegate>{std::move(winapiContainer)});
     ecs.insert(master, std::make_unique<Dispatcher>(winapi, ecs));
 
-    if (auto result = setupWindowLife(winapi, ecs, master); !result) {
-        LOG_ERROR("Setup window life: {}", result.error());
+    if (!setupWindowLife(ecs)) {
         return;
     }
     if (auto result = setupWindowCloseHandling(winapi, ecs, master); !result) {
@@ -66,6 +67,7 @@ void setupGUIWinAPI(ECS::ECSManager& ecs, QuitCallback&& quit) {
     ecs.addLoopSystem(makeShowWindowsSystem(winapi));
     ecs.addBottomLoopSystem(
         createMessageLoopSystem(winapi, std::move(quit), master));
+    LOG_DEBUG("Setup succeeded.");
 }
 
 }  // namespace Istok::GUI::WinAPI

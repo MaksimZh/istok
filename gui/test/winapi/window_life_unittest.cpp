@@ -29,25 +29,25 @@ struct MockClose {
 }  // namespace
 
 TEST_CASE("Window - life", "[unit][winapi]") {
-    MockWinAPI winapi;
     auto* pECS = new ECS::ECSManager;
     ECS::ECSManager& ecs = *pECS;
-
-    const ECS::Entity deleted = ecs.createEntity();
-    ecs.deleteEntity(deleted);
-    REQUIRE(setupWindowLife(winapi, ecs, deleted).error_or("") ==
-        "Invalid master entity.");
-
     const ECS::Entity master = ecs.createEntity();
-    REQUIRE(setupWindowLife(winapi, ecs, master).error_or("") ==
-        "No Dispatcher found on master entity.");
+    REQUIRE_FALSE(setupWindowLife(ecs));
+
+    ecs.insert(master, std::unique_ptr<WinAPIDelegate>());
+    REQUIRE_FALSE(setupWindowLife(ecs));
+
+    auto winapiContainer = std::make_unique<MockWinAPI>();
+    MockWinAPI& winapi = *winapiContainer;
+    ecs.insert(
+        master, std::unique_ptr<WinAPIDelegate>{std::move(winapiContainer)});
+    REQUIRE_FALSE(setupWindowLife(ecs));
 
     ecs.insert(master, std::unique_ptr<Dispatcher>());
-    REQUIRE(setupWindowLife(winapi, ecs, master).error_or("") ==
-        "Empty Dispatcher found on master entity.");
+    REQUIRE_FALSE(setupWindowLife(ecs));
 
     ecs.insert(master, std::make_unique<Dispatcher>(winapi, ecs));
-    REQUIRE(setupWindowLife(winapi, ecs, master));
+    REQUIRE(setupWindowLife(ecs));
 
     MockClose close;
     ecs.get<std::unique_ptr<Dispatcher>>(master)

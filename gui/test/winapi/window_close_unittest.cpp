@@ -37,6 +37,7 @@ TEST_CASE("Window - close", "[unit][winapi]") {
     REQUIRE(setupWindowCloseHandling(winapi, ecs, master).error_or("") ==
         "No Dispatcher found on master entity.");
 
+    // TODO: test empty Dispatcher
     ecs.insert(master, std::make_unique<Dispatcher>(winapi, ecs));
     REQUIRE(setupWindowCloseHandling(winapi, ecs, master));
 

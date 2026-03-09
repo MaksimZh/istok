@@ -37,6 +37,7 @@ TEST_CASE("Window - size", "[unit][winapi]") {
     REQUIRE(setupWindowSizeHandling(winapi, ecs, master).error_or("") ==
         "No Dispatcher found on master entity.");
 
+    // TODO: test empty Dispatcher
     ecs.insert(master, std::make_unique<Dispatcher>(winapi, ecs));
     REQUIRE(setupWindowSizeHandling(winapi, ecs, master));
 

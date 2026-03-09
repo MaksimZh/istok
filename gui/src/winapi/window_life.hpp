@@ -9,7 +9,6 @@
 
 namespace Istok::GUI::WinAPI {
 
-std::expected<void, std::string> setupWindowLife(
-    WinAPIDelegate& winapi, ECS::ECSManager& ecs, ECS::Entity master);
+bool setupWindowLife(ECS::ECSManager& ecs);
 
 }  // namespace Istok::GUI::WinAPI
