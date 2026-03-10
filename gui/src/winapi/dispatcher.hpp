@@ -17,11 +17,9 @@ namespace Istok::GUI::WinAPI {
 class Dispatcher {
 public:
     using Handler = std::move_only_function<LRESULT(
-        WinAPIDelegate&, ECS::ECSManager&,
         ECS::Entity, const WindowMessage&) noexcept>;
 
-    Dispatcher(WinAPIDelegate& winapi, ECS::ECSManager& ecs)
-    : winapi_(winapi), ecs_(ecs) {}
+    Dispatcher(WinAPIDelegate& winapi) : winapi_(winapi) {}
 
     Dispatcher(const Dispatcher&) = delete;
     Dispatcher& operator=(const Dispatcher&) = delete;
@@ -35,7 +33,6 @@ public:
 private:
     CLASS_WITH_LOGGER_PREFIX("Istok.GUI.WinAPI.Dispatcher", "WinAPI: ");
     WinAPIDelegate& winapi_;
-    ECS::ECSManager& ecs_;
     std::unordered_map<UINT, Handler> handlers_;
 };
 

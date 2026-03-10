@@ -20,10 +20,7 @@ using trompeloeil::_;
 namespace {
 
 struct MockClose {
-    MAKE_MOCK4(
-        call,
-        LRESULT(WinAPIDelegate&, ECS::ECSManager&, ECS::Entity, WindowMessage),
-        noexcept);
+    MAKE_MOCK2(call, LRESULT(ECS::Entity, const WindowMessage&), noexcept);
 };
 
 }  // namespace
@@ -46,7 +43,7 @@ TEST_CASE("Window - life", "[unit][winapi]") {
     ecs.insert(master, std::unique_ptr<Dispatcher>());
     REQUIRE_FALSE(setupWindowLife(ecs));
 
-    ecs.insert(master, std::make_unique<Dispatcher>(winapi, ecs));
+    ecs.insert(master, std::make_unique<Dispatcher>(winapi));
     REQUIRE(setupWindowLife(ecs));
 
     MockClose close;
@@ -54,10 +51,9 @@ TEST_CASE("Window - life", "[unit][winapi]") {
         ->setHandler(
             WM_CLOSE,
             [&close](
-                WinAPIDelegate& winapi, ECS::ECSManager& ecs,
                 ECS::Entity entity, const WindowMessage& message
             ) noexcept {
-                return close.call(winapi, ecs, entity, message);
+                return close.call(entity, message);
             });
 
     const ECS::Entity a = ecs.createEntity();
@@ -86,7 +82,7 @@ TEST_CASE("Window - life", "[unit][winapi]") {
     {
         const WindowMessage message{hWndA, WM_CLOSE, 0, 0};
         const LRESULT result = 42;
-        REQUIRE_CALL(close, call(_, _, a, message)).RETURN(result);
+        REQUIRE_CALL(close, call(a, message)).RETURN(result);
         REQUIRE((*handlerA)(message) == result);
     }
 
@@ -110,7 +106,7 @@ TEST_CASE("Window - life", "[unit][winapi]") {
     {
         const WindowMessage message{hWndB, WM_CLOSE, 0, 0};
         const LRESULT result = 43;
-        REQUIRE_CALL(close, call(_, _, b, message)).RETURN(result);
+        REQUIRE_CALL(close, call(b, message)).RETURN(result);
         REQUIRE((*handlerB)(message) == result);
     }
 

@@ -51,17 +51,15 @@ void setupGUIWinAPI(ECS::ECSManager& ecs, QuitCallback&& quit) {
     WinAPIDelegate& winapi = *winapiContainer;
     ecs.insert(
         master, std::unique_ptr<WinAPIDelegate>{std::move(winapiContainer)});
-    ecs.insert(master, std::make_unique<Dispatcher>(winapi, ecs));
+    ecs.insert(master, std::make_unique<Dispatcher>(winapi));
 
     if (!setupWindowLife(ecs)) {
         return;
     }
-    if (auto result = setupWindowCloseHandling(winapi, ecs, master); !result) {
-        LOG_ERROR("Setup window close: {}", result.error());
+    if (!setupWindowCloseHandling(ecs)) {
         return;
     }
-    if (auto result = setupWindowSizeHandling(winapi, ecs, master); !result) {
-        LOG_ERROR("Setup window size: {}", result.error());
+    if (!setupWindowSizeHandling(ecs)) {
         return;
     }
     ecs.addLoopSystem(makeShowWindowsSystem(winapi));

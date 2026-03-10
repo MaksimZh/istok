@@ -1,8 +1,6 @@
 // Copyright 2026 Maksim Sergeevich Zholudev. All rights reserved
 #include "window_close.hpp"
 
-#include <expected>
-
 #include <istok/ecs.hpp>
 
 #include "delegate.hpp"
@@ -14,7 +12,7 @@ namespace {
 
 LRESULT closeHandler(
     WinAPIDelegate& winapi, ECS::ECSManager& ecs,
-    ECS::Entity entity, WindowMessage message
+    ECS::Entity entity, const WindowMessage& message
 ) noexcept {
     assert(message.msg == WM_CLOSE);
     if (!ecs.has<EventHandlers::Close>(entity)) {
@@ -27,18 +25,39 @@ LRESULT closeHandler(
 }  // namespace
 
 
-std::expected<void, std::string> setupWindowCloseHandling(
-    WinAPIDelegate& winapi, ECS::ECSManager& ecs, ECS::Entity master
-) {
-    if (!ecs.isValidEntity(master)) {
-        return std::unexpected("Invalid master entity.");
+bool setupWindowCloseHandling(ECS::ECSManager& ecs) {
+    WITH_LOGGER_PREFIX("Istok.GUI.WinAPI", "WinAPI: ");
+    using WinAPIContainer = std::unique_ptr<WinAPIDelegate>;
+    using DispatcherContainer = std::unique_ptr<Dispatcher>;
+    if (ecs.count<WinAPIContainer>() != 1) {
+        LOG_ERROR("Single WinAPIDelegate expected.");
+        return false;
     }
-    if (!ecs.has<std::unique_ptr<Dispatcher>>(master)) {
-        return std::unexpected("No Dispatcher found on master entity.");
+    ECS::Entity master = *ecs.view<WinAPIContainer>().begin();
+    LOG_DEBUG("Detected master entity {}", master);
+    WinAPIDelegate* winapi = ecs.get<WinAPIContainer>(master).get();
+    if (!winapi) {
+        LOG_ERROR("Empty WinAPIDelegate found.");
+        return false;
+    }
+    if (!ecs.has<DispatcherContainer>(master)) {
+        LOG_ERROR("Dispatcher not found.");
+        return false;
+    }
+    auto& dispatcher = ecs.get<std::unique_ptr<Dispatcher>>(master);
+    if (!dispatcher) {
+        LOG_ERROR("Empty Dispatcher found.");
+        return false;
     }
     ecs.get<std::unique_ptr<Dispatcher>>(master)
-        ->setHandler(WM_CLOSE, closeHandler);
-    return {};
+        ->setHandler(
+            WM_CLOSE,
+            [winapi, &ecs](
+                ECS::Entity entity, const WindowMessage& message
+            ) noexcept {
+                return closeHandler(*winapi, ecs, entity, message);
+            });
+    return true;
 }
 
 }  // namespace Istok::GUI::WinAPI

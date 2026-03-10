@@ -15,12 +15,7 @@ using trompeloeil::_;
 namespace {
 
 struct MockHandler {
-    MAKE_MOCK4(
-        call,
-        LRESULT(
-            WinAPIDelegate&, ECS::ECSManager&,
-            ECS::Entity, const WindowMessage&),
-        noexcept);
+    MAKE_MOCK2(call, LRESULT(ECS::Entity, const WindowMessage&), noexcept);
 };
 
 }  // namespace
@@ -29,7 +24,7 @@ struct MockHandler {
 TEST_CASE("Dispatcher - handlers", "[unit][winapi]") {
     MockWinAPI winapi;
     ECS::ECSManager ecs;
-    Dispatcher dispatcher(winapi, ecs);
+    Dispatcher dispatcher(winapi);
     const WindowMessage sizeMessage{
         reinterpret_cast<HWND>(1), WM_SIZE,
         SIZE_MAXIMIZED, MAKELPARAM(5, 7)};
@@ -48,16 +43,13 @@ TEST_CASE("Dispatcher - handlers", "[unit][winapi]") {
         WM_SIZE,
         Dispatcher::Handler(
             [&handler](
-                WinAPIDelegate& winapi, ECS::ECSManager& ecs,
                 ECS::Entity entity, const WindowMessage& message
             ) noexcept {
-                return handler.call(winapi, ecs, entity, message);
+                return handler.call(entity, message);
             }
         ));
     {
-        REQUIRE_CALL(handler, call(_, _, entity, sizeMessage))
-            .LR_WITH(&_1 == &winapi && &_2 == &ecs)
-            .RETURN(43);
+        REQUIRE_CALL(handler, call(entity, sizeMessage)).RETURN(43);
         FORBID_CALL(winapi, defWindowProc(_));
         REQUIRE(dispatcher.handleMessage(entity, sizeMessage) == 43);
     }

@@ -41,7 +41,7 @@ TEST_CASE("Window - size", "[unit][winapi]") {
     ecs.insert(master, std::unique_ptr<Dispatcher>());
     REQUIRE_FALSE(setupWindowSizeHandling(ecs));
 
-    ecs.insert(master, std::make_unique<Dispatcher>(winapi, ecs));
+    ecs.insert(master, std::make_unique<Dispatcher>(winapi));
     REQUIRE(setupWindowSizeHandling(ecs));
 
     const ECS::Entity entity = ecs.createEntity();

@@ -1,8 +1,6 @@
 // Copyright 2026 Maksim Sergeevich Zholudev. All rights reserved
 #include "window_life.hpp"
 
-#include <expected>
-
 #include <istok/ecs.hpp>
 
 #include "delegate.hpp"
@@ -53,7 +51,7 @@ void destroyWindows(ECS::ECSManager& ecs) noexcept {
 
 
 bool setupWindowLife(ECS::ECSManager& ecs) {
-    WITH_LOGGER_PREFIX("Istok.GUI.WinAPI", "WinAPI window life: ");
+    WITH_LOGGER_PREFIX("Istok.GUI.WinAPI", "WinAPI: ");
     using WinAPIContainer = std::unique_ptr<WinAPIDelegate>;
     using DispatcherContainer = std::unique_ptr<Dispatcher>;
     if (ecs.count<WinAPIContainer>() != 1) {
@@ -74,6 +72,7 @@ bool setupWindowLife(ECS::ECSManager& ecs) {
     auto& dispatcher = ecs.get<std::unique_ptr<Dispatcher>>(master);
     if (!dispatcher) {
         LOG_ERROR("Empty Dispatcher found.");
+        return false;
     }
     ecs.addLoopSystem(makeCreateWindowsSystem(*winapi, *dispatcher));
     ecs.addCleanupSystem(destroyWindows);
