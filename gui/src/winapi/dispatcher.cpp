@@ -1,6 +1,11 @@
 // Copyright 2026 Maksim Sergeevich Zholudev. All rights reserved
 #include "dispatcher.hpp"
 
+#include <optional>
+
+#include <istok/ecs.hpp>
+#include "message.hpp"
+
 namespace Istok::GUI::WinAPI {
 
 LRESULT Dispatcher::handleMessage(
@@ -11,7 +16,11 @@ LRESULT Dispatcher::handleMessage(
         return winapi_.defWindowProc(message);
     }
     LOG_TRACE("{}:{}", entity, message);
-    return it->second(entity, message);
+    auto optResult = it->second(entity, message);
+    if (!optResult.has_value()) {
+        return winapi_.defWindowProc(message);
+    }
+    return optResult.value();
 }
 
 void Dispatcher::setHandler(UINT msg, Handler&& func) noexcept {

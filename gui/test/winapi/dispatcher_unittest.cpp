@@ -3,6 +3,8 @@
 #include <catch2/trompeloeil.hpp>
 #include "winapi/dispatcher.hpp"
 
+#include <optional>
+
 #include <istok/ecs.hpp>
 
 #include "utils.hpp"
@@ -15,7 +17,8 @@ using trompeloeil::_;
 namespace {
 
 struct MockHandler {
-    MAKE_MOCK2(call, LRESULT(ECS::Entity, const WindowMessage&), noexcept);
+    MAKE_MOCK2(call,
+        std::optional<LRESULT>(ECS::Entity, const WindowMessage&), noexcept);
 };
 
 }  // namespace
@@ -41,20 +44,21 @@ TEST_CASE("Dispatcher - handlers", "[unit][winapi]") {
     MockHandler handler;
     dispatcher.setHandler(
         WM_SIZE,
-        Dispatcher::Handler(
-            [&handler](
-                ECS::Entity entity, const WindowMessage& message
-            ) noexcept {
-                return handler.call(entity, message);
-            }
-        ));
+        [&handler](ECS::Entity entity, const WindowMessage& message) noexcept {
+            return handler.call(entity, message);
+        });
     {
         REQUIRE_CALL(handler, call(entity, sizeMessage)).RETURN(43);
         FORBID_CALL(winapi, defWindowProc(_));
         REQUIRE(dispatcher.handleMessage(entity, sizeMessage) == 43);
     }
     {
-        REQUIRE_CALL(winapi, defWindowProc(cursorMessage)).RETURN(44);
-        REQUIRE(dispatcher.handleMessage(entity, cursorMessage) == 44);
+        REQUIRE_CALL(handler, call(entity, sizeMessage)).RETURN(std::nullopt);
+        REQUIRE_CALL(winapi, defWindowProc(sizeMessage)).RETURN(44);
+        REQUIRE(dispatcher.handleMessage(entity, sizeMessage) == 44);
+    }
+    {
+        REQUIRE_CALL(winapi, defWindowProc(cursorMessage)).RETURN(45);
+        REQUIRE(dispatcher.handleMessage(entity, cursorMessage) == 45);
     }
 }

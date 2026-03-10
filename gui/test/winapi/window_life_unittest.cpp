@@ -20,7 +20,8 @@ using trompeloeil::_;
 namespace {
 
 struct MockClose {
-    MAKE_MOCK2(call, LRESULT(ECS::Entity, const WindowMessage&), noexcept);
+    MAKE_MOCK2(call,
+        std::optional<LRESULT>(ECS::Entity, const WindowMessage&), noexcept);
 };
 
 }  // namespace

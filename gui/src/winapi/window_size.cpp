@@ -1,6 +1,8 @@
 // Copyright 2026 Maksim Sergeevich Zholudev. All rights reserved
 #include "window_size.hpp"
 
+#include <optional>
+
 #include <istok/ecs.hpp>
 
 #include "delegate.hpp"
@@ -10,15 +12,14 @@ namespace Istok::GUI::WinAPI {
 
 namespace {
 
-LRESULT sizeHandler(
-    WinAPIDelegate& winapi, ECS::ECSManager& ecs,
-    ECS::Entity entity, WindowMessage message
+std::optional<LRESULT> sizeHandler(
+    ECS::ECSManager& ecs, ECS::Entity entity, WindowMessage message
 ) noexcept {
     assert(message.msg == WM_SIZE);
     if (!ecs.has<NewWindowMarker>(entity)) {
         ecs.iterate();
     }
-    return winapi.defWindowProc(message);
+    return std::nullopt;
 }
 
 }  // namespace
@@ -34,11 +35,6 @@ bool setupWindowSizeHandling(ECS::ECSManager& ecs) {
     }
     ECS::Entity master = *ecs.view<WinAPIContainer>().begin();
     LOG_DEBUG("Detected master entity {}", master);
-    WinAPIDelegate* winapi = ecs.get<WinAPIContainer>(master).get();
-    if (!winapi) {
-        LOG_ERROR("Empty WinAPIDelegate found.");
-        return false;
-    }
     if (!ecs.has<DispatcherContainer>(master)) {
         LOG_ERROR("Dispatcher not found.");
         return false;
@@ -51,10 +47,8 @@ bool setupWindowSizeHandling(ECS::ECSManager& ecs) {
     ecs.get<std::unique_ptr<Dispatcher>>(master)
         ->setHandler(
             WM_SIZE,
-            [winapi, &ecs](
-                ECS::Entity entity, const WindowMessage& message
-            ) noexcept {
-                return sizeHandler(*winapi, ecs, entity, message);
+            [&ecs](ECS::Entity entity, const WindowMessage& message) noexcept {
+                return sizeHandler(ecs, entity, message);
             });
     return true;
 }

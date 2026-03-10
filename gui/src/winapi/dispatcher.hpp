@@ -2,6 +2,7 @@
 #pragma once
 
 #include <functional>
+#include <optional>
 
 #include <windows.h>
 
@@ -16,8 +17,8 @@ namespace Istok::GUI::WinAPI {
 
 class Dispatcher {
 public:
-    using Handler = std::move_only_function<LRESULT(
-        ECS::Entity, const WindowMessage&) noexcept>;
+    using Handler = std::move_only_function<
+        std::optional<LRESULT>(ECS::Entity, const WindowMessage&) noexcept>;
 
     Dispatcher(WinAPIDelegate& winapi) : winapi_(winapi) {}
 
