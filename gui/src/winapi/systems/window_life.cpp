@@ -3,9 +3,9 @@
 
 #include <istok/ecs.hpp>
 
-#include "base/delegate.hpp"
-#include "base/dispatcher.hpp"
-#include "base/window.hpp"
+#include "winapi/base/delegate.hpp"
+#include "winapi/base/dispatcher.hpp"
+#include "winapi/base/window.hpp"
 
 namespace Istok::GUI::WinAPI {
 

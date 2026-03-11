@@ -8,8 +8,8 @@
 
 #include "istok/gui/base.hpp"
 
-#include "delegate.hpp"
-#include "message.hpp"
+#include "winapi/base/delegate.hpp"
+#include "winapi/base/message.hpp"
 
 
 namespace Istok::GUI::WinAPI {

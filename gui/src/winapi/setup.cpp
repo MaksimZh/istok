@@ -9,11 +9,11 @@
 
 #include "base/dispatcher.hpp"
 #include "base/message_loop.hpp"
-#include "real_winapi.hpp"
 #include "base/window.hpp"
-#include "window_close.hpp"
-#include "window_life.hpp"
-#include "window_size.hpp"
+#include "real_winapi.hpp"
+#include "systems/window_close.hpp"
+#include "systems/window_life.hpp"
+#include "systems/window_size.hpp"
 
 namespace Istok::GUI::WinAPI {
 

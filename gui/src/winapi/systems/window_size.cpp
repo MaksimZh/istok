@@ -1,32 +1,31 @@
 // Copyright 2026 Maksim Sergeevich Zholudev. All rights reserved
-#include "window_close.hpp"
+#include "window_size.hpp"
 
 #include <optional>
 
 #include <istok/ecs.hpp>
 
-#include "base/delegate.hpp"
-#include "base/dispatcher.hpp"
+#include "winapi/base/delegate.hpp"
+#include "winapi/base/dispatcher.hpp"
 
 namespace Istok::GUI::WinAPI {
 
 namespace {
 
-std::optional<LRESULT> closeHandler(
-    ECS::ECSManager& ecs, ECS::Entity entity, const WindowMessage& message
+std::optional<LRESULT> sizeHandler(
+    ECS::ECSManager& ecs, ECS::Entity entity, WindowMessage message
 ) noexcept {
-    assert(message.msg == WM_CLOSE);
-    if (!ecs.has<EventHandlers::Close>(entity)) {
-        return std::nullopt;
+    assert(message.msg == WM_SIZE);
+    if (!ecs.has<NewWindowMarker>(entity)) {
+        ecs.iterate();
     }
-    ecs.get<EventHandlers::Close>(entity).func();
-    return 0;
+    return std::nullopt;
 }
 
 }  // namespace
 
 
-bool setupWindowCloseHandling(ECS::ECSManager& ecs) {
+bool setupWindowSizeHandling(ECS::ECSManager& ecs) {
     WITH_LOGGER_PREFIX("Istok.GUI.WinAPI", "WinAPI: ");
     using WinAPIContainer = std::unique_ptr<WinAPIDelegate>;
     using DispatcherContainer = std::unique_ptr<Dispatcher>;
@@ -47,9 +46,9 @@ bool setupWindowCloseHandling(ECS::ECSManager& ecs) {
     }
     ecs.get<std::unique_ptr<Dispatcher>>(master)
         ->setHandler(
-            WM_CLOSE,
+            WM_SIZE,
             [&ecs](ECS::Entity entity, const WindowMessage& message) noexcept {
-                return closeHandler(ecs, entity, message);
+                return sizeHandler(ecs, entity, message);
             });
     return true;
 }

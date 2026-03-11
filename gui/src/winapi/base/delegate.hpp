@@ -4,7 +4,7 @@
 #include <windows.h>
 
 #include "istok/gui/base.hpp"
-#include "message.hpp"
+#include "winapi/base/message.hpp"
 
 
 namespace Istok::GUI::WinAPI {

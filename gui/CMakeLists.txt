@@ -1,5 +1,6 @@
 add_library(gui STATIC)
 target_include_directories(gui PUBLIC ./include)
+target_include_directories(gui PRIVATE ./src)
 target_link_libraries(gui PUBLIC ecs)
 target_link_libraries(gui PUBLIC logging)
 
