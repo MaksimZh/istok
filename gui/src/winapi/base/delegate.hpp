@@ -16,11 +16,8 @@ public:
     virtual void destroyWindow(HWND hWnd) noexcept = 0;
     virtual LRESULT defWindowProc(const WindowMessage& message) noexcept = 0;
 
-    template<typename T>
-    void setUserPointer(HWND hWnd, T* ptr) noexcept {
-        setRawUserPointer(hWnd, reinterpret_cast<LONG_PTR>(ptr));
-    }
-    virtual void setRawUserPointer(HWND hWnd, LONG_PTR ptr) noexcept = 0;
+    virtual void setWindowMessageHandler(
+        HWND hWnd, WindowMessageHandler* handler) noexcept = 0;
 
     virtual void getMessage(MSG& msg) noexcept = 0;
     virtual void dispatchMessage(const MSG& msg) noexcept = 0;

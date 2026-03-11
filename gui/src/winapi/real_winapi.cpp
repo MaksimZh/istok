@@ -1,12 +1,13 @@
 // Copyright 2026 Maksim Sergeevich Zholudev. All rights reserved
 #include "real_winapi.hpp"
 
+#include <set>
+
 #include <windows.h>
 
 #include <istok/logging.hpp>
 
 #include "base/message.hpp"
-#include "base/windowproc.hpp"
 
 namespace Istok::GUI::WinAPI {
 
@@ -17,16 +18,17 @@ LRESULT defWindowProc(const WindowMessage& message) noexcept {
         message.hWnd, message.msg, message.wParam, message.lParam);
 }
 
-struct HandlerStorage {
-    inline static WindowMessageHandler defHandler{defWindowProc};
-
-    static WindowMessageHandler& get(HWND hWnd) noexcept {
-        LONG_PTR handler = GetWindowLongPtr(hWnd, GWLP_USERDATA);
-        return handler
-            ? *reinterpret_cast<WindowMessageHandler*>(handler)
-            : defHandler;
-    }
-};
+LRESULT CALLBACK windowProc(
+    HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam
+) noexcept {
+    WITH_LOGGER_PREFIX("Istok.GUI.WinAPI.WndProc", "WndProc: ");
+    WindowMessage message{hWnd, msg, wParam, lParam};
+    LONG_PTR handler = GetWindowLongPtr(hWnd, GWLP_USERDATA);
+    LOG_TRACE("{} {}", handler ? "+" : "-", message);
+    return handler
+        ? (*reinterpret_cast<WindowMessageHandler*>(handler))(message)
+        : defWindowProc(message);
+}
 
 HINSTANCE getHInstance() {
     static HINSTANCE hInstance =
@@ -81,7 +83,7 @@ private:
 
 HWND RealWinAPI::createWindow(const Rect<int>& location) noexcept {
     static WinAPI::WindowClass windowClass(
-        windowProc<HandlerStorage>,
+        windowProc,
         L"Istok");
     return CreateWindowEx(
         NULL,
@@ -104,8 +106,10 @@ LRESULT RealWinAPI::defWindowProc(const WindowMessage& message) noexcept {
         message.hWnd, message.msg, message.wParam, message.lParam);
 }
 
-void RealWinAPI::setRawUserPointer(HWND hWnd, LONG_PTR ptr) noexcept {
-    SetWindowLongPtr(hWnd, GWLP_USERDATA, ptr);
+void RealWinAPI::setWindowMessageHandler(
+    HWND hWnd, WindowMessageHandler* handler
+) noexcept {
+    SetWindowLongPtr(hWnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(handler));
 }
 
 void RealWinAPI::getMessage(MSG& msg) noexcept {

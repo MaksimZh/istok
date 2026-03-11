@@ -8,6 +8,4 @@ target_sources(gui PRIVATE
     message_loop.hpp
     window.cpp
     window.hpp
-    windowproc.cpp
-    windowproc.hpp
 )

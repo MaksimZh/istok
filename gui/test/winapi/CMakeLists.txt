@@ -6,8 +6,7 @@ add_executable(winapi_unittest
     window_life_unittest.cpp
     window_size_unittest.cpp
     window_unittest.cpp
-    windowproc_unittest.cpp
 )
-target_include_directories(winapi_unittest PRIVATE ${ISTOK_GUI_DIR}/src)
+target_include_directories(winapi_unittest PRIVATE ${ISTOK_GUI_DIR})
 target_link_libraries(winapi_unittest PRIVATE gui Catch2::Catch2WithMain)
 add_test(NAME winapi_unittest COMMAND winapi_unittest)

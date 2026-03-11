@@ -1,11 +1,11 @@
 // Copyright 2026 Maksim Sergeevich Zholudev. All rights reserved
 #include <catch.hpp>
 #include <catch2/trompeloeil.hpp>
-#include "winapi/base/window.hpp"
+#include "src/winapi/base/window.hpp"
 
 #include <windows.h>
 
-#include "utils.hpp"
+#include "test/winapi/utils.hpp"
 
 using namespace Istok::GUI;
 using namespace Istok::GUI::WinAPI;
@@ -30,16 +30,15 @@ TEST_CASE("Window - lifecycle", "[unit][winapi]") {
     WindowMessageHandler* storedHandler = nullptr;
     {
         REQUIRE_CALL(winapi, createWindow(location)).RETURN(hWnd);
-        REQUIRE_CALL(winapi, setRawUserPointer(hWnd, _))
-            .LR_SIDE_EFFECT(
-                storedHandler = reinterpret_cast<WindowMessageHandler*>(_2));
+        REQUIRE_CALL(winapi, setWindowMessageHandler(hWnd, _))
+            .LR_SIDE_EFFECT(storedHandler = _2);
         window = new Window(winapi, location, std::move(handler));
     }
     REQUIRE(window->getHWnd() == hWnd);
     REQUIRE(storedHandler);
     REQUIRE((*storedHandler)(WindowMessage{}) == handlerResult);
     {
-        REQUIRE_CALL(winapi, setRawUserPointer(hWnd, NULL));
+        REQUIRE_CALL(winapi, setWindowMessageHandler(hWnd, nullptr));
         REQUIRE_CALL(winapi, destroyWindow(hWnd));
         delete window;
     }

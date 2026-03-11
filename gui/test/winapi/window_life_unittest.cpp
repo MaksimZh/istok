@@ -1,16 +1,16 @@
 // Copyright 2026 Maksim Sergeevich Zholudev. All rights reserved
 #include <catch.hpp>
 #include <catch2/trompeloeil.hpp>
-#include "winapi/window_life.hpp"
+#include "src/winapi/window_life.hpp"
 
 #include <windows.h>
 
 #include <istok/ecs.hpp>
 
 #include "istok/gui/base.hpp"
-#include "winapi/base/dispatcher.hpp"
-#include "winapi/base/window.hpp"
-#include "utils.hpp"
+#include "src/winapi/base/dispatcher.hpp"
+#include "src/winapi/base/window.hpp"
+#include "test/winapi/utils.hpp"
 
 using namespace Istok;
 using namespace Istok::GUI;
@@ -71,9 +71,8 @@ TEST_CASE("Window - life", "[unit][winapi]") {
     WindowMessageHandler* handlerA = nullptr;
     {
         REQUIRE_CALL(winapi, createWindow(rectA)).RETURN(hWndA);
-        REQUIRE_CALL(winapi, setRawUserPointer(hWndA, _))
-            .LR_SIDE_EFFECT(
-                handlerA = reinterpret_cast<WindowMessageHandler*>(_2));
+        REQUIRE_CALL(winapi, setWindowMessageHandler(hWndA, _))
+            .LR_SIDE_EFFECT(handlerA = _2);
         ecs.iterate();
     }
     REQUIRE(handlerA);
@@ -94,9 +93,8 @@ TEST_CASE("Window - life", "[unit][winapi]") {
     WindowMessageHandler* handlerB = nullptr;
     {
         REQUIRE_CALL(winapi, createWindow(rectB)).RETURN(hWndB);
-        REQUIRE_CALL(winapi, setRawUserPointer(hWndB, _))
-            .LR_SIDE_EFFECT(
-                handlerB = reinterpret_cast<WindowMessageHandler*>(_2));
+        REQUIRE_CALL(winapi, setWindowMessageHandler(hWndB, _))
+            .LR_SIDE_EFFECT(handlerB = _2);
         ecs.iterate();
     }
     REQUIRE(handlerB);
@@ -112,9 +110,9 @@ TEST_CASE("Window - life", "[unit][winapi]") {
     }
 
     {
-        REQUIRE_CALL(winapi, setRawUserPointer(hWndB, NULL));
+        REQUIRE_CALL(winapi, setWindowMessageHandler(hWndB, nullptr));
         REQUIRE_CALL(winapi, destroyWindow(hWndB));
-        REQUIRE_CALL(winapi, setRawUserPointer(hWndA, NULL));
+        REQUIRE_CALL(winapi, setWindowMessageHandler(hWndA, nullptr));
         REQUIRE_CALL(winapi, destroyWindow(hWndA));
         delete pECS;
     }

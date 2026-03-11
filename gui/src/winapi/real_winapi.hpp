@@ -13,7 +13,8 @@ public:
     HWND createWindow(const Rect<int>& location) noexcept override;
     void destroyWindow(HWND hWnd) noexcept override;
     LRESULT defWindowProc(const WindowMessage& message) noexcept override;
-    void setRawUserPointer(HWND hWnd, LONG_PTR ptr) noexcept override;
+    virtual void setWindowMessageHandler(
+        HWND hWnd, WindowMessageHandler* handler) noexcept override;
     void getMessage(MSG& msg) noexcept override;
     void dispatchMessage(const MSG& msg) noexcept override;
     void showWindow(HWND hWnd) noexcept override;

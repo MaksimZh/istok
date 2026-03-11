@@ -24,7 +24,7 @@ Window::Window(
     winapi_ = &winapi;
     hWnd_ = hWnd;
     handler_ = std::make_unique<WindowMessageHandler>(std::move(handler));
-    winapi_->setUserPointer(hWnd_, handler_.get());
+    winapi_->setWindowMessageHandler(hWnd_, handler_.get());
 }
 
 Window::~Window() {
@@ -57,7 +57,7 @@ void Window::clear() {
     }
     LOG_DEBUG("Destroying window {}", hWnd_);
     assert(winapi_);
-    winapi_->setRawUserPointer(hWnd_, NULL);
+    winapi_->setWindowMessageHandler(hWnd_, nullptr);
     winapi_->destroyWindow(hWnd_);
     winapi_ = nullptr;
     hWnd_ = nullptr;

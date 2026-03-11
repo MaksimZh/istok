@@ -4,8 +4,8 @@
 #include <catch.hpp>
 #include <catch2/trompeloeil.hpp>
 
-#include "winapi/base/delegate.hpp"
-#include "winapi/base/message.hpp"
+#include "src/winapi/base/delegate.hpp"
+#include "src/winapi/base/message.hpp"
 
 namespace Istok::GUI::WinAPI {
 
@@ -28,7 +28,8 @@ public:
     MAKE_MOCK1(createWindow, HWND(const Rect<int>&), noexcept);
     MAKE_MOCK1(destroyWindow, void(HWND), noexcept);
     MAKE_MOCK1(defWindowProc, LRESULT(const WindowMessage&), noexcept);
-    MAKE_MOCK2(setRawUserPointer, void(HWND, LONG_PTR), noexcept);
+    MAKE_MOCK2(setWindowMessageHandler,
+        void(HWND, WindowMessageHandler*), noexcept);
     MAKE_MOCK1(getMessage, void(MSG&), noexcept);
     MAKE_MOCK1(dispatchMessage, void(const MSG& msg), noexcept);
     MAKE_MOCK1(showWindow, void(HWND), noexcept);
