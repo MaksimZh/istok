@@ -7,10 +7,10 @@
 
 #include "istok/gui/base.hpp"
 
-#include "dispatcher.hpp"
-#include "message_loop.hpp"
+#include "base/dispatcher.hpp"
+#include "base/message_loop.hpp"
 #include "real_winapi.hpp"
-#include "window.hpp"
+#include "base/window.hpp"
 #include "window_close.hpp"
 #include "window_life.hpp"
 #include "window_size.hpp"

@@ -8,8 +8,8 @@
 #include <istok/ecs.hpp>
 
 #include "istok/gui/base.hpp"
-#include "winapi/dispatcher.hpp"
-#include "winapi/window.hpp"
+#include "winapi/base/dispatcher.hpp"
+#include "winapi/base/window.hpp"
 #include "utils.hpp"
 
 using namespace Istok;

@@ -1,23 +1,14 @@
 target_sources(gui PRIVATE
-    delegate.hpp
-    dispatcher.cpp
-    dispatcher.hpp
-    message.cpp
-    message.hpp
-    message_loop.cpp
-    message_loop.hpp
     real_winapi.cpp
     real_winapi.hpp
     setup.cpp
     setup.hpp
-    window.cpp
-    window.hpp
     window_close.cpp
     window_close.hpp
     window_life.cpp
     window_life.hpp
     window_size.cpp
     window_size.hpp
-    windowproc.cpp
-    windowproc.hpp
 )
+
+add_subdirectory(base)

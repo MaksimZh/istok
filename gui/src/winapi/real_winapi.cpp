@@ -5,8 +5,8 @@
 
 #include <istok/logging.hpp>
 
-#include "message.hpp"
-#include "windowproc.hpp"
+#include "base/message.hpp"
+#include "base/windowproc.hpp"
 
 namespace Istok::GUI::WinAPI {
 

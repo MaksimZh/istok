@@ -8,7 +8,7 @@
 #include <istok/ecs.hpp>
 
 #include "istok/gui/base.hpp"
-#include "winapi/dispatcher.hpp"
+#include "winapi/base/dispatcher.hpp"
 #include "utils.hpp"
 
 using namespace Istok;

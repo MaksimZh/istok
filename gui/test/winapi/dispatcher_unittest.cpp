@@ -1,7 +1,7 @@
 // Copyright 2026 Maksim Sergeevich Zholudev. All rights reserved
 #include <catch.hpp>
 #include <catch2/trompeloeil.hpp>
-#include "winapi/dispatcher.hpp"
+#include "winapi/base/dispatcher.hpp"
 
 #include <optional>
 
