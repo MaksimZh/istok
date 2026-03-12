@@ -17,8 +17,8 @@ using trompeloeil::_;
 namespace {
 
 struct MockHandler {
-    MAKE_MOCK2(call,
-        std::optional<LRESULT>(ECS::Entity, const WindowMessage&), noexcept);
+    MAKE_MOCK1(call,
+        std::optional<LRESULT>(const WindowEntityMessage&), noexcept);
 };
 
 }  // namespace
@@ -44,16 +44,20 @@ TEST_CASE("Dispatcher - handlers", "[unit][winapi]") {
     MockHandler handler;
     dispatcher.setHandler(
         WM_SIZE,
-        [&handler](ECS::Entity entity, const WindowMessage& message) noexcept {
-            return handler.call(entity, message);
+        [&handler](const WindowEntityMessage& message) noexcept {
+            return handler.call(message);
         });
     {
-        REQUIRE_CALL(handler, call(entity, sizeMessage)).RETURN(43);
+        REQUIRE_CALL(handler, call(WindowEntityMessage{
+            entity, sizeMessage.wParam, sizeMessage.lParam}))
+            .RETURN(43);
         FORBID_CALL(winapi, defWindowProc(_));
         REQUIRE(dispatcher.handleMessage(entity, sizeMessage) == 43);
     }
     {
-        REQUIRE_CALL(handler, call(entity, sizeMessage)).RETURN(std::nullopt);
+        REQUIRE_CALL(handler, call(WindowEntityMessage{
+            entity, sizeMessage.wParam, sizeMessage.lParam}))
+            .RETURN(std::nullopt);
         REQUIRE_CALL(winapi, defWindowProc(sizeMessage)).RETURN(44);
         REQUIRE(dispatcher.handleMessage(entity, sizeMessage) == 44);
     }

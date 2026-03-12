@@ -5,6 +5,7 @@
 #include <catch2/trompeloeil.hpp>
 
 #include "winapi/base/delegate.hpp"
+#include "winapi/base/dispatcher.hpp"
 #include "winapi/base/message.hpp"
 
 namespace Istok::GUI::WinAPI {
@@ -19,6 +20,14 @@ inline bool operator==(const Rect<int>& a, const Rect<int>& b) {
 inline bool operator==(const WindowMessage& a, const WindowMessage& b) {
     return a.hWnd == b.hWnd
         && a.msg == b.msg
+        && a.wParam == b.wParam
+        && a.lParam == b.lParam;
+}
+
+inline bool operator==(
+    const WindowEntityMessage& a, const WindowEntityMessage& b
+) {
+    return a.entity == b.entity
         && a.wParam == b.wParam
         && a.lParam == b.lParam;
 }

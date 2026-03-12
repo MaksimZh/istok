@@ -1,7 +1,6 @@
 // Copyright 2026 Maksim Sergeevich Zholudev. All rights reserved
 #pragma once
 
-#include <concepts>
 #include <cstdint>
 #include <format>
 #include <functional>

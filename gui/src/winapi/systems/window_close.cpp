@@ -13,13 +13,12 @@ namespace Istok::GUI::WinAPI {
 namespace {
 
 std::optional<LRESULT> closeHandler(
-    ECS::ECSManager& ecs, ECS::Entity entity, const WindowMessage& message
+    ECS::ECSManager& ecs, const WindowEntityMessage& message
 ) noexcept {
-    assert(message.msg == WM_CLOSE);
-    if (!ecs.has<EventHandlers::Close>(entity)) {
+    if (!ecs.has<EventHandlers::Close>(message.entity)) {
         return std::nullopt;
     }
-    ecs.get<EventHandlers::Close>(entity).func();
+    ecs.get<EventHandlers::Close>(message.entity).func();
     return 0;
 }
 
@@ -48,8 +47,8 @@ bool setupWindowCloseHandling(ECS::ECSManager& ecs) {
     ecs.get<std::unique_ptr<Dispatcher>>(master)
         ->setHandler(
             WM_CLOSE,
-            [&ecs](ECS::Entity entity, const WindowMessage& message) noexcept {
-                return closeHandler(ecs, entity, message);
+            [&ecs](const WindowEntityMessage& message) noexcept {
+                return closeHandler(ecs, message);
             });
     return true;
 }

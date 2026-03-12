@@ -16,7 +16,8 @@ LRESULT Dispatcher::handleMessage(
         return winapi_.defWindowProc(message);
     }
     LOG_TRACE("{}:{}", entity, message);
-    auto optResult = it->second(entity, message);
+    auto optResult = it->second(
+        WindowEntityMessage{entity, message.wParam, message.lParam});
     if (!optResult.has_value()) {
         return winapi_.defWindowProc(message);
     }

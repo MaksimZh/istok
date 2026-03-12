@@ -15,10 +15,16 @@
 
 namespace Istok::GUI::WinAPI {
 
+struct WindowEntityMessage {
+    ECS::Entity entity;
+    WPARAM wParam;
+    LPARAM lParam;
+};
+
 class Dispatcher {
 public:
     using Handler = std::move_only_function<
-        std::optional<LRESULT>(ECS::Entity, const WindowMessage&) noexcept>;
+        std::optional<LRESULT>(const WindowEntityMessage&) noexcept>;
 
     Dispatcher(WinAPIDelegate& winapi) : winapi_(winapi) {}
 

@@ -13,10 +13,9 @@ namespace Istok::GUI::WinAPI {
 namespace {
 
 std::optional<LRESULT> sizeHandler(
-    ECS::ECSManager& ecs, ECS::Entity entity, WindowMessage message
+    ECS::ECSManager& ecs, const WindowEntityMessage& message
 ) noexcept {
-    assert(message.msg == WM_SIZE);
-    if (!ecs.has<NewWindowMarker>(entity)) {
+    if (!ecs.has<NewWindowMarker>(message.entity)) {
         ecs.iterate();
     }
     return std::nullopt;
@@ -47,8 +46,8 @@ bool setupWindowSizeHandling(ECS::ECSManager& ecs) {
     ecs.get<std::unique_ptr<Dispatcher>>(master)
         ->setHandler(
             WM_SIZE,
-            [&ecs](ECS::Entity entity, const WindowMessage& message) noexcept {
-                return sizeHandler(ecs, entity, message);
+            [&ecs](const WindowEntityMessage& message) noexcept {
+                return sizeHandler(ecs, message);
             });
     return true;
 }
