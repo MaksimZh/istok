@@ -1,11 +1,11 @@
 // Copyright 2026 Maksim Sergeevich Zholudev. All rights reserved
 #include <catch.hpp>
 #include <catch2/trompeloeil.hpp>
-#include "src/winapi/base/window.hpp"
+#include "winapi/base/window.hpp"
 
 #include <windows.h>
 
-#include "test/winapi/utils.hpp"
+#include "winapi/test_utils.hpp"
 
 using namespace Istok::GUI;
 using namespace Istok::GUI::WinAPI;

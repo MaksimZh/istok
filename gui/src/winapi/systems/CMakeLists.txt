@@ -6,3 +6,9 @@ target_sources(gui PRIVATE
     window_size.cpp
     window_size.hpp
 )
+
+target_sources(winapi_unittest PRIVATE
+    window_close_unittest.cpp
+    window_life_unittest.cpp
+    window_size_unittest.cpp
+)

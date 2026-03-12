@@ -4,8 +4,8 @@
 #include <catch.hpp>
 #include <catch2/trompeloeil.hpp>
 
-#include "src/winapi/base/delegate.hpp"
-#include "src/winapi/base/message.hpp"
+#include "winapi/base/delegate.hpp"
+#include "winapi/base/message.hpp"
 
 namespace Istok::GUI::WinAPI {
 

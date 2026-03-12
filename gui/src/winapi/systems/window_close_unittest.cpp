@@ -1,19 +1,20 @@
 // Copyright 2026 Maksim Sergeevich Zholudev. All rights reserved
 #include <catch.hpp>
 #include <catch2/trompeloeil.hpp>
-#include "src/winapi/systems/window_size.hpp"
+#include "winapi/systems/window_close.hpp"
 
 #include <windows.h>
 
 #include <istok/ecs.hpp>
 
 #include "istok/gui/base.hpp"
-#include "src/winapi/base/dispatcher.hpp"
-#include "test/winapi/utils.hpp"
+#include "winapi/base/dispatcher.hpp"
+#include "winapi/test_utils.hpp"
 
 using namespace Istok;
 using namespace Istok::GUI;
 using namespace Istok::GUI::WinAPI;
+using trompeloeil::_;
 
 namespace {
 
@@ -23,30 +24,29 @@ struct MockCall {
 
 }  // namespace
 
-TEST_CASE("Window - size", "[unit][winapi]") {
+TEST_CASE("Window - close", "[unit][winapi]") {
     ECS::ECSManager ecs;
     const ECS::Entity master = ecs.createEntity();
-    REQUIRE_FALSE(setupWindowSizeHandling(ecs));
+    REQUIRE_FALSE(setupWindowCloseHandling(ecs));
 
     ecs.insert(master, std::unique_ptr<WinAPIDelegate>());
-    REQUIRE_FALSE(setupWindowSizeHandling(ecs));
+    REQUIRE_FALSE(setupWindowCloseHandling(ecs));
 
     auto winapiContainer = std::make_unique<MockWinAPI>();
     MockWinAPI& winapi = *winapiContainer;
     ecs.insert(
         master, std::unique_ptr<WinAPIDelegate>{std::move(winapiContainer)});
-    REQUIRE_FALSE(setupWindowSizeHandling(ecs));
+    REQUIRE_FALSE(setupWindowCloseHandling(ecs));
 
     ecs.insert(master, std::unique_ptr<Dispatcher>());
-    REQUIRE_FALSE(setupWindowSizeHandling(ecs));
+    REQUIRE_FALSE(setupWindowCloseHandling(ecs));
 
     ecs.insert(master, std::make_unique<Dispatcher>(winapi));
-    REQUIRE(setupWindowSizeHandling(ecs));
+    REQUIRE(setupWindowCloseHandling(ecs));
 
     const ECS::Entity entity = ecs.createEntity();
-    const WindowMessage sizeMessage{
-        reinterpret_cast<HWND>(1), WM_SIZE,
-        SIZE_MAXIMIZED, MAKELPARAM(5, 7)};
+    const WindowMessage closeMessage{
+        reinterpret_cast<HWND>(1), WM_CLOSE, NULL, NULL};
     WindowMessageHandler handler{
         [entity, dp = ecs.get<std::unique_ptr<Dispatcher>>(master).get()](
             const WindowMessage& message
@@ -54,19 +54,17 @@ TEST_CASE("Window - size", "[unit][winapi]") {
             return dp->handleMessage(entity, message);
         }
     };
-    MockCall iteration;
-    ecs.addLoopSystem([&iteration](ECS::ECSManager& ecs) noexcept {
-        iteration.call(); });
     {
-        REQUIRE_CALL(winapi, defWindowProc(sizeMessage)).RETURN(42);
-        REQUIRE_CALL(iteration, call());
-        REQUIRE(handler(sizeMessage) == 42);
+        REQUIRE_CALL(winapi, defWindowProc(closeMessage)).RETURN(42);
+        REQUIRE(handler(closeMessage) == 42);
     }
 
-    ecs.insert(entity, NewWindowMarker{});
+    MockCall closeHandler;
+    ecs.insert(entity, EventHandlers::Close{
+        [&closeHandler]() noexcept { closeHandler.call(); }});
     {
-        REQUIRE_CALL(winapi, defWindowProc(sizeMessage)).RETURN(42);
-        FORBID_CALL(iteration, call());
-        REQUIRE(handler(sizeMessage) == 42);
+        REQUIRE_CALL(closeHandler, call());
+        FORBID_CALL(winapi, defWindowProc(_));
+        REQUIRE(handler(closeMessage) == 0);
     }
 }
