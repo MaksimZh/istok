@@ -27,8 +27,7 @@ void messageLoopIteration(
         return;
     }
     ecs.insert(master, ProcessingMessageFlag{});
-    MSG msg;
-    winapi.getMessage(msg);
+    MSG msg = winapi.getMessage();
     if (msg.message == WM_QUIT) {
         LOG_DEBUG("WM_QUIT message received.");
         ecs.insert(master, QuitFlag{});

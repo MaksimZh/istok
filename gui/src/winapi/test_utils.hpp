@@ -10,6 +10,15 @@
 
 namespace Istok::GUI::WinAPI {
 
+inline bool operator==(const MSG& a, const MSG& b) {
+    return a.hwnd == b.hwnd
+        && a.message == b.message
+        && a.wParam == b.wParam
+        && a.time == b.time
+        && a.pt.x == b.pt.x
+        && a.pt.y == b.pt.y;
+}
+
 inline bool operator==(const Rect<int>& a, const Rect<int>& b) {
     return a.left == b.left
         && a.top == b.top
@@ -39,7 +48,7 @@ public:
     MAKE_MOCK1(defWindowProc, LRESULT(const WindowMessage&), noexcept);
     MAKE_MOCK2(setWindowMessageHandler,
         void(HWND, WindowMessageHandler*), noexcept);
-    MAKE_MOCK1(getMessage, void(MSG&), noexcept);
+    MAKE_MOCK0(getMessage, MSG(), noexcept);
     MAKE_MOCK1(dispatchMessage, void(const MSG& msg), noexcept);
     MAKE_MOCK1(showWindow, void(HWND), noexcept);
 };

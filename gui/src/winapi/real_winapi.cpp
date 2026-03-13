@@ -112,8 +112,10 @@ void RealWinAPI::setWindowMessageHandler(
     SetWindowLongPtr(hWnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(handler));
 }
 
-void RealWinAPI::getMessage(MSG& msg) noexcept {
+MSG RealWinAPI::getMessage() noexcept {
+    MSG msg;
     GetMessage(&msg, nullptr, 0, 0);
+    return msg;
 }
 
 void RealWinAPI::dispatchMessage(const MSG& msg) noexcept {

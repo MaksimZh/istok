@@ -35,10 +35,15 @@ TEST_CASE("Messages", "[unit][winapi]") {
     REQUIRE(ecs.has<std::unique_ptr<Dispatcher>>(master));
     REQUIRE(ecs.get<std::unique_ptr<Dispatcher>>(master));
     {
-        REQUIRE_CALL(winapi, getMessage(_))
-            .SIDE_EFFECT(_1.message = WM_SIZE);
-        REQUIRE_CALL(winapi, dispatchMessage(_))
-            .WITH(_1.message == WM_SIZE);
+        const MSG msg{reinterpret_cast<HWND>(1), WM_SIZE, 1, 2, 0, 0};
+        REQUIRE_CALL(winapi, getMessage()).RETURN(msg)
+            .LR_SIDE_EFFECT([&winapi, &ecs]{
+                // Nested runs must skip all actions
+                FORBID_CALL(winapi, getMessage());
+                FORBID_CALL(winapi, dispatchMessage(_));
+                ecs.iterate();
+            }());
+        REQUIRE_CALL(winapi, dispatchMessage(msg));
         ecs.iterate();
     }
 }

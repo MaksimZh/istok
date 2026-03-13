@@ -19,7 +19,7 @@ public:
     virtual void setWindowMessageHandler(
         HWND hWnd, WindowMessageHandler* handler) noexcept = 0;
 
-    virtual void getMessage(MSG& msg) noexcept = 0;
+    virtual MSG getMessage() noexcept = 0;
     virtual void dispatchMessage(const MSG& msg) noexcept = 0;
 
     virtual void showWindow(HWND hWnd) noexcept = 0;
