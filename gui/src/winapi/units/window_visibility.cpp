@@ -2,6 +2,7 @@
 #include "window_visibility.hpp"
 
 #include <istok/ecs.hpp>
+#include <istok/gui.hpp>
 #include <istok/logging.hpp>
 
 #include "istok/gui/base.hpp"

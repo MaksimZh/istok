@@ -6,7 +6,7 @@
 
 namespace Istok::GUI {
 
-using QuitCallback = std::move_only_function<void() noexcept>;
+struct QuitFlag {};
 
 template <typename T>
 struct Rect {

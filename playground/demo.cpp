@@ -13,25 +13,23 @@ int main() {
     LOG_TRACE("begin");
     {  // Scope to log on proper shutdown.
         ECS::ECSManager ecs;
-        bool runFlag = true;
-        auto quit = [&runFlag]() noexcept {
-            LOG_DEBUG("Quit");
-            runFlag = false;
-        };
-        setupGUI(ecs, quit);
+        setupGUI(ecs);
 
         auto window = ecs.createEntity();
         ecs.insert(window, CreateWindowMarker{});
         ecs.insert(window, ShowWindowMarker{});
         ecs.insert(window, WindowLocation{{1100, 100, 1500, 500}});
-        ecs.insert(window, EventHandlers::Close(
-            [&ecs, &runFlag, quit]() noexcept {
+        ecs.insert(window, EventHandlers::Close{
+            [&ecs]() noexcept {
                 auto second = ecs.createEntity();
                 ecs.insert(second, CreateWindowMarker{});
                 ecs.insert(second, ShowWindowMarker{});
                 ecs.insert(second, WindowLocation{{1200, 200, 1400, 400}});
-                ecs.insert(second, EventHandlers::Close(quit));
-            }));
+                ecs.insert(second, EventHandlers::Close{
+                    [&ecs, second]() noexcept {
+                        ecs.insert(second, QuitFlag{}); }
+                    });
+            }});
 
         ecs.addLoopSystem([](ECS::ECSManager& ecs) noexcept {
             for (auto entity : ecs.view<NewWindowMarker>()) {
@@ -39,7 +37,7 @@ int main() {
             }
         });
 
-        while (runFlag) {
+        while (ecs.count<QuitFlag>() == 0) {
             ecs.iterate();
         }
     }  // Scope to log on proper shutdown.

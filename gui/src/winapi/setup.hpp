@@ -3,10 +3,8 @@
 
 #include <istok/ecs.hpp>
 
-#include "istok/gui/base.hpp"
-
 namespace Istok::GUI::WinAPI {
 
-void setupGUIWinAPI(ECS::ECSManager& ecs, QuitCallback&& quit);
+void setupGUIWinAPI(ECS::ECSManager& ecs);
 
 }  // namespace Istok::GUI::WinAPI

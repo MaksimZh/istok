@@ -6,11 +6,8 @@
 
 #include <istok/logging.hpp>
 
-#include "istok/gui/base.hpp"
-
-#include "base/dispatcher.hpp"
-#include "base/message_loop.hpp"
 #include "real_winapi.hpp"
+#include "units/messages.hpp"
 #include "units/window_close.hpp"
 #include "units/window_life.hpp"
 #include "units/window_size.hpp"
@@ -18,19 +15,16 @@
 
 namespace Istok::GUI::WinAPI {
 
-void setupGUIWinAPI(ECS::ECSManager& ecs, QuitCallback&& quit) {
-    WITH_LOGGER_PREFIX("Istok.GUI.WinAPI", "WinAPI: ");
-    LOG_TRACE("Start GUI system setup.");
+void setupGUIWinAPI(ECS::ECSManager& ecs) {
+    WITH_LOGGER_PREFIX("Istok.GUI.WinAPI", "WinAPI: GUI setup: ");
 
     auto master = ecs.createEntity();
     LOG_DEBUG("Created master entity {}.", master);
-
-    auto winapiContainer = std::make_unique<RealWinAPI>();
-    WinAPIDelegate& winapi = *winapiContainer;
-    ecs.insert(
-        master, std::unique_ptr<WinAPIDelegate>{std::move(winapiContainer)});
+    ecs.insert(master, std::unique_ptr<WinAPIDelegate>{
+        std::make_unique<RealWinAPI>()});
 
     const std::vector<bool(*)(ECS::ECSManager&)> units = {
+        setupMessages,
         setupWindowLife,
         setupWindowClose,
         setupWindowSize,
@@ -38,12 +32,11 @@ void setupGUIWinAPI(ECS::ECSManager& ecs, QuitCallback&& quit) {
     };
     for (const auto& unit : units) {
         if (!unit(ecs)) {
+            LOG_DEBUG("Failed.");
             return;
         }
     }
-    ecs.addBottomLoopSystem(
-        createMessageLoopSystem(winapi, std::move(quit), master));
-    LOG_DEBUG("Setup succeeded.");
+    LOG_DEBUG("Succeeded.");
 }
 
 }  // namespace Istok::GUI::WinAPI

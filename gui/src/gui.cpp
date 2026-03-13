@@ -9,8 +9,8 @@
 namespace Istok::GUI {
 
 #ifdef _WIN32
-void setupGUI(ECS::ECSManager& ecs, QuitCallback&& quit) {
-    WinAPI::setupGUIWinAPI(ecs, std::move(quit));
+void setupGUI(ECS::ECSManager& ecs) {
+    WinAPI::setupGUIWinAPI(ecs);
 }
 #endif
 
