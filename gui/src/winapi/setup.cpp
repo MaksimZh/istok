@@ -29,7 +29,6 @@ void setupGUIWinAPI(ECS::ECSManager& ecs, QuitCallback&& quit) {
     WinAPIDelegate& winapi = *winapiContainer;
     ecs.insert(
         master, std::unique_ptr<WinAPIDelegate>{std::move(winapiContainer)});
-    ecs.insert(master, std::make_unique<Dispatcher>(winapi));
 
     const std::vector<bool(*)(ECS::ECSManager&)> units = {
         setupWindowLife,
