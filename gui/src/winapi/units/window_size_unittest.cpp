@@ -1,7 +1,7 @@
 // Copyright 2026 Maksim Sergeevich Zholudev. All rights reserved
 #include <catch.hpp>
 #include <catch2/trompeloeil.hpp>
-#include "winapi/systems/window_size.hpp"
+#include "winapi/units/window_size.hpp"
 
 #include <windows.h>
 
@@ -26,22 +26,22 @@ struct MockCall {
 TEST_CASE("Window - size", "[unit][winapi]") {
     ECS::ECSManager ecs;
     const ECS::Entity master = ecs.createEntity();
-    REQUIRE_FALSE(setupWindowSizeHandling(ecs));
+    REQUIRE_FALSE(setupWindowSize(ecs));
 
     ecs.insert(master, std::unique_ptr<WinAPIDelegate>());
-    REQUIRE_FALSE(setupWindowSizeHandling(ecs));
+    REQUIRE_FALSE(setupWindowSize(ecs));
 
     auto winapiContainer = std::make_unique<MockWinAPI>();
     MockWinAPI& winapi = *winapiContainer;
     ecs.insert(
         master, std::unique_ptr<WinAPIDelegate>{std::move(winapiContainer)});
-    REQUIRE_FALSE(setupWindowSizeHandling(ecs));
+    REQUIRE_FALSE(setupWindowSize(ecs));
 
     ecs.insert(master, std::unique_ptr<Dispatcher>());
-    REQUIRE_FALSE(setupWindowSizeHandling(ecs));
+    REQUIRE_FALSE(setupWindowSize(ecs));
 
     ecs.insert(master, std::make_unique<Dispatcher>(winapi));
-    REQUIRE(setupWindowSizeHandling(ecs));
+    REQUIRE(setupWindowSize(ecs));
 
     const ECS::Entity entity = ecs.createEntity();
     const WindowMessage sizeMessage{

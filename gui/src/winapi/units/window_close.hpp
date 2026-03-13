@@ -5,6 +5,6 @@
 
 namespace Istok::GUI::WinAPI {
 
-bool setupWindowVisibilityHandling(ECS::ECSManager& ecs);
+bool setupWindowClose(ECS::ECSManager& ecs);
 
 }  // namespace Istok::GUI::WinAPI

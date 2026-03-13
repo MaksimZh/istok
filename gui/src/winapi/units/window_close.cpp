@@ -1,5 +1,5 @@
 // Copyright 2026 Maksim Sergeevich Zholudev. All rights reserved
-#include "window_size.hpp"
+#include "window_close.hpp"
 
 #include <optional>
 
@@ -13,19 +13,20 @@ namespace Istok::GUI::WinAPI {
 
 namespace {
 
-std::optional<LRESULT> sizeHandler(
+std::optional<LRESULT> closeHandler(
     ECS::ECSManager& ecs, const WindowEntityMessage& message
 ) noexcept {
-    if (!ecs.has<NewWindowMarker>(message.entity)) {
-        ecs.iterate();
+    if (!ecs.has<EventHandlers::Close>(message.entity)) {
+        return std::nullopt;
     }
-    return std::nullopt;
+    ecs.get<EventHandlers::Close>(message.entity).func();
+    return 0;
 }
 
 }  // namespace
 
 
-bool setupWindowSizeHandling(ECS::ECSManager& ecs) {
+bool setupWindowClose(ECS::ECSManager& ecs) {
     WITH_LOGGER_PREFIX("Istok.GUI.WinAPI", "WinAPI: ");
     using WinAPIContainer = std::unique_ptr<WinAPIDelegate>;
     using DispatcherContainer = std::unique_ptr<Dispatcher>;
@@ -46,9 +47,9 @@ bool setupWindowSizeHandling(ECS::ECSManager& ecs) {
     }
     ecs.get<std::unique_ptr<Dispatcher>>(master)
         ->setHandler(
-            WM_SIZE,
+            WM_CLOSE,
             [&ecs](const WindowEntityMessage& message) noexcept {
-                return sizeHandler(ecs, message);
+                return closeHandler(ecs, message);
             });
     return true;
 }

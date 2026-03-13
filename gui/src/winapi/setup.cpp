@@ -2,6 +2,7 @@
 #include "setup.hpp"
 
 #include <memory>
+#include <vector>
 
 #include <istok/logging.hpp>
 
@@ -10,10 +11,10 @@
 #include "base/dispatcher.hpp"
 #include "base/message_loop.hpp"
 #include "real_winapi.hpp"
-#include "systems/window_close.hpp"
-#include "systems/window_life.hpp"
-#include "systems/window_size.hpp"
-#include "systems/window_visibility.hpp"
+#include "units/window_close.hpp"
+#include "units/window_life.hpp"
+#include "units/window_size.hpp"
+#include "units/window_visibility.hpp"
 
 namespace Istok::GUI::WinAPI {
 
@@ -30,17 +31,16 @@ void setupGUIWinAPI(ECS::ECSManager& ecs, QuitCallback&& quit) {
         master, std::unique_ptr<WinAPIDelegate>{std::move(winapiContainer)});
     ecs.insert(master, std::make_unique<Dispatcher>(winapi));
 
-    if (!setupWindowLife(ecs)) {
-        return;
-    }
-    if (!setupWindowCloseHandling(ecs)) {
-        return;
-    }
-    if (!setupWindowSizeHandling(ecs)) {
-        return;
-    }
-    if (!setupWindowVisibilityHandling(ecs)) {
-        return;
+    const std::vector<bool(*)(ECS::ECSManager&)> units = {
+        setupWindowLife,
+        setupWindowClose,
+        setupWindowSize,
+        setupWindowVisibility,
+    };
+    for (const auto& unit : units) {
+        if (!unit(ecs)) {
+            return;
+        }
     }
     ecs.addBottomLoopSystem(
         createMessageLoopSystem(winapi, std::move(quit), master));

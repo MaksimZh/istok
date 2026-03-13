@@ -1,7 +1,7 @@
 // Copyright 2026 Maksim Sergeevich Zholudev. All rights reserved
 #include <catch.hpp>
 #include <catch2/trompeloeil.hpp>
-#include "winapi/systems/window_life.hpp"
+#include "winapi/units/window_life.hpp"
 
 #include <windows.h>
 

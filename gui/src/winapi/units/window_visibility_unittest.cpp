@@ -1,7 +1,7 @@
 // Copyright 2026 Maksim Sergeevich Zholudev. All rights reserved
 #include <catch.hpp>
 #include <catch2/trompeloeil.hpp>
-#include "winapi/systems/window_visibility.hpp"
+#include "winapi/units/window_visibility.hpp"
 
 #include <windows.h>
 
@@ -9,7 +9,7 @@
 
 #include "istok/gui/base.hpp"
 #include "winapi/test_utils.hpp"
-#include "winapi/systems/window_life.hpp"
+#include "winapi/units/window_life.hpp"
 
 using namespace Istok;
 using namespace Istok::GUI;
@@ -28,10 +28,10 @@ struct MockClose {
 TEST_CASE("Window - visibility", "[unit][winapi]") {
     ECS::ECSManager ecs;
     const ECS::Entity master = ecs.createEntity();
-    REQUIRE_FALSE(setupWindowVisibilityHandling(ecs));
+    REQUIRE_FALSE(setupWindowVisibility(ecs));
 
     ecs.insert(master, std::unique_ptr<WinAPIDelegate>());
-    REQUIRE_FALSE(setupWindowVisibilityHandling(ecs));
+    REQUIRE_FALSE(setupWindowVisibility(ecs));
 
     auto winapiContainer = std::make_unique<MockWinAPI>();
     MockWinAPI& winapi = *winapiContainer;
@@ -39,7 +39,7 @@ TEST_CASE("Window - visibility", "[unit][winapi]") {
         master, std::unique_ptr<WinAPIDelegate>{std::move(winapiContainer)});
     ecs.insert(master, std::make_unique<Dispatcher>(winapi));
     REQUIRE(setupWindowLife(ecs));
-    REQUIRE(setupWindowVisibilityHandling(ecs));
+    REQUIRE(setupWindowVisibility(ecs));
 
     const ECS::Entity a = ecs.createEntity();
     const ECS::Entity b = ecs.createEntity();

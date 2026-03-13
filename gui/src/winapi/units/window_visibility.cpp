@@ -29,7 +29,7 @@ ECS::System makeShowWindowsSystem(WinAPIDelegate& winapi) {
 
 }  // namespace
 
-bool setupWindowVisibilityHandling(ECS::ECSManager& ecs) {
+bool setupWindowVisibility(ECS::ECSManager& ecs) {
     WITH_LOGGER_PREFIX("Istok.GUI.WinAPI", "WinAPI: ");
     using WinAPIContainer = std::unique_ptr<WinAPIDelegate>;
     if (ecs.count<WinAPIContainer>() != 1) {

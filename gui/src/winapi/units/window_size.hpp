@@ -5,6 +5,6 @@
 
 namespace Istok::GUI::WinAPI {
 
-bool setupWindowCloseHandling(ECS::ECSManager& ecs);
+bool setupWindowSize(ECS::ECSManager& ecs);
 
 }  // namespace Istok::GUI::WinAPI
