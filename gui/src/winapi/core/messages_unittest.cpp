@@ -1,7 +1,7 @@
 // Copyright 2026 Maksim Sergeevich Zholudev. All rights reserved
 #include <catch.hpp>
 #include <catch2/trompeloeil.hpp>
-#include "winapi/units/messages.hpp"
+#include "winapi/core/messages.hpp"
 
 #include <windows.h>
 
@@ -17,7 +17,7 @@ using namespace Istok::GUI::WinAPI;
 using trompeloeil::_;
 
 
-TEST_CASE("Messages", "[unit][winapi]") {
+TEST_CASE("Messages - run", "[unit][winapi]") {
     ECS::ECSManager ecs;
     const ECS::Entity master = ecs.createEntity();
     REQUIRE_FALSE(setupMessages(ecs));

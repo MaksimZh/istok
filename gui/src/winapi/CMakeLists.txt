@@ -18,4 +18,5 @@ target_sources(winapi_unittest PRIVATE
 )
 
 add_subdirectory(base)
+add_subdirectory(core)
 add_subdirectory(units)

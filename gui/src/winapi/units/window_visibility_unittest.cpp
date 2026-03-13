@@ -9,12 +9,13 @@
 
 #include "istok/gui/base.hpp"
 #include "winapi/test_utils.hpp"
-#include "winapi/units/window_life.hpp"
+#include "winapi/core/setup.hpp"
 
 using namespace Istok;
 using namespace Istok::GUI;
 using namespace Istok::GUI::WinAPI;
 using trompeloeil::_;
+
 
 namespace {
 
@@ -25,7 +26,8 @@ struct MockClose {
 
 }  // namespace
 
-TEST_CASE("Window - visibility", "[unit][winapi]") {
+
+TEST_CASE("Window visibility - setup", "[unit][winapi]") {
     ECS::ECSManager ecs;
     const ECS::Entity master = ecs.createEntity();
     REQUIRE_FALSE(setupWindowVisibility(ecs));
@@ -38,7 +40,14 @@ TEST_CASE("Window - visibility", "[unit][winapi]") {
     ecs.insert(
         master, std::unique_ptr<WinAPIDelegate>{std::move(winapiContainer)});
     ecs.insert(master, std::make_unique<Dispatcher>(winapi));
-    REQUIRE(setupWindowLife(ecs));
+    REQUIRE(setupWindowVisibility(ecs));
+}
+
+
+TEST_CASE("Window visibility - run", "[unit][winapi]") {
+    ECS::ECSManager ecs;
+    MockWinAPI& winapi = setupMockWinAPI(ecs);
+    REQUIRE(setupWinAPICore(ecs));
     REQUIRE(setupWindowVisibility(ecs));
 
     const ECS::Entity a = ecs.createEntity();
@@ -56,16 +65,14 @@ TEST_CASE("Window - visibility", "[unit][winapi]") {
     ecs.insert(b, ShowWindowMarker{});
     ecs.insert(c, ShowWindowMarker{});
     {
-        REQUIRE_CALL(winapi, createWindow(rectA)).RETURN(hWndA);
-        REQUIRE_CALL(winapi, createWindow(rectB)).RETURN(hWndB);
-        ALLOW_CALL(winapi, setWindowMessageHandler(_, _));
+        REQUIRE_CREATE_WINDOW(winapi, rectA, hWndA);
+        REQUIRE_CREATE_WINDOW(winapi, rectB, hWndB);
         REQUIRE_CALL(winapi, showWindow(hWndB));
         ecs.iterate();
     }
 
     {
-        ALLOW_CALL(winapi, setWindowMessageHandler(_, _));
-        ALLOW_CALL(winapi, destroyWindow(_));
+        ALLOW_DESTROY_WINDOWS(winapi);
         ecs.clear();
     }
 }

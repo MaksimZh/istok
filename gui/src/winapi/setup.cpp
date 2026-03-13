@@ -6,12 +6,11 @@
 
 #include <istok/logging.hpp>
 
-#include "real_winapi.hpp"
-#include "units/messages.hpp"
-#include "units/window_close.hpp"
-#include "units/window_life.hpp"
-#include "units/window_size.hpp"
-#include "units/window_visibility.hpp"
+#include "winapi/real_winapi.hpp"
+#include "winapi/core/setup.hpp"
+#include "winapi/units/window_close.hpp"
+#include "winapi/units/window_size.hpp"
+#include "winapi/units/window_visibility.hpp"
 
 namespace Istok::GUI::WinAPI {
 
@@ -24,8 +23,7 @@ void setupGUIWinAPI(ECS::ECSManager& ecs) {
         std::make_unique<RealWinAPI>()});
 
     const std::vector<bool(*)(ECS::ECSManager&)> units = {
-        setupMessages,
-        setupWindowLife,
+        setupWinAPICore,
         setupWindowClose,
         setupWindowSize,
         setupWindowVisibility,
