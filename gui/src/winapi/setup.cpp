@@ -9,36 +9,13 @@
 
 #include "base/dispatcher.hpp"
 #include "base/message_loop.hpp"
-#include "base/window.hpp"
 #include "real_winapi.hpp"
 #include "systems/window_close.hpp"
 #include "systems/window_life.hpp"
 #include "systems/window_size.hpp"
+#include "systems/window_visibility.hpp"
 
 namespace Istok::GUI::WinAPI {
-
-namespace {
-
-void showWindows(WinAPIDelegate& winapi, ECS::ECSManager& ecs) noexcept {
-    WITH_LOGGER_PREFIX("Istok.GUI.WinAPI", "WinAPI: ");
-    for (auto entity : ecs.view<ShowWindowMarker, Window>()) {
-        LOG_DEBUG("Showing window {}", entity);
-        HWND hWnd = ecs.get<Window>(entity).getHWnd();
-        winapi.showWindow(hWnd);
-    }
-    ecs.removeAll<ShowWindowMarker>();
-}
-
-ECS::System makeShowWindowsSystem(WinAPIDelegate& winapi) {
-    return ECS::System{
-        [&winapi](ECS::ECSManager& ecs) noexcept {
-            showWindows(winapi, ecs);
-        }
-    };
-}
-
-}  // namespace
-
 
 void setupGUIWinAPI(ECS::ECSManager& ecs, QuitCallback&& quit) {
     WITH_LOGGER_PREFIX("Istok.GUI.WinAPI", "WinAPI: ");
@@ -62,7 +39,9 @@ void setupGUIWinAPI(ECS::ECSManager& ecs, QuitCallback&& quit) {
     if (!setupWindowSizeHandling(ecs)) {
         return;
     }
-    ecs.addLoopSystem(makeShowWindowsSystem(winapi));
+    if (!setupWindowVisibilityHandling(ecs)) {
+        return;
+    }
     ecs.addBottomLoopSystem(
         createMessageLoopSystem(winapi, std::move(quit), master));
     LOG_DEBUG("Setup succeeded.");

@@ -110,3 +110,24 @@ TEST_CASE("EntityManager - mass index reuse", "[unit][ecs]") {
     REQUIRE(y == s);
     REQUIRE(z == s);
 }
+
+
+TEST_CASE("EntityManager - clear", "[unit][ecs]") {
+    EntityManager em;
+    Entity a = em.createEntity();
+    Entity b = em.createEntity();
+    Entity c = em.createEntity();
+    em.clear();
+    REQUIRE(!em.isValidEntity(a));
+    REQUIRE(!em.isValidEntity(b));
+    REQUIRE(!em.isValidEntity(c));
+    Entity d = em.createEntity();
+    Entity e = em.createEntity();
+    Entity f = em.createEntity();
+    REQUIRE(!em.isValidEntity(a));
+    REQUIRE(!em.isValidEntity(b));
+    REQUIRE(!em.isValidEntity(c));
+    REQUIRE(em.isValidEntity(d));
+    REQUIRE(em.isValidEntity(e));
+    REQUIRE(em.isValidEntity(f));
+}

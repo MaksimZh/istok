@@ -19,14 +19,14 @@ namespace Internal {
 
 struct Entity final {
     struct Hasher {
-        size_t operator()(const Entity& entity) const {
+        size_t operator()(const Entity& entity) const noexcept {
             return std::bit_cast<size_t>(entity);
         }
     };
 
     bool operator==(const Entity& other) const = default;
 
-    size_t index() const {
+    size_t index() const noexcept {
         return index_;
     }
 
@@ -50,8 +50,8 @@ public:
 
     EntityManager(const EntityManager&) = delete;
     EntityManager& operator=(const EntityManager&) = delete;
-    EntityManager(EntityManager&&) noexcept = default;
-    EntityManager& operator=(EntityManager&&) noexcept = default;
+    EntityManager(EntityManager&&) = default;
+    EntityManager& operator=(EntityManager&&) = default;
 
     bool isValidEntity(Entity entity) const noexcept {
         return entity.index_ < entities_.size()
@@ -88,6 +88,15 @@ public:
         --size_;
         setLink(entity.index_, freeIndex_);
         freeIndex_ = entity.index_;
+    }
+
+    // Delete all entities and consider them invalid in future.
+    void clear() noexcept {
+        freeIndex_ = 0;
+        size_ = 0;
+        for (size_t i = 0; i < entities_.size(); ++i) {
+            setLink(i, i + 1);
+        }
     }
 
 private:

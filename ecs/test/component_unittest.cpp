@@ -422,3 +422,24 @@ TEST_CASE("ComponentManager - empty view", "[unit][ecs]") {
 
     REQUIRE(toSet(cm.view<A, B>()) == std::set<size_t>{});
 }
+
+
+TEST_CASE("ComponentManager - clear", "[unit][ecs]") {
+    ComponentManager cm;
+    cm.insert(0, A{0});
+    cm.insert(1, A{0});
+    cm.insert(2, A{0});
+    cm.insert(3, A{0});
+    cm.insert(2, B{0});
+    cm.insert(3, B{0});
+    cm.insert(4, B{0});
+    cm.insert(5, B{0});
+    cm.insert(0, C{0});
+    cm.insert(2, C{0});
+    cm.insert(4, C{0});
+    cm.insert(6, C{0});
+    cm.clear();
+    REQUIRE(cm.count<A>() == 0);
+    REQUIRE(cm.count<B>() == 0);
+    REQUIRE(cm.count<C>() == 0);
+}

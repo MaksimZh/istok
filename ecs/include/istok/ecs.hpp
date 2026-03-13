@@ -91,9 +91,19 @@ private:
 class ECSManager {
 public:
     ~ECSManager() {
-        for (auto& s : cleanupSystems_) {
-            s(*this);
-        }
+        cleanup();
+    }
+
+    // Run cleanup systems, then destroy all components
+    // and then delete all entities.
+    // Note that deleted entities will be invalid in future.
+    void clear() noexcept {
+        cleanup();
+        cleanupSystems_.clear();
+        bottomLoopSystems_.clear();
+        loopSystems_.clear();
+        componentManager_.clear();
+        entityManager_.clear();
     }
 
     bool isValidEntity(Entity entity) const noexcept {
@@ -187,6 +197,12 @@ private:
     std::vector<System> loopSystems_;
     std::vector<System> bottomLoopSystems_;
     std::vector<System> cleanupSystems_;
+
+    void cleanup() noexcept {
+        for (auto& s : cleanupSystems_) {
+            s(*this);
+        }
+    }
 };
 
 }  // namespace Istok::ECS

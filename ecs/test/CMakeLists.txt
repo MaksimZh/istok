@@ -1,5 +1,6 @@
 enable_testing()
 find_package(Catch2 REQUIRED)
+find_package(Trompeloeil REQUIRED)
 
 add_executable(ecs_unittest
     component_unittest.cpp

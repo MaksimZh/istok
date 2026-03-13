@@ -2,6 +2,7 @@
 #include "window_life.hpp"
 
 #include <istok/ecs.hpp>
+#include <istok/logging.hpp>
 
 #include "winapi/base/delegate.hpp"
 #include "winapi/base/dispatcher.hpp"
@@ -38,7 +39,6 @@ void createWindows(
 ECS::System makeCreateWindowsSystem(
     WinAPIDelegate& winapi, Dispatcher& dispatcher
 ) {
-    WITH_LOGGER_PREFIX("Istok.GUI.WinAPI", "WinAPI: ");
     return ECS::System{[&winapi, &dispatcher](ECS::ECSManager& ecs) noexcept {
         createWindows(winapi, dispatcher, ecs); }};
 }

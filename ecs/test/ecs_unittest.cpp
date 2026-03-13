@@ -1,7 +1,8 @@
 // Copyright 2026 Maksim Sergeevich Zholudev. All rights reserved
+#include <catch.hpp>
+#include <catch2/trompeloeil.hpp>
 #include "istok/ecs.hpp"
 
-#include <catch.hpp>
 
 #include <string>
 #include <unordered_set>
@@ -399,4 +400,66 @@ TEST_CASE("ECSManager - all systems", "[unit][ecs]") {
         REQUIRE(log == "xa1a2a4a3a1a2a4a3");
     }
     REQUIRE(log == "xa1a2a4a3a1a2a4a3a6a5");
+}
+
+
+using trompeloeil::_;
+
+namespace {
+
+struct MockSystems {
+    MAKE_MOCK1(loop1, void(ECSManager&), noexcept);
+    MAKE_MOCK1(loop2, void(ECSManager&), noexcept);
+    MAKE_MOCK1(bottom1, void(ECSManager&), noexcept);
+    MAKE_MOCK1(bottom2, void(ECSManager&), noexcept);
+    MAKE_MOCK1(cleanup1, void(ECSManager&), noexcept);
+    MAKE_MOCK1(cleanup2, void(ECSManager&), noexcept);
+
+    void addTo(ECSManager& ecs) {
+        ecs.addLoopSystem(
+            [this](ECSManager& ecs) noexcept { loop1(ecs); });
+        ecs.addLoopSystem(
+            [this](ECSManager& ecs) noexcept { loop2(ecs); });
+        ecs.addBottomLoopSystem(
+            [this](ECSManager& ecs) noexcept { bottom1(ecs); });
+        ecs.addBottomLoopSystem(
+            [this](ECSManager& ecs) noexcept { bottom2(ecs); });
+        ecs.addCleanupSystem(
+            [this](ECSManager& ecs) noexcept { cleanup1(ecs); });
+        ecs.addCleanupSystem(
+            [this](ECSManager& ecs) noexcept { cleanup2(ecs); });
+    }
+};
+
+}  // namespace
+
+TEST_CASE("ECSManager - clear", "[unit][ecs]") {
+    ECSManager ecs;
+    Entity a = ecs.createEntity();
+    Entity b = ecs.createEntity();
+    Entity c = ecs.createEntity();
+    ecs.insert(a, A{100});
+    ecs.insert(a, B{101});
+    ecs.insert(b, A{200});
+    ecs.insert(b, B{201});
+    ecs.insert(c, C{300});
+    MockSystems mock;
+    mock.addTo(ecs);
+    trompeloeil::sequence seq;
+    {
+        REQUIRE_CALL(mock, cleanup2(_)).LR_WITH(&_1 == &ecs).IN_SEQUENCE(seq);
+        REQUIRE_CALL(mock, cleanup1(_)).LR_WITH(&_1 == &ecs).IN_SEQUENCE(seq);
+        ecs.clear();
+    }
+    REQUIRE(ecs.countEntities() == 0);
+    REQUIRE(ecs.count<A>() == 0);
+    REQUIRE(ecs.count<B>() == 0);
+    REQUIRE(ecs.count<C>() == 0);
+    REQUIRE(!ecs.isValidEntity(a));
+    REQUIRE(!ecs.isValidEntity(b));
+    REQUIRE(!ecs.isValidEntity(c));
+
+    // Ensure mock systems are not called
+    ecs.iterate();
+    ecs.clear();
 }

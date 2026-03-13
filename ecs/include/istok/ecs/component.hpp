@@ -15,7 +15,7 @@ namespace Istok::ECS::Internal {
 class AbstractComponentStorage {
 public:
     virtual ~AbstractComponentStorage() = default;
-    virtual void ensureHasNot(size_t index) = 0;
+    virtual void ensureHasNot(size_t index) noexcept = 0;
 };
 
 template <typename T>
@@ -26,24 +26,24 @@ public:
 
     ComponentStorage(const ComponentStorage&) = delete;
     ComponentStorage& operator=(const ComponentStorage&) = delete;
-    ComponentStorage(ComponentStorage&&) noexcept = default;
-    ComponentStorage& operator=(ComponentStorage&&) noexcept = default;
+    ComponentStorage(ComponentStorage&&) = default;
+    ComponentStorage& operator=(ComponentStorage&&) = default;
 
-    size_t size() const {
+    size_t size() const noexcept {
         return components_.size();
     }
 
-    bool has(size_t index) const {
+    bool has(size_t index) const noexcept {
         return index < indexToComponent_.size()
             && indexToComponent_[index] >= 0;
     }
 
-    T& get(size_t index) {
+    T& get(size_t index) noexcept {
         assert(has(index));
         return components_[indexToComponent_[index]];
     }
 
-    void insert(size_t index, T&& value) {
+    void insert(size_t index, T&& value) noexcept {
         if (has(index)) {
             components_[indexToComponent_[index]] = std::forward<T>(value);
             return;
@@ -56,7 +56,7 @@ public:
         componentToIndex_.push_back(index);
     }
 
-    void remove(size_t index) {
+    void remove(size_t index) noexcept {
         assert(has(index));
         size_t componentIndex = indexToComponent_[index];
         if (componentIndex < components_.size() - 1) {
@@ -69,19 +69,19 @@ public:
         componentToIndex_.pop_back();
     }
 
-    void clear() {
+    void clear() noexcept {
         indexToComponent_.clear();
         components_.clear();
         componentToIndex_.clear();
     }
 
-    void ensureHasNot(size_t index) override {
+    void ensureHasNot(size_t index) noexcept override {
         if (has(index)) {
             remove(index);
         }
     }
 
-    std::span<const size_t> indices() const {
+    std::span<const size_t> indices() const noexcept {
         return std::span<const size_t>(componentToIndex_);
     }
 
@@ -106,7 +106,7 @@ public:
     PosComponentFilter(PosComponentFilter&&) = default;
     PosComponentFilter& operator=(PosComponentFilter&&) = default;
 
-    bool check(size_t index) const {
+    bool check(size_t index) const noexcept {
         return (std::get<const Storages*>(storages_)->has(index) && ...);
     }
 
@@ -229,14 +229,14 @@ public:
     ComponentManager& operator=(ComponentManager&&) noexcept = default;
 
     template <typename Component>
-    bool has(size_t index) const {
+    bool has(size_t index) const noexcept {
         auto it = storages_.find(key<Component>());
         return it != storages_.end()
             && as<Component>(*it->second).has(index);
     }
 
     template <typename Component>
-    size_t count() const {
+    size_t count() const noexcept {
         auto it = storages_.find(key<Component>());
         return it != storages_.end()
             ? as<Component>(*it->second).size()
@@ -244,36 +244,40 @@ public:
     }
 
     template <typename Component>
-    Component& get(size_t index) {
+    Component& get(size_t index) noexcept {
         assert(has<Component>(index));
         return getStorage<Component>().get(index);
     }
 
     template <typename Component>
-    void insert(size_t index, Component&& value) {
+    void insert(size_t index, Component&& value) noexcept {
         ensureStorage<Component>().insert(
             index, std::forward<Component>(value));
     }
 
     template <typename Component>
-    void remove(size_t index) {
+    void remove(size_t index) noexcept {
         assert(has<Component>(index));
         getStorage<Component>().remove(index);
     }
 
     template <typename Component>
-    void removeAll() {
+    void removeAll() noexcept {
         ensureStorage<Component>().clear();
     }
 
-    void clearIndex(size_t index) {
+    void clearIndex(size_t index) noexcept {
         for (auto& it : storages_) {
             it.second->ensureHasNot(index);
         }
     }
 
+    void clear() noexcept {
+        storages_.clear();
+    }
+
     template<typename Master, typename... Pos>
-    auto view() {
+    auto view() noexcept {
         return ComponentView(
             ensureStorage<Master>(),
             PosComponentFilter(&ensureStorage<Pos>()...),

@@ -27,8 +27,7 @@ struct MockClose {
 }  // namespace
 
 TEST_CASE("Window - life", "[unit][winapi]") {
-    auto* pECS = new ECS::ECSManager;
-    ECS::ECSManager& ecs = *pECS;
+    ECS::ECSManager ecs;
     const ECS::Entity master = ecs.createEntity();
     REQUIRE_FALSE(setupWindowLife(ecs));
 
@@ -116,6 +115,6 @@ TEST_CASE("Window - life", "[unit][winapi]") {
         REQUIRE_CALL(winapi, destroyWindow(hWndB));
         REQUIRE_CALL(winapi, setWindowMessageHandler(hWndA, nullptr));
         REQUIRE_CALL(winapi, destroyWindow(hWndA));
-        delete pECS;
+        ecs.clear();
     }
 }
