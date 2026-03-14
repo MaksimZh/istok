@@ -65,16 +65,10 @@ bool setupWindowLife(ECS::ECSManager& ecs) {
         LOG_ERROR("Empty WinAPIDelegate found.");
         return false;
     }
-    if (!ecs.has<DispatcherContainer>(master)) {
-        LOG_ERROR("Dispatcher not found.");
-        return false;
-    }
-    auto& dispatcher = ecs.get<std::unique_ptr<Dispatcher>>(master);
-    if (!dispatcher) {
-        LOG_ERROR("Empty Dispatcher found.");
-        return false;
-    }
-    ecs.addLoopSystem(makeCreateWindowsSystem(*winapi, *dispatcher));
+    auto dispatcherContainer = std::make_unique<Dispatcher>(*winapi);
+    Dispatcher& dispatcher = *dispatcherContainer;
+    ecs.insert(master, std::move(dispatcherContainer));
+    ecs.addLoopSystem(makeCreateWindowsSystem(*winapi, dispatcher));
     ecs.addCleanupSystem(destroyWindows);
     return true;
 }

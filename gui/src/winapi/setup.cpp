@@ -7,14 +7,15 @@
 #include <istok/logging.hpp>
 
 #include "winapi/real_winapi.hpp"
-#include "winapi/core/setup.hpp"
+#include "winapi/core/messages.hpp"
+#include "winapi/core/window_life.hpp"
 #include "winapi/units/window_close.hpp"
 #include "winapi/units/window_size.hpp"
 #include "winapi/units/window_visibility.hpp"
 
 namespace Istok::GUI::WinAPI {
 
-void setupGUIWinAPI(ECS::ECSManager& ecs) {
+bool setupGUIWinAPI(ECS::ECSManager& ecs) {
     WITH_LOGGER_PREFIX("Istok.GUI.WinAPI", "WinAPI: GUI setup: ");
 
     auto master = ecs.createEntity();
@@ -23,7 +24,8 @@ void setupGUIWinAPI(ECS::ECSManager& ecs) {
         std::make_unique<RealWinAPI>()});
 
     const std::vector<bool(*)(ECS::ECSManager&)> units = {
-        setupWinAPICore,
+        setupMessages,
+        setupWindowLife,
         setupWindowClose,
         setupWindowSize,
         setupWindowVisibility,
@@ -31,10 +33,11 @@ void setupGUIWinAPI(ECS::ECSManager& ecs) {
     for (const auto& unit : units) {
         if (!unit(ecs)) {
             LOG_DEBUG("Failed.");
-            return;
+            return false;
         }
     }
     LOG_DEBUG("Succeeded.");
+    return true;
 }
 
 }  // namespace Istok::GUI::WinAPI

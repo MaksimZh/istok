@@ -38,12 +38,6 @@ TEST_CASE("Window - life", "[unit][winapi]") {
     MockWinAPI& winapi = *winapiContainer;
     ecs.insert(
         master, std::unique_ptr<WinAPIDelegate>{std::move(winapiContainer)});
-    REQUIRE_FALSE(setupWindowLife(ecs));
-
-    ecs.insert(master, std::unique_ptr<Dispatcher>());
-    REQUIRE_FALSE(setupWindowLife(ecs));
-
-    ecs.insert(master, std::make_unique<Dispatcher>(winapi));
     REQUIRE(setupWindowLife(ecs));
 
     MockClose close;

@@ -5,6 +5,6 @@
 
 namespace Istok::GUI::WinAPI {
 
-void setupGUIWinAPI(ECS::ECSManager& ecs);
+bool setupGUIWinAPI(ECS::ECSManager& ecs);
 
 }  // namespace Istok::GUI::WinAPI

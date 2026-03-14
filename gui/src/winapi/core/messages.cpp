@@ -55,7 +55,6 @@ bool setupMessages(ECS::ECSManager& ecs) {
         return false;
     }
 
-    ecs.insert(master, std::make_unique<Dispatcher>(*winapi));
     ecs.addBottomLoopSystem([winapi, master](ECS::ECSManager& ecs) noexcept {
         messageLoopIteration(*winapi, master, ecs); });
     return true;

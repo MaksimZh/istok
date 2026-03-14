@@ -41,6 +41,7 @@ inline bool operator==(
         && a.lParam == b.lParam;
 }
 
+
 class MockWinAPI : public trompeloeil::mock_interface<WinAPIDelegate> {
 public:
     MAKE_MOCK1(createWindow, HWND(const Rect<int>&), noexcept);
@@ -53,8 +54,8 @@ public:
     MAKE_MOCK1(showWindow, void(HWND), noexcept);
 };
 
-
 MockWinAPI& setupMockWinAPI(ECS::ECSManager& ecs);
+
 
 #define REQUIRE_CREATE_WINDOW(winapi, rect, hWnd) \
     REQUIRE_CALL(winapi, createWindow(rect)).RETURN(hWnd); \

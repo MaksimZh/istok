@@ -6,6 +6,6 @@
 
 namespace Istok::GUI {
 
-void setupGUI(ECS::ECSManager& ecs);
+bool setupGUI(ECS::ECSManager& ecs);
 
 }  // namespace Istok::GUI

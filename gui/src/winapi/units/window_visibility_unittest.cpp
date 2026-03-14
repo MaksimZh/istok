@@ -9,7 +9,7 @@
 
 #include "istok/gui/base.hpp"
 #include "winapi/test_utils.hpp"
-#include "winapi/core/setup.hpp"
+#include "winapi/core/window_life.hpp"
 
 using namespace Istok;
 using namespace Istok::GUI;
@@ -47,7 +47,7 @@ TEST_CASE("Window visibility - setup", "[unit][winapi]") {
 TEST_CASE("Window visibility - run", "[unit][winapi]") {
     ECS::ECSManager ecs;
     MockWinAPI& winapi = setupMockWinAPI(ecs);
-    REQUIRE(setupWinAPICore(ecs));
+    REQUIRE(setupWindowLife(ecs));
     REQUIRE(setupWindowVisibility(ecs));
 
     const ECS::Entity a = ecs.createEntity();
