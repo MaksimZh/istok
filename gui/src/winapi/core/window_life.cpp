@@ -6,6 +6,7 @@
 
 #include "winapi/base/delegate.hpp"
 #include "winapi/base/dispatcher.hpp"
+#include "winapi/base/tools.hpp"
 #include "winapi/base/window.hpp"
 
 namespace Istok::GUI::WinAPI {
@@ -47,30 +48,22 @@ void destroyWindows(ECS::ECSManager& ecs) noexcept {
     ecs.removeAll<Window>();
 }
 
+bool setup(
+    ECS::ECSManager& ecs, ECS::Entity master, WinAPIDelegate& winapi
+) {
+    auto dispatcherContainer = std::make_unique<Dispatcher>(winapi);
+    Dispatcher& dispatcher = *dispatcherContainer;
+    ecs.insert(master, std::move(dispatcherContainer));
+    ecs.addLoopSystem(makeCreateWindowsSystem(winapi, dispatcher));
+    ecs.addCleanupSystem(destroyWindows);
+    return true;
+}
+
 }  // namespace
 
 
 bool setupWindowLife(ECS::ECSManager& ecs) {
-    WITH_LOGGER_PREFIX("Istok.GUI.WinAPI", "WinAPI: ");
-    using WinAPIContainer = std::unique_ptr<WinAPIDelegate>;
-    using DispatcherContainer = std::unique_ptr<Dispatcher>;
-    if (ecs.count<WinAPIContainer>() != 1) {
-        LOG_ERROR("Single WinAPIDelegate expected.");
-        return false;
-    }
-    ECS::Entity master = *ecs.view<WinAPIContainer>().begin();
-    LOG_DEBUG("Detected master entity {}", master);
-    WinAPIDelegate* winapi = ecs.get<WinAPIContainer>(master).get();
-    if (!winapi) {
-        LOG_ERROR("Empty WinAPIDelegate found.");
-        return false;
-    }
-    auto dispatcherContainer = std::make_unique<Dispatcher>(*winapi);
-    Dispatcher& dispatcher = *dispatcherContainer;
-    ecs.insert(master, std::move(dispatcherContainer));
-    ecs.addLoopSystem(makeCreateWindowsSystem(*winapi, dispatcher));
-    ecs.addCleanupSystem(destroyWindows);
-    return true;
+    return runInEnvironment(ecs, setup);
 }
 
 }  // namespace Istok::GUI::WinAPI

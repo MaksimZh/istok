@@ -27,20 +27,7 @@ struct MockCall {
 TEST_CASE("Window - close", "[unit][winapi]") {
     ECS::ECSManager ecs;
     const ECS::Entity master = ecs.createEntity();
-    REQUIRE_FALSE(setupWindowClose(ecs));
-
-    ecs.insert(master, std::unique_ptr<WinAPIDelegate>());
-    REQUIRE_FALSE(setupWindowClose(ecs));
-
-    auto winapiContainer = std::make_unique<MockWinAPI>();
-    MockWinAPI& winapi = *winapiContainer;
-    ecs.insert(
-        master, std::unique_ptr<WinAPIDelegate>{std::move(winapiContainer)});
-    REQUIRE_FALSE(setupWindowClose(ecs));
-
-    ecs.insert(master, std::unique_ptr<Dispatcher>());
-    REQUIRE_FALSE(setupWindowClose(ecs));
-
+    MockWinAPI& winapi = setupMockWinAPI(ecs, master);
     ecs.insert(master, std::make_unique<Dispatcher>(winapi));
     REQUIRE(setupWindowClose(ecs));
 

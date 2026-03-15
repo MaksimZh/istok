@@ -28,16 +28,8 @@ struct MockClose {
 
 TEST_CASE("Window - life", "[unit][winapi]") {
     ECS::ECSManager ecs;
-    const ECS::Entity master = ecs.createEntity();
-    REQUIRE_FALSE(setupWindowLife(ecs));
-
-    ecs.insert(master, std::unique_ptr<WinAPIDelegate>());
-    REQUIRE_FALSE(setupWindowLife(ecs));
-
-    auto winapiContainer = std::make_unique<MockWinAPI>();
-    MockWinAPI& winapi = *winapiContainer;
-    ecs.insert(
-        master, std::unique_ptr<WinAPIDelegate>{std::move(winapiContainer)});
+    ECS::Entity master = ecs.createEntity();
+    MockWinAPI& winapi = setupMockWinAPI(ecs, master);
     REQUIRE(setupWindowLife(ecs));
 
     MockClose close;

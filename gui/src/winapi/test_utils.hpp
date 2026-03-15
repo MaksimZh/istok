@@ -54,6 +54,7 @@ public:
     MAKE_MOCK1(showWindow, void(HWND), noexcept);
 };
 
+MockWinAPI& setupMockWinAPI(ECS::ECSManager& ecs, ECS::Entity master);
 MockWinAPI& setupMockWinAPI(ECS::ECSManager& ecs);
 
 

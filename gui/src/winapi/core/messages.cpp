@@ -1,12 +1,11 @@
 // Copyright 2026 Maksim Sergeevich Zholudev. All rights reserved
 #include "messages.hpp"
 
-#include <memory>
-
 #include <istok/ecs.hpp>
 #include <istok/logging.hpp>
 
 #include "winapi/base/delegate.hpp"
+#include "winapi/base/tools.hpp"
 
 
 namespace Istok::GUI::WinAPI {
@@ -36,27 +35,17 @@ void messageLoopIteration(
     ecs.remove<ProcessingMessageFlag>(master);
 }
 
+bool setup(ECS::ECSManager& ecs, ECS::Entity master, WinAPIDelegate& winapi) {
+    ecs.addBottomLoopSystem([&winapi, master](ECS::ECSManager& ecs) noexcept {
+        messageLoopIteration(winapi, master, ecs); });
+    return true;
+}
 
 }  // namespace
 
-bool setupMessages(ECS::ECSManager& ecs) {
-    WITH_LOGGER_PREFIX("Istok.GUI.WinAPI", "WinAPI: ");
-    using WinAPIContainer = std::unique_ptr<WinAPIDelegate>;
-    if (ecs.count<WinAPIContainer>() != 1) {
-        LOG_ERROR("Single WinAPIDelegate expected.");
-        return false;
-    }
-    ECS::Entity master = *ecs.view<WinAPIContainer>().begin();
-    LOG_DEBUG("Detected master entity {}", master);
-    WinAPIDelegate* winapi = ecs.get<WinAPIContainer>(master).get();
-    if (!winapi) {
-        LOG_ERROR("Empty WinAPIDelegate found.");
-        return false;
-    }
 
-    ecs.addBottomLoopSystem([winapi, master](ECS::ECSManager& ecs) noexcept {
-        messageLoopIteration(*winapi, master, ecs); });
-    return true;
+bool setupMessages(ECS::ECSManager& ecs) {
+    return runInEnvironment(ecs, setup);
 }
 
 }  // namespace Istok::GUI::WinAPI
