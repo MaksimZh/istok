@@ -7,7 +7,6 @@
 #include <istok/logging.hpp>
 
 #include "winapi/base/delegate.hpp"
-#include "winapi/base/dispatcher.hpp"
 
 
 namespace Istok::GUI::WinAPI {
