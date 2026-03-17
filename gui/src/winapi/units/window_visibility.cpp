@@ -6,7 +6,7 @@
 #include <istok/logging.hpp>
 
 #include "istok/gui/base.hpp"
-#include "winapi/base/delegate.hpp"
+#include "winapi/base/winapi_delegate.hpp"
 #include "winapi/base/window.hpp"
 
 namespace Istok::GUI::WinAPI {

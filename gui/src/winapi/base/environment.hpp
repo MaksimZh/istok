@@ -2,8 +2,8 @@
 #pragma once
 
 #include <istok/ecs.hpp>
-#include "winapi/base/delegate.hpp"
 #include "winapi/base/dispatcher.hpp"
+#include "winapi/base/winapi_delegate.hpp"
 
 
 namespace Istok::GUI::WinAPI {

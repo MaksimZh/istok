@@ -4,8 +4,8 @@
 #include "winapi/base/environment.hpp"
 
 #include <istok/ecs.hpp>
-#include "winapi/base/delegate.hpp"
 #include "winapi/base/dispatcher.hpp"
+#include "winapi/base/winapi_delegate.hpp"
 #include "winapi/test_utils.hpp"
 
 using namespace Istok;

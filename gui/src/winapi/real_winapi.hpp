@@ -3,7 +3,7 @@
 
 #include <windows.h>
 
-#include "base/delegate.hpp"
+#include "base/winapi_delegate.hpp"
 
 
 namespace Istok::GUI::WinAPI {
