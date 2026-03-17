@@ -9,6 +9,7 @@
 
 #include "istok/gui/base.hpp"
 #include "winapi/base/dispatcher.hpp"
+#include "winapi/base/window_test_utils.hpp"
 #include "winapi/base/window.hpp"
 #include "winapi/test_utils.hpp"
 
@@ -53,9 +54,7 @@ TEST_CASE("Window - life", "[unit][winapi]") {
     ecs.insert(a, WindowLocation{rectA});
     WindowMessageHandler* handlerA = nullptr;
     {
-        REQUIRE_CALL(winapi, createWindow(rectA)).RETURN(hWndA);
-        REQUIRE_CALL(winapi, setWindowMessageHandler(hWndA, _))
-            .LR_SIDE_EFFECT(handlerA = _2);
+        REQUIRE_CREATE_WINDOW_HANDLER(winapi, rectA, hWndA, handlerA);
         ecs.iterate();
     }
     REQUIRE(handlerA);
@@ -77,9 +76,7 @@ TEST_CASE("Window - life", "[unit][winapi]") {
     ecs.insert(b, WindowLocation{rectB});
     WindowMessageHandler* handlerB = nullptr;
     {
-        REQUIRE_CALL(winapi, createWindow(rectB)).RETURN(hWndB);
-        REQUIRE_CALL(winapi, setWindowMessageHandler(hWndB, _))
-            .LR_SIDE_EFFECT(handlerB = _2);
+        REQUIRE_CREATE_WINDOW_HANDLER(winapi, rectB, hWndB, handlerB);
         ecs.iterate();
     }
     REQUIRE(handlerB);
@@ -88,7 +85,7 @@ TEST_CASE("Window - life", "[unit][winapi]") {
     REQUIRE(ecs.has<Window>(b));
     REQUIRE(ecs.get<Window>(b).getHWnd() == hWndB);
     {
-        const WindowMessage message{hWndA, WM_CLOSE, 13, 14};
+        const WindowMessage message{hWndB, WM_CLOSE, 13, 14};
         const LRESULT result = 43;
         REQUIRE_CALL(close, call(
             WindowEntityMessage{b, message.wParam, message.lParam}))
@@ -97,10 +94,8 @@ TEST_CASE("Window - life", "[unit][winapi]") {
     }
 
     {
-        REQUIRE_CALL(winapi, setWindowMessageHandler(hWndB, nullptr));
-        REQUIRE_CALL(winapi, destroyWindow(hWndB));
-        REQUIRE_CALL(winapi, setWindowMessageHandler(hWndA, nullptr));
-        REQUIRE_CALL(winapi, destroyWindow(hWndA));
+        REQUIRE_DESTROY_WINDOW(winapi, hWndB);
+        REQUIRE_DESTROY_WINDOW(winapi, hWndA);
         ecs.clear();
     }
 }

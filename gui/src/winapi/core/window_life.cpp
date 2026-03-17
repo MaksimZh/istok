@@ -6,7 +6,7 @@
 
 #include "winapi/base/delegate.hpp"
 #include "winapi/base/dispatcher.hpp"
-#include "winapi/base/tools.hpp"
+#include "winapi/base/environment.hpp"
 #include "winapi/base/window.hpp"
 
 namespace Istok::GUI::WinAPI {

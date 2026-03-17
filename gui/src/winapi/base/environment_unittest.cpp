@@ -1,7 +1,7 @@
 // Copyright 2026 Maksim Sergeevich Zholudev. All rights reserved
 #include <catch.hpp>
 #include <catch2/trompeloeil.hpp>
-#include "winapi/base/tools.hpp"
+#include "winapi/base/environment.hpp"
 
 #include <istok/ecs.hpp>
 #include "winapi/base/delegate.hpp"

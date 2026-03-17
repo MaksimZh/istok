@@ -57,18 +57,4 @@ public:
 MockWinAPI& setupMockWinAPI(ECS::ECSManager& ecs, ECS::Entity master);
 MockWinAPI& setupMockWinAPI(ECS::ECSManager& ecs);
 
-
-#define REQUIRE_CREATE_WINDOW(winapi, rect, hWnd) \
-    REQUIRE_CALL(winapi, createWindow(rect)).RETURN(hWnd); \
-    REQUIRE_CALL(winapi, setWindowMessageHandler(hWnd, _));
-
-#define REQUIRE_CREATE_WINDOW_HANDLER(winapi, rect, hWnd, handlerPtr) \
-    REQUIRE_CALL(winapi, createWindow(rect)).RETURN(hWnd); \
-    REQUIRE_CALL(winapi, setWindowMessageHandler(hWnd, _)) \
-        .LR_SIDE_EFFECT(handlerPtr = _2);
-
-#define ALLOW_DESTROY_WINDOWS(winapi) \
-    ALLOW_CALL(winapi, setWindowMessageHandler(_, _)); \
-    ALLOW_CALL(winapi, destroyWindow(_));
-
 }  // namespace Istok::GUI::WinAPI

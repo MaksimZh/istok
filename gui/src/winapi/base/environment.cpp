@@ -1,5 +1,5 @@
 // Copyright 2026 Maksim Sergeevich Zholudev. All rights reserved
-#include "winapi/base/tools.hpp"
+#include "winapi/base/environment.hpp"
 
 #include <functional>
 

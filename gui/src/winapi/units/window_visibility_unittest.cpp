@@ -8,6 +8,7 @@
 #include <istok/ecs.hpp>
 
 #include "istok/gui/base.hpp"
+#include "winapi/base/window_test_utils.hpp"
 #include "winapi/test_utils.hpp"
 #include "winapi/core/window_life.hpp"
 
@@ -27,7 +28,7 @@ struct MockClose {
 }  // namespace
 
 
-TEST_CASE("Window visibility - run", "[unit][winapi]") {
+TEST_CASE("Window - visibility", "[unit][winapi]") {
     ECS::ECSManager ecs;
     MockWinAPI& winapi = setupMockWinAPI(ecs);
     REQUIRE(setupWindowLife(ecs));
