@@ -7,7 +7,7 @@
 #include <istok/logging.hpp>
 
 #include "winapi/real_winapi.hpp"
-#include "winapi/core/messages.hpp"
+#include "winapi/core/message_loop.hpp"
 #include "winapi/core/window_life.hpp"
 #include "winapi/units/window_close.hpp"
 #include "winapi/units/window_size.hpp"

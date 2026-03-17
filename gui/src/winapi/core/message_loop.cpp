@@ -1,5 +1,5 @@
 // Copyright 2026 Maksim Sergeevich Zholudev. All rights reserved
-#include "messages.hpp"
+#include "message_loop.hpp"
 
 #include <istok/ecs.hpp>
 #include <istok/logging.hpp>

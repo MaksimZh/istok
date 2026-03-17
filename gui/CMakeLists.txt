@@ -11,8 +11,8 @@ target_link_libraries(gui PUBLIC ecs)
 target_link_libraries(gui PUBLIC logging)
 
 target_sources(gui PRIVATE
-    ./include/istok/gui.hpp
     ./include/istok/gui/base.hpp
+    ./include/istok/gui.hpp
     ./src/gui.cpp
 )
 
