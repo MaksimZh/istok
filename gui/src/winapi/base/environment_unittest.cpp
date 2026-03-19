@@ -4,9 +4,10 @@
 #include "winapi/base/environment.hpp"
 
 #include <istok/ecs.hpp>
+
 #include "winapi/base/dispatcher.hpp"
+#include "winapi/base/null_winapi_delegate.hpp"
 #include "winapi/base/winapi_delegate.hpp"
-#include "winapi/test_utils.hpp"
 
 using namespace Istok;
 using namespace Istok::GUI;
@@ -26,7 +27,7 @@ struct Mock {
 
 }  // namespace
 
-TEST_CASE("Tools - runners", "[unit][winapi]") {
+TEST_CASE("Environment - runners", "[unit][winapi]") {
     Mock mock;
     auto runMW =
         [&mock](
@@ -78,8 +79,8 @@ TEST_CASE("Tools - runners", "[unit][winapi]") {
         REQUIRE_FALSE(runInEnvironment(ecs, runWD));
     }
 
-    auto winapiContainer = std::make_unique<MockWinAPI>();
-    MockWinAPI& winapi = *winapiContainer;
+    auto winapiContainer = std::make_unique<NullWinAPIDelegate>();
+    WinAPIDelegate& winapi = *winapiContainer;
     ecs.insert(
         master, std::unique_ptr<WinAPIDelegate>{std::move(winapiContainer)});
     {
