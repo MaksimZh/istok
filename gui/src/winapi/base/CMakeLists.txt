@@ -13,7 +13,7 @@ target_sources(gui PRIVATE
 target_sources(winapi_unittest PRIVATE
     dispatcher_unittest.cpp
     environment_unittest.cpp
-    null_winapi_delegate.hpp
+    null_winapi.hpp
     window_test_utils.hpp
     window_unittest.cpp
 )

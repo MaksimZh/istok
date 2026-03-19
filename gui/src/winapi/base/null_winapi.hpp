@@ -10,7 +10,7 @@
 
 namespace Istok::GUI::WinAPI {
 
-class NullWinAPIDelegate final : public WinAPIDelegate {
+class NullWinAPI final : public WinAPIDelegate {
 public:
     HWND createWindow(const Rect<int>& location) noexcept override {
         return nullptr;

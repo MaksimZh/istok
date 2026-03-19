@@ -6,7 +6,7 @@
 #include <istok/ecs.hpp>
 
 #include "winapi/base/dispatcher.hpp"
-#include "winapi/base/null_winapi_delegate.hpp"
+#include "winapi/base/null_winapi.hpp"
 #include "winapi/base/winapi_delegate.hpp"
 
 using namespace Istok;
@@ -79,7 +79,7 @@ TEST_CASE("Environment - runners", "[unit][winapi]") {
         REQUIRE_FALSE(runInEnvironment(ecs, runWD));
     }
 
-    auto winapiContainer = std::make_unique<NullWinAPIDelegate>();
+    auto winapiContainer = std::make_unique<NullWinAPI>();
     WinAPIDelegate& winapi = *winapiContainer;
     ecs.insert(
         master, std::unique_ptr<WinAPIDelegate>{std::move(winapiContainer)});
