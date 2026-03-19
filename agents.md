@@ -22,7 +22,7 @@ Do not change it if not instructed explicitly.
 Provides logging framework used throughout the project.
 
 ### playground
-Experimental code to check hypothesis, play with existing functions and feel the GUI.
+Experimental code to check hypothesis, play with existing functions and touch the GUI.
 Do not change it if not instructed explicitly.
 
 
@@ -38,7 +38,7 @@ It may contain the following subdirectories:
 - `include/istok` - for public includes.
 - `iclude/istok/<subproject>` - for includes that must be accessible by clients but are not parts of public API and not supposed to be explicitly imported by clients.
 - `test` - integration and e2e tests, header-only libraries unittests.
-- `src` - private source files (not for header-only libraries).
+- `src` - private source files and unittests (not for header-only libraries).
 
 Private components are grouped with subdirectories within `src` directory.
 Unittests are located in `src` directory nearby tested component.
