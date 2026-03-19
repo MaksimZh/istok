@@ -50,7 +50,8 @@ The subdirectories (except located inside `include`) recursively have their own 
 Each subdirectory `CMakeLists.txt` adds sources with `target_sources` and subdirectories with `add_subdirectory`.
 Subdirectory `CMakeLists.txt` may define targets for tests.
 Targets for unittests are defined within `src` directory.
-Targets higher-level tests are defined within `test` directory.
+Targets for higher-level tests are defined within `test` directory.
+Source files are sorted alphabetically within each `target_sources` directive.
 
 
 ## Coding Conventions
