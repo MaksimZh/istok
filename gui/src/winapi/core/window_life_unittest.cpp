@@ -9,10 +9,8 @@
 
 #include "istok/gui/base.hpp"
 #include "winapi/base/dispatcher.hpp"
-#include "winapi/base/fake_windows.hpp"
+#include "winapi/base/test_utils.hpp"
 #include "winapi/base/window.hpp"
-#include "winapi/test_utils.hpp"
-#include "winapi/base/winapi_proxy.hpp"
 
 using namespace Istok;
 using namespace Istok::GUI;
@@ -29,14 +27,10 @@ struct MockClose {
 }  // namespace
 
 TEST_CASE("Window - life", "[unit][winapi]") {
+    FakeWindowsMockWinAPI winapi;
     ECS::ECSManager ecs;
     ECS::Entity master = ecs.createEntity();
-    auto winAPIContainer = std::make_unique<FakeWindowsMockWinAPI>();
-    FakeWindowsMockWinAPI& winapi = *winAPIContainer;
-    ecs.insert(
-        master,
-        std::unique_ptr<WinAPIDelegate>(
-            std::make_unique<WinAPIProxy>(winAPIContainer.get())));
+    setupWinAPIProxy(ecs, master, winapi);
     REQUIRE(setupWindowLife(ecs));
 
     MockClose close;
@@ -60,15 +54,13 @@ TEST_CASE("Window - life", "[unit][winapi]") {
     REQUIRE(ecs.has<NewWindowMarker>(a));
     REQUIRE(ecs.has<Window>(a));
     HWND hWndA = ecs.get<Window>(a).getHWnd();
-    auto handlerA = winapi.getWindowMessageHandler(hWndA);
-    REQUIRE(handlerA);
     {
         const WindowMessage message{hWndA, WM_CLOSE, 11, 12};
         const LRESULT result = 42;
         REQUIRE_CALL(close, call(
             WindowEntityMessage{a, message.wParam, message.lParam}))
             .RETURN(result);
-        REQUIRE((*handlerA)(message) == result);
+        REQUIRE(winapi.handleMessage(message) == result);
     }
 
     const Rect<int> rectB{2, 3, 4, 5};
@@ -80,14 +72,13 @@ TEST_CASE("Window - life", "[unit][winapi]") {
     REQUIRE(ecs.has<NewWindowMarker>(b));
     REQUIRE(ecs.has<Window>(b));
     HWND hWndB = ecs.get<Window>(b).getHWnd();
-    auto handlerB = winapi.getWindowMessageHandler(hWndB);
     {
         const WindowMessage message{hWndB, WM_CLOSE, 13, 14};
         const LRESULT result = 43;
         REQUIRE_CALL(close, call(
             WindowEntityMessage{b, message.wParam, message.lParam}))
             .RETURN(result);
-        REQUIRE((*handlerB)(message) == result);
+        REQUIRE(winapi.handleMessage(message) == result);
     }
 
     ecs.clear();

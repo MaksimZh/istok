@@ -1,15 +1,17 @@
 // Copyright 2026 Maksim Sergeevich Zholudev. All rights reserved
-#include <catch.hpp>
-#include <catch2/trompeloeil.hpp>
+#define NOMINMAX
 #include "winapi/units/window_close.hpp"
 
+#include <catch.hpp>
+#include <catch2/trompeloeil.hpp>
 #include <windows.h>
 
 #include <istok/ecs.hpp>
 
 #include "istok/gui/base.hpp"
-#include "winapi/base/dispatcher.hpp"
-#include "winapi/test_utils.hpp"
+#include "winapi/base/test_utils.hpp"
+#include "winapi/base/window.hpp"
+#include "winapi/core/window_life.hpp"
 
 using namespace Istok;
 using namespace Istok::GUI;
@@ -25,33 +27,29 @@ struct MockCall {
 }  // namespace
 
 TEST_CASE("Window - close", "[unit][winapi]") {
+    FakeWindowsMockWinAPI winapi;
     ECS::ECSManager ecs;
-    const ECS::Entity master = ecs.createEntity();
-    MockWinAPI& winapi = setupMockWinAPI(ecs, master);
-    ecs.insert(master, std::make_unique<Dispatcher>(winapi));
+    setupWinAPIProxy(ecs, ecs.createEntity(), winapi);
+    REQUIRE(setupWindowLife(ecs));
     REQUIRE(setupWindowClose(ecs));
 
-    const ECS::Entity entity = ecs.createEntity();
+    const ECS::Entity a = ecs.createEntity();
+    ecs.insert(a, CreateWindowMarker{});
+    ecs.insert(a, WindowLocation{});
+    ecs.iterate();
     const WindowMessage closeMessage{
-        reinterpret_cast<HWND>(1), WM_CLOSE, NULL, NULL};
-    WindowMessageHandler handler{
-        [entity, dp = ecs.get<std::unique_ptr<Dispatcher>>(master).get()](
-            const WindowMessage& message
-        ) noexcept {
-            return dp->handleMessage(entity, message);
-        }
-    };
+        ecs.get<Window>(a).getHWnd(), WM_CLOSE, NULL, NULL};
     {
         REQUIRE_CALL(winapi, defWindowProc(closeMessage)).RETURN(42);
-        REQUIRE(handler(closeMessage) == 42);
+        REQUIRE(winapi.handleMessage(closeMessage) == 42);
     }
 
     MockCall closeHandler;
-    ecs.insert(entity, EventHandlers::Close{
+    ecs.insert(a, EventHandlers::Close{
         [&closeHandler]() noexcept { closeHandler.call(); }});
     {
         REQUIRE_CALL(closeHandler, call());
         FORBID_CALL(winapi, defWindowProc(_));
-        REQUIRE(handler(closeMessage) == 0);
+        REQUIRE(winapi.handleMessage(closeMessage) == 0);
     }
 }

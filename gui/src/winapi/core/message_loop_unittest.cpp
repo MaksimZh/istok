@@ -7,7 +7,7 @@
 
 #include <istok/ecs.hpp>
 
-#include "winapi/test_utils.hpp"
+#include "winapi/base/test_utils.hpp"
 
 using namespace Istok;
 using namespace Istok::GUI;
@@ -17,7 +17,7 @@ using trompeloeil::_;
 
 TEST_CASE("Messages - run", "[unit][winapi]") {
     ECS::ECSManager ecs;
-    MockWinAPI& winapi = setupMockWinAPI(ecs);
+    auto& winapi = setupWinAPI<MockWinAPI>(ecs, ecs.createEntity());
     REQUIRE(setupMessages(ecs));
 
     {

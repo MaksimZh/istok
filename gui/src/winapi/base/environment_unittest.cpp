@@ -8,8 +8,8 @@
 #include <istok/ecs.hpp>
 
 #include "winapi/base/dispatcher.hpp"
-#include "winapi/base/null_winapi.hpp"
 #include "winapi/base/winapi_delegate.hpp"
+#include "winapi/base/test_utils.hpp"
 
 using namespace Istok;
 using namespace Istok::GUI;
@@ -81,10 +81,7 @@ TEST_CASE("Environment - runners", "[unit][winapi]") {
         REQUIRE_FALSE(runInEnvironment(ecs, runWD));
     }
 
-    auto winapiContainer = std::make_unique<NullWinAPI>();
-    WinAPIDelegate& winapi = *winapiContainer;
-    ecs.insert(
-        master, std::unique_ptr<WinAPIDelegate>{std::move(winapiContainer)});
+    auto& winapi = setupWinAPI<NullWinAPI>(ecs, master);
     {
         REQUIRE_CALL(mock, runMW(_, master, _))
             .RETURN(false)
@@ -123,9 +120,7 @@ TEST_CASE("Environment - runners", "[unit][winapi]") {
         REQUIRE_FALSE(runInEnvironment(ecs, runWD));
     }
 
-    auto dispatcherContainer = std::make_unique<Dispatcher>(winapi);
-    Dispatcher& dispatcher = *dispatcherContainer;
-    ecs.insert(master, std::move(dispatcherContainer));
+    auto& dispatcher = setupUnique<Dispatcher>(ecs, master, winapi);
     {
         REQUIRE_CALL(mock, runMWD(_, master, _, _))
             .RETURN(false)

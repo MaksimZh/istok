@@ -7,7 +7,9 @@
 #include <istok/logging.hpp>
 
 #include "winapi/base/dispatcher.hpp"
+#include "winapi/base/environment.hpp"
 #include "winapi/base/winapi_delegate.hpp"
+
 
 namespace Istok::GUI::WinAPI {
 
@@ -27,31 +29,19 @@ std::optional<LRESULT> closeHandler(
 
 
 bool setupWindowClose(ECS::ECSManager& ecs) {
-    WITH_LOGGER_PREFIX("Istok.GUI.WinAPI", "WinAPI: ");
-    using WinAPIContainer = std::unique_ptr<WinAPIDelegate>;
-    using DispatcherContainer = std::unique_ptr<Dispatcher>;
-    if (ecs.count<WinAPIContainer>() != 1) {
-        LOG_ERROR("Single WinAPIDelegate expected.");
-        return false;
-    }
-    ECS::Entity master = *ecs.view<WinAPIContainer>().begin();
-    LOG_DEBUG("Detected master entity {}", master);
-    if (!ecs.has<DispatcherContainer>(master)) {
-        LOG_ERROR("Dispatcher not found.");
-        return false;
-    }
-    auto& dispatcher = ecs.get<std::unique_ptr<Dispatcher>>(master);
-    if (!dispatcher) {
-        LOG_ERROR("Empty Dispatcher found.");
-        return false;
-    }
-    ecs.get<std::unique_ptr<Dispatcher>>(master)
-        ->setHandler(
-            WM_CLOSE,
-            [&ecs](const WindowEntityMessage& message) noexcept {
-                return closeHandler(ecs, message);
-            });
-    return true;
+   return runInEnvironment(
+        ecs,
+        [](
+            ECS::ECSManager& ecs,
+            WinAPIDelegate& winapi,
+            Dispatcher& dispatcher
+        ) {
+            dispatcher.setHandler(
+                WM_CLOSE,
+                [&ecs](const WindowEntityMessage& message) noexcept {
+                    return closeHandler(ecs, message); });
+            return true;
+        });
 }
 
 }  // namespace Istok::GUI::WinAPI

@@ -1,11 +1,7 @@
 // Copyright 2026 Maksim Sergeevich Zholudev. All rights reserved
-#include "winapi/base/fake_windows.hpp"
+#include "winapi/base/test_utils.hpp"
 
-#include <windows.h>
-
-#include "istok/gui/base.hpp"
-#include "winapi/base/message.hpp"
-
+#include <istok/ecs.hpp>
 
 namespace Istok::GUI::WinAPI {
 
@@ -29,10 +25,21 @@ size_t FakeWindowsMockWinAPI::windowsCount() const noexcept {
     return handlers_.size();
 }
 
-WindowMessageHandler* FakeWindowsMockWinAPI::getWindowMessageHandler(
-    HWND hWnd
+LRESULT FakeWindowsMockWinAPI::handleMessage(
+    const WindowMessage& message
 ) noexcept {
-    return handlers_[hWnd];
+    auto it = handlers_.find(message.hWnd);
+    if (it == handlers_.end()) {
+        return defWindowProc(message);
+    }
+    return (*it->second)(message);
+}
+
+
+void setupWinAPIProxy(
+    ECS::ECSManager& ecs, ECS::Entity master, WinAPIDelegate& target
+) {
+    setupWinAPI<WinAPIProxy>(ecs, master, target);
 }
 
 }  // namespace Istok::GUI::WinAPI

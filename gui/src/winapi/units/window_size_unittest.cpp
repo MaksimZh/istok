@@ -8,8 +8,9 @@
 #include <istok/ecs.hpp>
 
 #include "istok/gui/base.hpp"
-#include "winapi/base/dispatcher.hpp"
-#include "winapi/test_utils.hpp"
+#include "winapi/base/test_utils.hpp"
+#include "winapi/base/window.hpp"
+#include "winapi/core/window_life.hpp"
 
 using namespace Istok;
 using namespace Istok::GUI;
@@ -24,36 +25,35 @@ struct MockCall {
 }  // namespace
 
 TEST_CASE("Window - size", "[unit][winapi]") {
+    FakeWindowsMockWinAPI winapi;
     ECS::ECSManager ecs;
-    const ECS::Entity master = ecs.createEntity();
-    MockWinAPI& winapi = setupMockWinAPI(ecs, master);
-    ecs.insert(master, std::make_unique<Dispatcher>(winapi));
+    setupWinAPIProxy(ecs, ecs.createEntity(), winapi);
+    REQUIRE(setupWindowLife(ecs));
     REQUIRE(setupWindowSize(ecs));
 
-    const ECS::Entity entity = ecs.createEntity();
+    const ECS::Entity a = ecs.createEntity();
+    ecs.insert(a, CreateWindowMarker{});
+    ecs.insert(a, WindowLocation{});
+    ecs.iterate();
     const WindowMessage sizeMessage{
-        reinterpret_cast<HWND>(1), WM_SIZE,
+        ecs.get<Window>(a).getHWnd(), WM_SIZE,
         SIZE_MAXIMIZED, MAKELPARAM(5, 7)};
-    WindowMessageHandler handler{
-        [entity, dp = ecs.get<std::unique_ptr<Dispatcher>>(master).get()](
-            const WindowMessage& message
-        ) noexcept {
-            return dp->handleMessage(entity, message);
-        }
-    };
+
     MockCall iteration;
     ecs.addLoopSystem([&iteration](ECS::ECSManager& ecs) noexcept {
         iteration.call(); });
+
+    REQUIRE(ecs.has<NewWindowMarker>(a));
+    {
+        REQUIRE_CALL(winapi, defWindowProc(sizeMessage)).RETURN(43);
+        FORBID_CALL(iteration, call());
+        REQUIRE(winapi.handleMessage(sizeMessage) == 43);
+    }
+
+    ecs.remove<NewWindowMarker>(a);
     {
         REQUIRE_CALL(winapi, defWindowProc(sizeMessage)).RETURN(42);
         REQUIRE_CALL(iteration, call());
-        REQUIRE(handler(sizeMessage) == 42);
-    }
-
-    ecs.insert(entity, NewWindowMarker{});
-    {
-        REQUIRE_CALL(winapi, defWindowProc(sizeMessage)).RETURN(42);
-        FORBID_CALL(iteration, call());
-        REQUIRE(handler(sizeMessage) == 42);
+        REQUIRE(winapi.handleMessage(sizeMessage) == 42);
     }
 }

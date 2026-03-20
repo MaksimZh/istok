@@ -10,7 +10,7 @@
 
 #include <istok/ecs.hpp>
 
-#include "winapi/test_utils.hpp"
+#include "winapi/base/test_utils.hpp"
 
 using namespace Istok;
 using namespace Istok::GUI::WinAPI;

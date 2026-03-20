@@ -35,17 +35,18 @@ void messageLoopIteration(
     ecs.remove<ProcessingMessageFlag>(master);
 }
 
-bool setup(ECS::ECSManager& ecs, ECS::Entity master, WinAPIDelegate& winapi) {
-    ecs.addBottomLoopSystem([&winapi, master](ECS::ECSManager& ecs) noexcept {
-        messageLoopIteration(winapi, master, ecs); });
-    return true;
-}
-
 }  // namespace
 
 
 bool setupMessages(ECS::ECSManager& ecs) {
-    return runInEnvironment(ecs, setup);
+    return runInEnvironment(
+        ecs,
+        [](ECS::ECSManager& ecs, ECS::Entity master, WinAPIDelegate& winapi) {
+            ecs.addBottomLoopSystem(
+                [&winapi, master](ECS::ECSManager& ecs) noexcept {
+                    messageLoopIteration(winapi, master, ecs); });
+            return true;
+        });
 }
 
 }  // namespace Istok::GUI::WinAPI

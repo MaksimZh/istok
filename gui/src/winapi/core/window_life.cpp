@@ -48,22 +48,22 @@ void destroyWindows(ECS::ECSManager& ecs) noexcept {
     ecs.removeAll<Window>();
 }
 
-bool setup(
-    ECS::ECSManager& ecs, ECS::Entity master, WinAPIDelegate& winapi
-) {
-    auto dispatcherContainer = std::make_unique<Dispatcher>(winapi);
-    Dispatcher& dispatcher = *dispatcherContainer;
-    ecs.insert(master, std::move(dispatcherContainer));
-    ecs.addLoopSystem(makeCreateWindowsSystem(winapi, dispatcher));
-    ecs.addCleanupSystem(destroyWindows);
-    return true;
-}
-
 }  // namespace
 
 
 bool setupWindowLife(ECS::ECSManager& ecs) {
-    return runInEnvironment(ecs, setup);
+    return runInEnvironment(
+        ecs,
+        [](
+            ECS::ECSManager& ecs, ECS::Entity master, WinAPIDelegate& winapi
+        ) {
+            auto dispatcherContainer = std::make_unique<Dispatcher>(winapi);
+            Dispatcher& dispatcher = *dispatcherContainer;
+            ecs.insert(master, std::move(dispatcherContainer));
+            ecs.addLoopSystem(makeCreateWindowsSystem(winapi, dispatcher));
+            ecs.addCleanupSystem(destroyWindows);
+            return true;
+        });
 }
 
 }  // namespace Istok::GUI::WinAPI

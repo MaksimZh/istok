@@ -8,9 +8,7 @@
 #include <istok/ecs.hpp>
 
 #include "istok/gui/base.hpp"
-#include "winapi/base/dispatcher.hpp"
-#include "winapi/base/winapi_delegate.hpp"
-#include "winapi/base/fake_windows.hpp"
+#include "winapi/base/test_utils.hpp"
 #include "winapi/base/window.hpp"
 #include "winapi/core/window_life.hpp"
 
@@ -31,32 +29,24 @@ struct MockClose {
 
 
 TEST_CASE("Window - visibility", "[unit][winapi]") {
+    FakeWindowsMockWinAPI winapi;
     ECS::ECSManager ecs;
-    ECS::Entity master = ecs.createEntity();
-    auto winAPIContainer = std::make_unique<FakeWindowsMockWinAPI>();
-    FakeWindowsMockWinAPI& winapi = *winAPIContainer;
-    ecs.insert(
-        master, std::unique_ptr<WinAPIDelegate>(std::move(winAPIContainer)));
+    setupWinAPIProxy(ecs, ecs.createEntity(), winapi);
     REQUIRE(setupWindowLife(ecs));
     REQUIRE(setupWindowVisibility(ecs));
 
     const ECS::Entity a = ecs.createEntity();
-    const ECS::Entity b = ecs.createEntity();
-    const ECS::Entity c = ecs.createEntity();
-
-    const Rect<int> rectA{1, 1, 1, 1};
-    const Rect<int> rectB{2, 2, 2, 2};
     ecs.insert(a, CreateWindowMarker{});
-    ecs.insert(a, WindowLocation{rectA});
+    ecs.insert(a, WindowLocation{});
+    const ECS::Entity b = ecs.createEntity();
     ecs.insert(b, CreateWindowMarker{});
-    ecs.insert(b, WindowLocation{rectB});
+    ecs.insert(b, WindowLocation{});
     ecs.insert(b, ShowWindowMarker{});
+    const ECS::Entity c = ecs.createEntity();
     ecs.insert(c, ShowWindowMarker{});
-    HWND hWndB = nullptr;
     {
-        REQUIRE_CALL(winapi, showWindow(_)).LR_WITH(hWndB = _1);
+        REQUIRE_CALL(winapi, showWindow(_))
+            .LR_WITH(_1 == ecs.get<Window>(b).getHWnd());
         ecs.iterate();
     }
-    REQUIRE(winapi.windowsCount() == 2);
-    REQUIRE(ecs.get<Window>(b).getHWnd() == hWndB);
 }
