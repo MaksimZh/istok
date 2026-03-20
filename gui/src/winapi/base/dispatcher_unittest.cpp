@@ -1,9 +1,12 @@
 // Copyright 2026 Maksim Sergeevich Zholudev. All rights reserved
-#include <catch.hpp>
-#include <catch2/trompeloeil.hpp>
+#define NOMINMAX
 #include "winapi/base/dispatcher.hpp"
 
 #include <optional>
+
+#include <catch.hpp>
+#include <catch2/trompeloeil.hpp>
+#include <windows.h>
 
 #include <istok/ecs.hpp>
 

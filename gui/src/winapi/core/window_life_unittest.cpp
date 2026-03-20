@@ -9,9 +9,10 @@
 
 #include "istok/gui/base.hpp"
 #include "winapi/base/dispatcher.hpp"
-#include "winapi/base/window_test_utils.hpp"
+#include "winapi/base/fake_windows.hpp"
 #include "winapi/base/window.hpp"
 #include "winapi/test_utils.hpp"
+#include "winapi/base/winapi_proxy.hpp"
 
 using namespace Istok;
 using namespace Istok::GUI;
@@ -30,7 +31,12 @@ struct MockClose {
 TEST_CASE("Window - life", "[unit][winapi]") {
     ECS::ECSManager ecs;
     ECS::Entity master = ecs.createEntity();
-    MockWinAPI& winapi = setupMockWinAPI(ecs, master);
+    auto winAPIContainer = std::make_unique<FakeWindowsMockWinAPI>();
+    FakeWindowsMockWinAPI& winapi = *winAPIContainer;
+    ecs.insert(
+        master,
+        std::unique_ptr<WinAPIDelegate>(
+            std::make_unique<WinAPIProxy>(winAPIContainer.get())));
     REQUIRE(setupWindowLife(ecs));
 
     MockClose close;
@@ -43,24 +49,19 @@ TEST_CASE("Window - life", "[unit][winapi]") {
 
     const ECS::Entity a = ecs.createEntity();
     const ECS::Entity b = ecs.createEntity();
-    {
-        FORBID_CALL(winapi, createWindow(_));
-        ecs.iterate();
-    }
+    ecs.iterate();
+    REQUIRE(winapi.windowsCount() == 0);
 
-    const HWND hWndA = reinterpret_cast<HWND>(1);
     const Rect<int> rectA{1, 2, 3, 4};
     ecs.insert(a, CreateWindowMarker{});
     ecs.insert(a, WindowLocation{rectA});
-    WindowMessageHandler* handlerA = nullptr;
-    {
-        REQUIRE_CREATE_WINDOW_HANDLER(winapi, rectA, hWndA, handlerA);
-        ecs.iterate();
-    }
-    REQUIRE(handlerA);
+    ecs.iterate();
+    REQUIRE(winapi.windowsCount() == 1);
     REQUIRE(ecs.has<NewWindowMarker>(a));
     REQUIRE(ecs.has<Window>(a));
-    REQUIRE(ecs.get<Window>(a).getHWnd() == hWndA);
+    HWND hWndA = ecs.get<Window>(a).getHWnd();
+    auto handlerA = winapi.getWindowMessageHandler(hWndA);
+    REQUIRE(handlerA);
     {
         const WindowMessage message{hWndA, WM_CLOSE, 11, 12};
         const LRESULT result = 42;
@@ -70,20 +71,16 @@ TEST_CASE("Window - life", "[unit][winapi]") {
         REQUIRE((*handlerA)(message) == result);
     }
 
-    const HWND hWndB = reinterpret_cast<HWND>(2);
     const Rect<int> rectB{2, 3, 4, 5};
     ecs.insert(b, CreateWindowMarker{});
     ecs.insert(b, WindowLocation{rectB});
-    WindowMessageHandler* handlerB = nullptr;
-    {
-        REQUIRE_CREATE_WINDOW_HANDLER(winapi, rectB, hWndB, handlerB);
-        ecs.iterate();
-    }
-    REQUIRE(handlerB);
+    ecs.iterate();
+    REQUIRE(winapi.windowsCount() == 2);
     REQUIRE(!ecs.has<NewWindowMarker>(a));
     REQUIRE(ecs.has<NewWindowMarker>(b));
     REQUIRE(ecs.has<Window>(b));
-    REQUIRE(ecs.get<Window>(b).getHWnd() == hWndB);
+    HWND hWndB = ecs.get<Window>(b).getHWnd();
+    auto handlerB = winapi.getWindowMessageHandler(hWndB);
     {
         const WindowMessage message{hWndB, WM_CLOSE, 13, 14};
         const LRESULT result = 43;
@@ -93,9 +90,6 @@ TEST_CASE("Window - life", "[unit][winapi]") {
         REQUIRE((*handlerB)(message) == result);
     }
 
-    {
-        REQUIRE_DESTROY_WINDOW(winapi, hWndB);
-        REQUIRE_DESTROY_WINDOW(winapi, hWndA);
-        ecs.clear();
-    }
+    ecs.clear();
+    REQUIRE(winapi.windowsCount() == 0);
 }

@@ -60,6 +60,7 @@ Source files are sorted alphabetically within each `target_sources` directive.
 - Classes: `PascalCase` (e.g., `ApiDelegate`)
 - Functions/Methods/Variables: `camelCase` (e.g., `processData`)
 - Macros: `UPPER_SNAKE_CASE` (e.g., `LOG_DEBUG`)
+- Private fields: `camelCase_` (e.g., `processData_`)
 
 ### Interfaces
 - Destructors in interfaces must be `virtual` and `default`.
@@ -72,7 +73,8 @@ Source files are sorted alphabetically within each `target_sources` directive.
 - Use forward declarations in `.hpp` files whenever possible to reduce compile time.
 - Include guards: `#pragma once`.
 - The first include in `.cpp` files must be the corresponding `.hpp` file and appear right under the copyright notice.
-- The corresponding `.hpp` file of unittest `.cpp` file is the header file of the tested component.
+- The first include in unittest `.cpp` file must be the header file of the tested component.
+- Put `#define NOMINMAX` first include in unittest `.cpp` files to prevent conflict of catch.h and windows.h.
 - The includes are subdivided into sections separated by blank lines.
 - The order of the sections is:
 - Corresponding `.hpp` file.
@@ -82,4 +84,3 @@ Source files are sorted alphabetically within each `target_sources` directive.
 - Public includes of same subproject ("istok/gui.hpp")
 - Private includes of same subproject ("winapi/base/window.hpp")
 - The includes are sorted alphabetically within each section.
-

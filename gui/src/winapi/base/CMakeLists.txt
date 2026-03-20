@@ -13,7 +13,9 @@ target_sources(gui PRIVATE
 target_sources(winapi_unittest PRIVATE
     dispatcher_unittest.cpp
     environment_unittest.cpp
+    fake_windows.cpp
+    fake_windows.hpp
     null_winapi.hpp
-    window_test_utils.hpp
+    winapi_proxy.hpp
     window_unittest.cpp
 )

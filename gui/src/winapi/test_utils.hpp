@@ -8,6 +8,16 @@
 #include "winapi/base/message.hpp"
 #include "winapi/base/winapi_delegate.hpp"
 
+
+namespace Istok::GUI {
+inline bool operator==(const Rect<int>& a, const Rect<int>& b) {
+    return a.left == b.left
+        && a.top == b.top
+        && a.right == b.right
+        && a.bottom == b.bottom;
+}
+}  // namespace Istok::GUI
+
 namespace Istok::GUI::WinAPI {
 
 inline bool operator==(const MSG& a, const MSG& b) {
@@ -17,13 +27,6 @@ inline bool operator==(const MSG& a, const MSG& b) {
         && a.time == b.time
         && a.pt.x == b.pt.x
         && a.pt.y == b.pt.y;
-}
-
-inline bool operator==(const Rect<int>& a, const Rect<int>& b) {
-    return a.left == b.left
-        && a.top == b.top
-        && a.right == b.right
-        && a.bottom == b.bottom;
 }
 
 inline bool operator==(const WindowMessage& a, const WindowMessage& b) {

@@ -5,6 +5,7 @@
 
 #include <istok/ecs.hpp>
 #include <istok/logging.hpp>
+
 #include "winapi/base/dispatcher.hpp"
 #include "winapi/base/winapi_delegate.hpp"
 
