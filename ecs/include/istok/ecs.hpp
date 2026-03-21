@@ -99,8 +99,8 @@ public:
     // Note that deleted entities will be invalid in future.
     void clear() noexcept {
         cleanup();
-        cleanupSystems_.clear();
-        bottomLoopSystems_.clear();
+        headCleanupSystems_.clear();
+        tailCleanupSystems_.clear();
         loopSystems_.clear();
         componentManager_.clear();
         entityManager_.clear();
@@ -172,21 +172,17 @@ public:
         loopSystems_.push_back(std::move(system));
     }
 
-    void addBottomLoopSystem(System&& system) noexcept {
-        bottomLoopSystems_.insert(
-            bottomLoopSystems_.begin(), std::move(system));
+    void addHeadCleanupSystem(System&& system) noexcept {
+        headCleanupSystems_.push_back(std::move(system));
     }
 
-    void addCleanupSystem(System&& system) noexcept {
-        cleanupSystems_.insert(
-            cleanupSystems_.begin(), std::move(system));
+    void addTailCleanupSystem(System&& system) noexcept {
+        tailCleanupSystems_.insert(
+            tailCleanupSystems_.begin(), std::move(system));
     }
 
     void iterate() noexcept {
         for (auto& s : loopSystems_) {
-            s(*this);
-        }
-        for (auto& s : bottomLoopSystems_) {
             s(*this);
         }
     }
@@ -195,11 +191,14 @@ private:
     Internal::EntityManager entityManager_;
     Internal::ComponentManager componentManager_;
     std::vector<System> loopSystems_;
-    std::vector<System> bottomLoopSystems_;
-    std::vector<System> cleanupSystems_;
+    std::vector<System> headCleanupSystems_;
+    std::vector<System> tailCleanupSystems_;
 
     void cleanup() noexcept {
-        for (auto& s : cleanupSystems_) {
+        for (auto& s : headCleanupSystems_) {
+            s(*this);
+        }
+        for (auto& s : tailCleanupSystems_) {
             s(*this);
         }
     }

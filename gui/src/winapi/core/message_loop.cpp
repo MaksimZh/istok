@@ -42,7 +42,7 @@ bool setupMessages(ECS::ECSManager& ecs) {
     return runInEnvironment(
         ecs,
         [](ECS::ECSManager& ecs, ECS::Entity master, WinAPIDelegate& winapi) {
-            ecs.addBottomLoopSystem(
+            ecs.addLoopSystem(
                 [&winapi, master](ECS::ECSManager& ecs) noexcept {
                     messageLoopIteration(winapi, master, ecs); });
             return true;

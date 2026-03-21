@@ -61,7 +61,7 @@ bool setupWindowLife(ECS::ECSManager& ecs) {
             Dispatcher& dispatcher = *dispatcherContainer;
             ecs.insert(master, std::move(dispatcherContainer));
             ecs.addLoopSystem(makeCreateWindowsSystem(winapi, dispatcher));
-            ecs.addCleanupSystem(destroyWindows);
+            ecs.addTailCleanupSystem(destroyWindows);
             return true;
         });
 }

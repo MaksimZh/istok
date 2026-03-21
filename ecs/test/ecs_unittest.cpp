@@ -306,17 +306,11 @@ TEST_CASE("ECSManager - empty view", "[unit][ecs]") {
 TEST_CASE("ECSManager - loop systems", "[unit][ecs]") {
     ECSManager ecs;
 
-    SECTION("single top") {
+    SECTION("single") {
         auto a = ecs.createEntity();
         ecs.insert(a, std::string("a"));
-        SECTION("top") {
-            ecs.addLoopSystem([a](ECSManager& ecs) noexcept {
-                ecs.get<std::string>(a) += "1"; });
-        }
-        SECTION("bottom") {
-            ecs.addBottomLoopSystem([a](ECSManager& ecs) noexcept {
-                ecs.get<std::string>(a) += "1"; });
-        }
+        ecs.addLoopSystem([a](ECSManager& ecs) noexcept {
+            ecs.get<std::string>(a) += "1"; });
         REQUIRE(ecs.get<std::string>(a) == "a");
         ecs.iterate();
         REQUIRE(ecs.get<std::string>(a) == "a1");
@@ -331,15 +325,11 @@ TEST_CASE("ECSManager - loop systems", "[unit][ecs]") {
             ecs.get<std::string>(a) += "1"; });
         ecs.addLoopSystem([a](ECSManager& ecs) noexcept {
             ecs.get<std::string>(a) += "2"; });
-        ecs.addBottomLoopSystem([a](ECSManager& ecs) noexcept {
-            ecs.get<std::string>(a) += "3"; });
-        ecs.addBottomLoopSystem([a](ECSManager& ecs) noexcept {
-            ecs.get<std::string>(a) += "4"; });
         REQUIRE(ecs.get<std::string>(a) == "a");
         ecs.iterate();
-        REQUIRE(ecs.get<std::string>(a) == "a1243");
+        REQUIRE(ecs.get<std::string>(a) == "a12");
         ecs.iterate();
-        REQUIRE(ecs.get<std::string>(a) == "a12431243");
+        REQUIRE(ecs.get<std::string>(a) == "a1212");
     }
 }
 
@@ -351,7 +341,7 @@ TEST_CASE("ECSManager - cleanup systems", "[unit][ecs]") {
             ECSManager ecs;
             auto a = ecs.createEntity();
             ecs.insert(a, std::string("a"));
-            ecs.addCleanupSystem([a, &log](ECSManager& ecs) noexcept {
+            ecs.addTailCleanupSystem([a, &log](ECSManager& ecs) noexcept {
                 log += ecs.get<std::string>(a); });
             REQUIRE(log == "x");
         }
@@ -364,9 +354,9 @@ TEST_CASE("ECSManager - cleanup systems", "[unit][ecs]") {
             ECSManager ecs;
             auto a = ecs.createEntity();
             ecs.insert(a, std::string("a"));
-            ecs.addCleanupSystem([a, &log](ECSManager& ecs) noexcept {
+            ecs.addTailCleanupSystem([a, &log](ECSManager& ecs) noexcept {
                 log += ecs.get<std::string>(a) + "1"; });
-            ecs.addCleanupSystem([a, &log](ECSManager& ecs) noexcept {
+            ecs.addTailCleanupSystem([a, &log](ECSManager& ecs) noexcept {
                 log += ecs.get<std::string>(a) + "2"; });
             REQUIRE(log == "x");
         }
@@ -385,21 +375,17 @@ TEST_CASE("ECSManager - all systems", "[unit][ecs]") {
             log += ecs.get<std::string>(a) + "1"; });
         ecs.addLoopSystem([a, &log](ECSManager& ecs) noexcept {
             log += ecs.get<std::string>(a) + "2"; });
-        ecs.addBottomLoopSystem([a, &log](ECSManager& ecs) noexcept {
-            log += ecs.get<std::string>(a) + "3"; });
-        ecs.addBottomLoopSystem([a, &log](ECSManager& ecs) noexcept {
-            log += ecs.get<std::string>(a) + "4"; });
-        ecs.addCleanupSystem([a, &log](ECSManager& ecs) noexcept {
+        ecs.addTailCleanupSystem([a, &log](ECSManager& ecs) noexcept {
             log += ecs.get<std::string>(a) + "5"; });
-        ecs.addCleanupSystem([a, &log](ECSManager& ecs) noexcept {
+        ecs.addTailCleanupSystem([a, &log](ECSManager& ecs) noexcept {
             log += ecs.get<std::string>(a) + "6"; });
         REQUIRE(log == "x");
         ecs.iterate();
-        REQUIRE(log == "xa1a2a4a3");
+        REQUIRE(log == "xa1a2");
         ecs.iterate();
-        REQUIRE(log == "xa1a2a4a3a1a2a4a3");
+        REQUIRE(log == "xa1a2a1a2");
     }
-    REQUIRE(log == "xa1a2a4a3a1a2a4a3a6a5");
+    REQUIRE(log == "xa1a2a1a2a6a5");
 }
 
 
@@ -409,25 +395,25 @@ namespace {
 
 struct MockSystems {
     MAKE_MOCK1(loop1, void(ECSManager&), noexcept);
+    MAKE_MOCK1(cleanH1, void(ECSManager&), noexcept);
+    MAKE_MOCK1(cleanT1, void(ECSManager&), noexcept);
     MAKE_MOCK1(loop2, void(ECSManager&), noexcept);
-    MAKE_MOCK1(bottom1, void(ECSManager&), noexcept);
-    MAKE_MOCK1(bottom2, void(ECSManager&), noexcept);
-    MAKE_MOCK1(cleanup1, void(ECSManager&), noexcept);
-    MAKE_MOCK1(cleanup2, void(ECSManager&), noexcept);
+    MAKE_MOCK1(cleanH2, void(ECSManager&), noexcept);
+    MAKE_MOCK1(cleanT2, void(ECSManager&), noexcept);
 
     void addTo(ECSManager& ecs) {
         ecs.addLoopSystem(
             [this](ECSManager& ecs) noexcept { loop1(ecs); });
+        ecs.addHeadCleanupSystem(
+            [this](ECSManager& ecs) noexcept { cleanH1(ecs); });
+        ecs.addTailCleanupSystem(
+            [this](ECSManager& ecs) noexcept { cleanT1(ecs); });
         ecs.addLoopSystem(
             [this](ECSManager& ecs) noexcept { loop2(ecs); });
-        ecs.addBottomLoopSystem(
-            [this](ECSManager& ecs) noexcept { bottom1(ecs); });
-        ecs.addBottomLoopSystem(
-            [this](ECSManager& ecs) noexcept { bottom2(ecs); });
-        ecs.addCleanupSystem(
-            [this](ECSManager& ecs) noexcept { cleanup1(ecs); });
-        ecs.addCleanupSystem(
-            [this](ECSManager& ecs) noexcept { cleanup2(ecs); });
+        ecs.addHeadCleanupSystem(
+            [this](ECSManager& ecs) noexcept { cleanH2(ecs); });
+        ecs.addTailCleanupSystem(
+            [this](ECSManager& ecs) noexcept { cleanT2(ecs); });
     }
 };
 
@@ -447,8 +433,10 @@ TEST_CASE("ECSManager - clear", "[unit][ecs]") {
     mock.addTo(ecs);
     trompeloeil::sequence seq;
     {
-        REQUIRE_CALL(mock, cleanup2(_)).LR_WITH(&_1 == &ecs).IN_SEQUENCE(seq);
-        REQUIRE_CALL(mock, cleanup1(_)).LR_WITH(&_1 == &ecs).IN_SEQUENCE(seq);
+        REQUIRE_CALL(mock, cleanH1(_)).LR_WITH(&_1 == &ecs).IN_SEQUENCE(seq);
+        REQUIRE_CALL(mock, cleanH2(_)).LR_WITH(&_1 == &ecs).IN_SEQUENCE(seq);
+        REQUIRE_CALL(mock, cleanT2(_)).LR_WITH(&_1 == &ecs).IN_SEQUENCE(seq);
+        REQUIRE_CALL(mock, cleanT1(_)).LR_WITH(&_1 == &ecs).IN_SEQUENCE(seq);
         ecs.clear();
     }
     REQUIRE(ecs.countEntities() == 0);
