@@ -3,6 +3,8 @@
 
 #include <cassert>
 #include <functional>
+#include <queue>
+#include <stack>
 #include <vector>
 
 #include "ecs/entity.hpp"
@@ -90,21 +92,26 @@ private:
 
 class ECSManager {
 public:
+    ECSManager() = default;
+
     ~ECSManager() {
-        cleanup();
+        while (!loopSystems_.empty()) {
+            loopSystems_.pop_back();
+        }
+        while (!headCleanupSystems_.empty()) {
+            headCleanupSystems_.front()(*this);
+            headCleanupSystems_.pop();
+        }
+        while (!tailCleanupSystems_.empty()) {
+            tailCleanupSystems_.top()(*this);
+            tailCleanupSystems_.pop();
+        }
     }
 
-    // Run cleanup systems, then destroy all components
-    // and then delete all entities.
-    // Note that deleted entities will be invalid in future.
-    void clear() noexcept {
-        cleanup();
-        headCleanupSystems_.clear();
-        tailCleanupSystems_.clear();
-        loopSystems_.clear();
-        componentManager_.clear();
-        entityManager_.clear();
-    }
+    ECSManager(const ECSManager&) = delete;
+    ECSManager& operator=(const ECSManager&) = delete;
+    ECSManager(ECSManager&&) = default;
+    ECSManager& operator=(ECSManager&&) = default;
 
     bool isValidEntity(Entity entity) const noexcept {
         return entityManager_.isValidEntity(entity);
@@ -173,12 +180,11 @@ public:
     }
 
     void addHeadCleanupSystem(System&& system) noexcept {
-        headCleanupSystems_.push_back(std::move(system));
+        headCleanupSystems_.push(std::move(system));
     }
 
     void addTailCleanupSystem(System&& system) noexcept {
-        tailCleanupSystems_.insert(
-            tailCleanupSystems_.begin(), std::move(system));
+        tailCleanupSystems_.push(std::move(system));
     }
 
     void iterate() noexcept {
@@ -191,17 +197,8 @@ private:
     Internal::EntityManager entityManager_;
     Internal::ComponentManager componentManager_;
     std::vector<System> loopSystems_;
-    std::vector<System> headCleanupSystems_;
-    std::vector<System> tailCleanupSystems_;
-
-    void cleanup() noexcept {
-        for (auto& s : headCleanupSystems_) {
-            s(*this);
-        }
-        for (auto& s : tailCleanupSystems_) {
-            s(*this);
-        }
-    }
+    std::queue<System> headCleanupSystems_;
+    std::stack<System> tailCleanupSystems_;
 };
 
 }  // namespace Istok::ECS
