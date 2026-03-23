@@ -1,14 +1,14 @@
 // Copyright 2026 Maksim Sergeevich Zholudev. All rights reserved
-#include <catch.hpp>
-#include <catch2/trompeloeil.hpp>
 #include "istok/ecs.hpp"
 
-
-#include <string>
 #include <unordered_set>
-#include <iostream>
+
+#include <catch.hpp>
+#include <catch2/trompeloeil.hpp>
+
 
 using namespace Istok::ECS;
+using trompeloeil::_;
 
 
 TEST_CASE("ECSManager - entities", "[unit][ecs]") {
@@ -166,80 +166,6 @@ TEST_CASE("ECSManager - components", "[unit][ecs]") {
 
 
 namespace {
-
-template <typename Tag>
-class MockUnique {
-public:
-    MockUnique(std::string& status) : status_(&status) {
-        *status_ = "valid";
-    }
-
-    ~MockUnique() {
-        clear();
-    }
-
-    MockUnique(const MockUnique&) = delete;
-    MockUnique& operator=(const MockUnique&) = delete;
-
-    MockUnique(MockUnique&& other) : status_(other.status_) {
-        other.status_ = nullptr;
-    }
-
-    MockUnique& operator=(MockUnique&& other) {
-        if (this != &other) {
-            clear();
-            this->status_ = other.status_;
-            other.status_ = nullptr;
-        }
-        return *this;
-    }
-
-private:
-    std::string* status_ = nullptr;
-
-    void clear() {
-        if (status_) {
-            *status_ = "destroyed";
-        }
-    }
-};
-
-}  // namespace
-
-
-TEST_CASE("ECSManager - component lifecycle", "[unit][ecs]") {
-    ECSManager ecs;
-    using CA = MockUnique<A>;
-    auto a = ecs.createEntity();
-    auto b = ecs.createEntity();
-    std::string sa;
-    std::string sb;
-    ecs.insert(a, CA(sa));
-    ecs.insert(b, CA(sb));
-    REQUIRE(sa == "valid");
-    REQUIRE(sb == "valid");
-
-    SECTION("remove component") {
-        ecs.remove<CA>(a);
-        REQUIRE(sa == "destroyed");
-        REQUIRE(sb == "valid");
-    }
-
-    SECTION("remove all") {
-        ecs.removeAll<CA>();
-        REQUIRE(sa == "destroyed");
-        REQUIRE(sb == "destroyed");
-    }
-
-    SECTION("delete entity") {
-        ecs.deleteEntity(a);
-        REQUIRE(sa == "destroyed");
-        REQUIRE(sb == "valid");
-    }
-}
-
-
-namespace {
 using EntitySet = std::unordered_set<Entity, Entity::Hasher>;
 
 template <typename T>
@@ -303,106 +229,127 @@ TEST_CASE("ECSManager - empty view", "[unit][ecs]") {
     REQUIRE(toEntitySet(ecs.view<A, B>()) == EntitySet{});
 }
 
-using trompeloeil::_;
-using trompeloeil::deathwatched;
 
 namespace {
 
-struct MockSystems {
-    MAKE_MOCK1(loop1, void(ECSManager&), noexcept);
-    MAKE_MOCK1(cleanH1, void(ECSManager&), noexcept);
-    MAKE_MOCK1(cleanT1, void(ECSManager&), noexcept);
-    MAKE_MOCK1(loop2, void(ECSManager&), noexcept);
-    MAKE_MOCK1(cleanH2, void(ECSManager&), noexcept);
-    MAKE_MOCK1(cleanT2, void(ECSManager&), noexcept);
+struct Component {
+    using Func = std::move_only_function<void() noexcept>;
+    Func func_;
+    Component(Func&& func) : func_(std::move(func)) {}
+    ~Component() { func_(); }
 };
 
-struct MockDestructors {
-    MAKE_MOCK0(loop1, void(), noexcept);
-    MAKE_MOCK0(cleanH1, void(), noexcept);
-    MAKE_MOCK0(cleanT1, void(), noexcept);
-    MAKE_MOCK0(loop2, void(), noexcept);
-    MAKE_MOCK0(cleanH2, void(), noexcept);
-    MAKE_MOCK0(cleanT2, void(), noexcept);
-    MAKE_MOCK0(b, void(), noexcept);
+struct MockComponent {
+    using Type = std::unique_ptr<Component>;
+
+    MAKE_MOCK0(kill, void(), noexcept);
+
+    std::unique_ptr<Component> get() {
+        return std::make_unique<Component>([this]() noexcept { kill(); });
+    }
 };
 
-struct MockItem {
-    std::move_only_function<void() noexcept> func_;
-    MockItem(std::move_only_function<void() noexcept>&& func)
-    : func_(std::move(func)) {}
+struct MockSystem {
+    MAKE_MOCK1(run, void(ECSManager&), noexcept);
+    MAKE_MOCK0(kill, void(), noexcept);
 
-    ~MockItem() {
-        func_();
+    System get() {
+        auto item = std::make_unique<Component>(
+            [this]() noexcept { kill(); });
+        return [this, x=std::move(item)](ECSManager& ecs)
+            noexcept { run(ecs); };
     }
 };
 
 }  // namespace
 
 
+TEST_CASE("ECSManager - component lifecycle", "[unit][ecs]") {
+    MockComponent ca, cb;
+    auto ecs = std::make_unique<ECSManager>();
+    auto a = ecs->createEntity();
+    auto b = ecs->createEntity();
+    ecs->insert(a, ca.get());
+    ecs->insert(b, cb.get());
+
+    SECTION("remove component") {
+        {
+            REQUIRE_CALL(ca, kill());
+            ecs->remove<MockComponent::Type>(a);
+        }
+        {
+            REQUIRE_CALL(cb, kill());
+            ecs->remove<MockComponent::Type>(b);
+        }
+    }
+
+    SECTION("delete entity") {
+        {
+            REQUIRE_CALL(ca, kill());
+            ecs->deleteEntity(a);
+        }
+        {
+            REQUIRE_CALL(cb, kill());
+            ecs->deleteEntity(b);
+        }
+    }
+
+    SECTION("remove all") {
+        REQUIRE_CALL(ca, kill());
+        REQUIRE_CALL(cb, kill());
+        ecs->removeAll<MockComponent::Type>();
+    }
+
+    SECTION("destroy") {
+        REQUIRE_CALL(ca, kill());
+        REQUIRE_CALL(cb, kill());
+        ecs.reset();
+    }
+}
+
+
 TEST_CASE("ECSManager - systems", "[unit][ecs]") {
-    MockSystems mock;
-    MockDestructors mockD;
-    auto mdB = std::make_unique<MockItem>(
-        [&mockD]() noexcept { mockD.b(); });
-    auto mdL1 = std::make_unique<MockItem>(
-        [&mockD]() noexcept { mockD.loop1(); });
-    auto mdH1 = std::make_unique<MockItem>(
-        [&mockD]() noexcept { mockD.cleanH1(); });
-    auto mdT1 = std::make_unique<MockItem>(
-        [&mockD]() noexcept { mockD.cleanT1(); });
-    auto mdL2 = std::make_unique<MockItem>(
-        [&mockD]() noexcept { mockD.loop2(); });
-    auto mdH2 = std::make_unique<MockItem>(
-        [&mockD]() noexcept { mockD.cleanH2(); });
-    auto mdT2 = std::make_unique<MockItem>(
-        [&mockD]() noexcept { mockD.cleanT2(); });
+    MockSystem loop1;
+    MockSystem head1;
+    MockSystem tail1;
+    MockSystem loop2;
+    MockSystem head2;
+    MockSystem tail2;
+    MockComponent comp;
 
     auto ecs = std::make_unique<ECSManager>();
     auto* ecsPtr = ecs.get();
     Entity a = ecs->createEntity();
     Entity b = ecs->createEntity();
     ecs->insert(a, A{100});
-    ecs->insert(b, std::move(mdB));
-    ecs->addLoopSystem(
-        [&mock, x=std::move(mdL1)](ECSManager& ecs)
-            noexcept { mock.loop1(ecs); });
-    ecs->addHeadCleanupSystem(
-        [&mock, x=std::move(mdH1)](ECSManager& ecs)
-            noexcept { mock.cleanH1(ecs); });
-    ecs->addTailCleanupSystem(
-        [&mock, x=std::move(mdT1)](ECSManager& ecs)
-            noexcept { mock.cleanT1(ecs); });
-    ecs->addLoopSystem(
-        [&mock, x=std::move(mdL2)](ECSManager& ecs)
-            noexcept { mock.loop2(ecs); });
-    ecs->addHeadCleanupSystem(
-        [&mock, x=std::move(mdH2)](ECSManager& ecs)
-            noexcept { mock.cleanH2(ecs); });
-    ecs->addTailCleanupSystem(
-        [&mock, x=std::move(mdT2)](ECSManager& ecs)
-            noexcept { mock.cleanT2(ecs); });
+    ecs->insert(b, comp.get());
+    ecs->addLoopSystem(loop1.get());
+    ecs->addHeadCleanupSystem(head1.get());
+    ecs->addTailCleanupSystem(tail1.get());
+    ecs->addLoopSystem(loop2.get());
+    ecs->addHeadCleanupSystem(head2.get());
+    ecs->addTailCleanupSystem(tail2.get());
 
     for (size_t i = 0; i < 3; ++ i) {
         trompeloeil::sequence seq;
-        REQUIRE_CALL(mock, loop1(_)).WITH(&_1 == ecsPtr).IN_SEQUENCE(seq);
-        REQUIRE_CALL(mock, loop2(_)).WITH(&_1 == ecsPtr).IN_SEQUENCE(seq);
+        REQUIRE_CALL(loop1, run(_)).WITH(&_1 == ecsPtr).IN_SEQUENCE(seq);
+        REQUIRE_CALL(loop2, run(_)).WITH(&_1 == ecsPtr).IN_SEQUENCE(seq);
         ecs->iterate();
     }
 
     {
         trompeloeil::sequence seq;
-        REQUIRE_CALL(mockD, loop2()).IN_SEQUENCE(seq);
-        REQUIRE_CALL(mockD, loop1()).IN_SEQUENCE(seq);
-        REQUIRE_CALL(mock, cleanH1(_)).WITH(&_1 == ecsPtr).IN_SEQUENCE(seq);
-        REQUIRE_CALL(mockD, cleanH1()).IN_SEQUENCE(seq);
-        REQUIRE_CALL(mock, cleanH2(_)).WITH(&_1 == ecsPtr).IN_SEQUENCE(seq);
-        REQUIRE_CALL(mockD, cleanH2()).IN_SEQUENCE(seq);
-        REQUIRE_CALL(mock, cleanT2(_)).WITH(&_1 == ecsPtr).IN_SEQUENCE(seq);
-        REQUIRE_CALL(mockD, cleanT2()).IN_SEQUENCE(seq);
-        REQUIRE_CALL(mock, cleanT1(_)).WITH(&_1 == ecsPtr).IN_SEQUENCE(seq);
-        REQUIRE_CALL(mockD, cleanT1()).IN_SEQUENCE(seq);
-        REQUIRE_CALL(mockD, b()).IN_SEQUENCE(seq);
+        REQUIRE_CALL(loop2, kill()).IN_SEQUENCE(seq);
+        REQUIRE_CALL(loop1, kill()).IN_SEQUENCE(seq);
+        REQUIRE_CALL(head1, run(_)).WITH(&_1 == ecsPtr).IN_SEQUENCE(seq);
+        REQUIRE_CALL(head1, kill()).IN_SEQUENCE(seq);
+        REQUIRE_CALL(head2, run(_)).WITH(&_1 == ecsPtr).IN_SEQUENCE(seq);
+        REQUIRE_CALL(head2, kill()).IN_SEQUENCE(seq);
+        REQUIRE_CALL(tail2, run(_)).WITH(&_1 == ecsPtr).IN_SEQUENCE(seq);
+        REQUIRE_CALL(tail2, kill()).IN_SEQUENCE(seq);
+        REQUIRE_CALL(tail1, run(_)).WITH(&_1 == ecsPtr).IN_SEQUENCE(seq);
+        REQUIRE_CALL(tail1, kill()).IN_SEQUENCE(seq);
+        REQUIRE_CALL(comp, kill()).IN_SEQUENCE(seq);
         ecs.reset();
     }
 }
