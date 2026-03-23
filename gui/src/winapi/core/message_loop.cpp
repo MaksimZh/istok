@@ -38,7 +38,7 @@ void messageLoopIteration(
 }  // namespace
 
 
-bool setupMessages(ECS::ECSManager& ecs) {
+bool setupMessageLoop(ECS::ECSManager& ecs) {
     return runInEnvironment(
         ecs,
         [](ECS::ECSManager& ecs, ECS::Entity master, WinAPIDelegate& winapi) {

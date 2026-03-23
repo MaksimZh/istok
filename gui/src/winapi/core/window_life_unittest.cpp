@@ -28,32 +28,32 @@ struct MockClose {
 
 TEST_CASE("Window - life", "[unit][winapi]") {
     FakeWindowsMockWinAPI winapi;
-    ECS::ECSManager ecs;
-    ECS::Entity master = ecs.createEntity();
-    setupWinAPIProxy(ecs, master, winapi);
-    REQUIRE(setupWindowLife(ecs));
+    auto ecs = std::make_unique<ECS::ECSManager>();
+    ECS::Entity master = ecs->createEntity();
+    setupWinAPIProxy(*ecs, master, winapi);
+    REQUIRE(setupWindowLife(*ecs));
 
     MockClose close;
-    ecs.get<std::unique_ptr<Dispatcher>>(master)
+    ecs->get<std::unique_ptr<Dispatcher>>(master)
         ->setHandler(
             WM_CLOSE,
             [&close](const WindowEntityMessage& message) noexcept {
                 return close.call(message);
             });
 
-    const ECS::Entity a = ecs.createEntity();
-    const ECS::Entity b = ecs.createEntity();
-    ecs.iterate();
+    const ECS::Entity a = ecs->createEntity();
+    const ECS::Entity b = ecs->createEntity();
+    ecs->iterate();
     REQUIRE(winapi.windowsCount() == 0);
 
     const Rect<int> rectA{1, 2, 3, 4};
-    ecs.insert(a, CreateWindowMarker{});
-    ecs.insert(a, WindowLocation{rectA});
-    ecs.iterate();
+    ecs->insert(a, CreateWindowMarker{});
+    ecs->insert(a, WindowLocation{rectA});
+    ecs->iterate();
     REQUIRE(winapi.windowsCount() == 1);
-    REQUIRE(ecs.has<NewWindowMarker>(a));
-    REQUIRE(ecs.has<Window>(a));
-    HWND hWndA = ecs.get<Window>(a).getHWnd();
+    REQUIRE(ecs->has<NewWindowMarker>(a));
+    REQUIRE(ecs->has<Window>(a));
+    HWND hWndA = ecs->get<Window>(a).getHWnd();
     {
         const WindowMessage message{hWndA, WM_CLOSE, 11, 12};
         const LRESULT result = 42;
@@ -64,14 +64,14 @@ TEST_CASE("Window - life", "[unit][winapi]") {
     }
 
     const Rect<int> rectB{2, 3, 4, 5};
-    ecs.insert(b, CreateWindowMarker{});
-    ecs.insert(b, WindowLocation{rectB});
-    ecs.iterate();
+    ecs->insert(b, CreateWindowMarker{});
+    ecs->insert(b, WindowLocation{rectB});
+    ecs->iterate();
     REQUIRE(winapi.windowsCount() == 2);
-    REQUIRE(!ecs.has<NewWindowMarker>(a));
-    REQUIRE(ecs.has<NewWindowMarker>(b));
-    REQUIRE(ecs.has<Window>(b));
-    HWND hWndB = ecs.get<Window>(b).getHWnd();
+    REQUIRE(!ecs->has<NewWindowMarker>(a));
+    REQUIRE(ecs->has<NewWindowMarker>(b));
+    REQUIRE(ecs->has<Window>(b));
+    HWND hWndB = ecs->get<Window>(b).getHWnd();
     {
         const WindowMessage message{hWndB, WM_CLOSE, 13, 14};
         const LRESULT result = 43;
@@ -81,6 +81,6 @@ TEST_CASE("Window - life", "[unit][winapi]") {
         REQUIRE(winapi.handleMessage(message) == result);
     }
 
-    ecs.clear();
+    ecs.reset();
     REQUIRE(winapi.windowsCount() == 0);
 }

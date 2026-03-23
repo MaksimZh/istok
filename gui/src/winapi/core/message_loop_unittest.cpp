@@ -18,7 +18,7 @@ using trompeloeil::_;
 TEST_CASE("Messages - run", "[unit][winapi]") {
     ECS::ECSManager ecs;
     auto& winapi = setupWinAPI<MockWinAPI>(ecs, ecs.createEntity());
-    REQUIRE(setupMessages(ecs));
+    REQUIRE(setupMessageLoop(ecs));
 
     {
         const MSG msg{reinterpret_cast<HWND>(1), WM_SIZE, 1, 2, 0, 0};

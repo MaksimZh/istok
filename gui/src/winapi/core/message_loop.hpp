@@ -5,6 +5,6 @@
 
 namespace Istok::GUI::WinAPI {
 
-bool setupMessages(ECS::ECSManager& ecs);
+bool setupMessageLoop(ECS::ECSManager& ecs);
 
 }  // namespace Istok::GUI::WinAPI

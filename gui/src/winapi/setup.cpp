@@ -24,11 +24,11 @@ bool setupGUIWinAPI(ECS::ECSManager& ecs) {
         std::make_unique<RealWinAPI>()});
 
     const std::vector<bool(*)(ECS::ECSManager&)> units = {
-        setupMessages,
         setupWindowLife,
         setupWindowClose,
         setupWindowSize,
         setupWindowVisibility,
+        setupMessageLoop,
     };
     for (const auto& unit : units) {
         if (!unit(ecs)) {
