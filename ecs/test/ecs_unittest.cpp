@@ -308,12 +308,12 @@ TEST_CASE("ECSManager - component lifecycle", "[unit][ecs]") {
 }
 
 
-TEST_CASE("ECSManager - systems", "[unit][ecs]") {
+TEST_CASE("ECSManager - system lifecycle", "[unit][ecs]") {
     MockSystem loop1;
-    MockSystem head1;
-    MockSystem tail1;
     MockSystem loop2;
+    MockSystem head1;
     MockSystem head2;
+    MockSystem tail1;
     MockSystem tail2;
     MockComponent comp;
 
@@ -324,18 +324,11 @@ TEST_CASE("ECSManager - systems", "[unit][ecs]") {
     ecs->insert(a, A{100});
     ecs->insert(b, comp.get());
     ecs->addLoopSystem(loop1.get());
-    ecs->addHeadCleanupSystem(head1.get());
-    ecs->addTailCleanupSystem(tail1.get());
     ecs->addLoopSystem(loop2.get());
+    ecs->addHeadCleanupSystem(head1.get());
     ecs->addHeadCleanupSystem(head2.get());
+    ecs->addTailCleanupSystem(tail1.get());
     ecs->addTailCleanupSystem(tail2.get());
-
-    for (size_t i = 0; i < 3; ++ i) {
-        trompeloeil::sequence seq;
-        REQUIRE_CALL(loop1, run(_)).WITH(&_1 == ecsPtr).IN_SEQUENCE(seq);
-        REQUIRE_CALL(loop2, run(_)).WITH(&_1 == ecsPtr).IN_SEQUENCE(seq);
-        ecs->iterate();
-    }
 
     {
         trompeloeil::sequence seq;
@@ -351,5 +344,77 @@ TEST_CASE("ECSManager - systems", "[unit][ecs]") {
         REQUIRE_CALL(tail1, kill()).IN_SEQUENCE(seq);
         REQUIRE_CALL(comp, kill()).IN_SEQUENCE(seq);
         ecs.reset();
+    }
+}
+
+
+TEST_CASE("ECSManager - loop", "[unit][ecs]") {
+    MockSystem loop1;
+    MockSystem loop2;
+    MockSystem loop3;
+    ALLOW_CALL(loop1, kill());
+    ALLOW_CALL(loop2, kill());
+    ALLOW_CALL(loop3, kill());
+
+    auto ecs = std::make_unique<ECSManager>();
+    auto* ecsPtr = ecs.get();
+    ecs->addLoopSystem(loop1.get());
+    ecs->addLoopSystem(loop2.get());
+    ecs->addLoopSystem(loop3.get());
+
+    for (size_t i = 0; i < 3; ++ i) {
+        trompeloeil::sequence seq;
+        REQUIRE_CALL(loop1, run(_)).WITH(&_1 == ecsPtr).IN_SEQUENCE(seq);
+        REQUIRE_CALL(loop2, run(_)).WITH(&_1 == ecsPtr).IN_SEQUENCE(seq);
+        REQUIRE_CALL(loop3, run(_)).WITH(&_1 == ecsPtr).IN_SEQUENCE(seq);
+        ecs->iterate();
+    }
+
+    {
+        trompeloeil::sequence seq;
+        REQUIRE_CALL(loop1, run(_)).WITH(&_1 == ecsPtr).IN_SEQUENCE(seq)
+            .LR_SIDE_EFFECT([&]() {
+                trompeloeil::sequence seq1;
+                REQUIRE_CALL(loop2, run(_)).WITH(&_1 == ecsPtr)
+                    .IN_SEQUENCE(seq1);
+                REQUIRE_CALL(loop3, run(_)).WITH(&_1 == ecsPtr)
+                    .IN_SEQUENCE(seq1);
+                ecs->iterate();
+            });
+        REQUIRE_CALL(loop2, run(_)).WITH(&_1 == ecsPtr).IN_SEQUENCE(seq);
+        REQUIRE_CALL(loop3, run(_)).WITH(&_1 == ecsPtr).IN_SEQUENCE(seq);
+        ecs->iterate();
+    }
+
+    {
+        trompeloeil::sequence seq;
+        REQUIRE_CALL(loop1, run(_)).WITH(&_1 == ecsPtr).IN_SEQUENCE(seq);
+        REQUIRE_CALL(loop2, run(_)).WITH(&_1 == ecsPtr).IN_SEQUENCE(seq)
+            .LR_SIDE_EFFECT([&]() {
+                trompeloeil::sequence seq1;
+                REQUIRE_CALL(loop3, run(_)).WITH(&_1 == ecsPtr)
+                    .IN_SEQUENCE(seq1);
+                REQUIRE_CALL(loop1, run(_)).WITH(&_1 == ecsPtr)
+                    .IN_SEQUENCE(seq1);
+                ecs->iterate();
+            });
+        REQUIRE_CALL(loop3, run(_)).WITH(&_1 == ecsPtr).IN_SEQUENCE(seq);
+        ecs->iterate();
+    }
+
+    {
+        trompeloeil::sequence seq;
+        REQUIRE_CALL(loop1, run(_)).WITH(&_1 == ecsPtr).IN_SEQUENCE(seq);
+        REQUIRE_CALL(loop2, run(_)).WITH(&_1 == ecsPtr).IN_SEQUENCE(seq);
+        REQUIRE_CALL(loop3, run(_)).WITH(&_1 == ecsPtr).IN_SEQUENCE(seq)
+            .LR_SIDE_EFFECT([&]() {
+                trompeloeil::sequence seq1;
+                REQUIRE_CALL(loop1, run(_)).WITH(&_1 == ecsPtr)
+                    .IN_SEQUENCE(seq1);
+                REQUIRE_CALL(loop2, run(_)).WITH(&_1 == ecsPtr)
+                    .IN_SEQUENCE(seq1);
+                ecs->iterate();
+            });
+        ecs->iterate();
     }
 }
