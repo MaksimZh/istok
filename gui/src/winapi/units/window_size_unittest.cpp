@@ -39,21 +39,34 @@ TEST_CASE("Window - size", "[unit][winapi]") {
         ecs.get<Window>(a).getHWnd(), WM_SIZE,
         SIZE_MAXIMIZED, MAKELPARAM(5, 7)};
 
-    MockCall iteration;
-    ecs.addLoopSystem([&iteration](ECS::ECSManager& ecs) noexcept {
-        iteration.call(); });
+    MockCall loop1;
+    MockCall loop2;
+    ecs.addLoopSystem([&loop1](ECS::ECSManager& ecs) noexcept {
+        loop1.call(); });
+    ecs.addLoopSystem([&loop2](ECS::ECSManager& ecs) noexcept {
+        loop2.call(); });
 
     REQUIRE(ecs.has<NewWindowMarker>(a));
     {
-        REQUIRE_CALL(winapi, defWindowProc(sizeMessage)).RETURN(43);
-        FORBID_CALL(iteration, call());
-        REQUIRE(winapi.handleMessage(sizeMessage) == 43);
+        REQUIRE_CALL(loop1, call());
+        REQUIRE_CALL(loop2, call())
+            .LR_SIDE_EFFECT([&]() {
+                REQUIRE_CALL(winapi, defWindowProc(sizeMessage)).RETURN(43);
+                FORBID_CALL(loop1, call());
+                REQUIRE(winapi.handleMessage(sizeMessage) == 43);
+            });
+        ecs.iterate();
     }
 
-    ecs.remove<NewWindowMarker>(a);
+    REQUIRE(!ecs.has<NewWindowMarker>(a));
     {
-        REQUIRE_CALL(winapi, defWindowProc(sizeMessage)).RETURN(42);
-        REQUIRE_CALL(iteration, call());
-        REQUIRE(winapi.handleMessage(sizeMessage) == 42);
+        REQUIRE_CALL(loop1, call());
+        REQUIRE_CALL(loop2, call())
+            .LR_SIDE_EFFECT([&]() {
+                REQUIRE_CALL(winapi, defWindowProc(sizeMessage)).RETURN(42);
+                REQUIRE_CALL(loop1, call());
+                REQUIRE(winapi.handleMessage(sizeMessage) == 42);
+            });
+        ecs.iterate();
     }
 }

@@ -12,19 +12,12 @@ namespace Istok::GUI::WinAPI {
 
 namespace {
 
-struct ProcessingMessageFlag {};
-
 void messageLoopIteration(
     WinAPIDelegate& winapi,
     ECS::Entity master,
     ECS::ECSManager& ecs
 ) noexcept {
     WITH_LOGGER_PREFIX("Istok.GUI.WinAPI.MessageLoop", "WinAPI: ");
-    if (ecs.has<ProcessingMessageFlag>(master)) {
-        LOG_TRACE("Skipping nested message loop iteration.");
-        return;
-    }
-    ecs.insert(master, ProcessingMessageFlag{});
     MSG msg = winapi.getMessage();
     if (msg.message == WM_QUIT) {
         LOG_DEBUG("WM_QUIT message received.");
@@ -32,7 +25,6 @@ void messageLoopIteration(
         return;
     }
     winapi.dispatchMessage(msg);
-    ecs.remove<ProcessingMessageFlag>(master);
 }
 
 }  // namespace

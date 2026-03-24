@@ -19,7 +19,7 @@ std::optional<LRESULT> sizeHandler(
     ECS::ECSManager& ecs, const WindowEntityMessage& message
 ) noexcept {
     if (!ecs.has<NewWindowMarker>(message.entity)) {
-        ecs.iterate();
+        ecs.pass();
     }
     return std::nullopt;
 }
