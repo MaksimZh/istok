@@ -22,7 +22,7 @@ WindowMessageHandler makeWindowMessageHandler(
 }
 
 void createWindows(
-    WinAPIDelegate& winapi, Dispatcher& dispatcher, ECS::ECSManager& ecs
+    ECS::ECSManager& ecs, WinAPIDelegate& winapi, Dispatcher& dispatcher
 ) noexcept {
     WITH_LOGGER_PREFIX("Istok.GUI.WinAPI", "WinAPI: ");
     ecs.removeAll<NewWindowMarker>();
@@ -37,17 +37,6 @@ void createWindows(
     ecs.removeAll<CreateWindowMarker>();
 }
 
-ECS::System makeCreateWindowsSystem(
-    WinAPIDelegate& winapi, Dispatcher& dispatcher
-) {
-    return ECS::System{[&winapi, &dispatcher](ECS::ECSManager& ecs) noexcept {
-        createWindows(winapi, dispatcher, ecs); }};
-}
-
-void destroyWindows(ECS::ECSManager& ecs) noexcept {
-    ecs.removeAll<Window>();
-}
-
 }  // namespace
 
 
@@ -60,8 +49,11 @@ bool setupWindowLife(ECS::ECSManager& ecs) {
             auto dispatcherContainer = std::make_unique<Dispatcher>(winapi);
             Dispatcher& dispatcher = *dispatcherContainer;
             ecs.insert(master, std::move(dispatcherContainer));
-            ecs.addLoopSystem(makeCreateWindowsSystem(winapi, dispatcher));
-            ecs.addTailCleanupSystem(destroyWindows);
+            ecs.addLoopSystem([&ecs, &winapi, &dispatcher]() noexcept {
+                createWindows(ecs, winapi, dispatcher); });
+            ecs.addTailCleanupSystem([&ecs]() noexcept {
+                ecs.removeAll<Window>();
+            });
             return true;
         });
 }

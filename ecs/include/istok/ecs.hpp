@@ -14,7 +14,7 @@
 namespace Istok::ECS {
 
 class ECSManager;
-using System = std::move_only_function<void(ECSManager&) noexcept>;
+using System = std::move_only_function<void() noexcept>;
 
 class ECSManager {
 public:
@@ -25,11 +25,11 @@ public:
             loopSystems_.pop_back();
         }
         while (!headCleanupSystems_.empty()) {
-            headCleanupSystems_.front()(*this);
+            headCleanupSystems_.front()();
             headCleanupSystems_.pop();
         }
         while (!tailCleanupSystems_.empty()) {
-            tailCleanupSystems_.top()(*this);
+            tailCleanupSystems_.top()();
             tailCleanupSystems_.pop();
         }
     }
@@ -118,7 +118,7 @@ public:
             currentLoopSystem_ < loopSystems_.size();
             ++currentLoopSystem_
         ) {
-            loopSystems_[currentLoopSystem_](*this);
+            loopSystems_[currentLoopSystem_]();
         }
         currentLoopSystem_ = -1;
     }
@@ -130,10 +130,10 @@ public:
         size_t sentinel = currentLoopSystem_;
         currentLoopSystem_ = kPassFlag;
         for (size_t i = sentinel + 1; i < loopSystems_.size(); ++i) {
-            loopSystems_[i](*this);
+            loopSystems_[i]();
         }
         for (size_t i = 0; i < sentinel; ++i) {
-            loopSystems_[i](*this);
+            loopSystems_[i]();
         }
         currentLoopSystem_ = sentinel;
     }

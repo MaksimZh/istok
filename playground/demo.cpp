@@ -28,7 +28,7 @@ void run() {
                 });
         }});
 
-    ecs.addLoopSystem([](ECS::ECSManager& ecs) noexcept {
+    ecs.addLoopSystem([&ecs]() noexcept {
         for (auto entity : ecs.view<NewWindowMarker>()) {
             LOG_DEBUG("New window detected: {}", entity);
         }

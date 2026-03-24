@@ -41,10 +41,8 @@ TEST_CASE("Window - size", "[unit][winapi]") {
 
     MockCall loop1;
     MockCall loop2;
-    ecs.addLoopSystem([&loop1](ECS::ECSManager& ecs) noexcept {
-        loop1.call(); });
-    ecs.addLoopSystem([&loop2](ECS::ECSManager& ecs) noexcept {
-        loop2.call(); });
+    ecs.addLoopSystem([&loop1]() noexcept { loop1.call(); });
+    ecs.addLoopSystem([&loop2]() noexcept { loop2.call(); });
 
     REQUIRE(ecs.has<NewWindowMarker>(a));
     {

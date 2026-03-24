@@ -245,14 +245,14 @@ struct MockComponent {
 };
 
 struct MockSystem {
-    MAKE_MOCK1(run, void(ECSManager&), noexcept);
+    MAKE_MOCK0(run, void(), noexcept);
     MAKE_MOCK0(kill, void(), noexcept);
 
     System get() {
         auto item = std::make_unique<Component>(
             [this]() noexcept { kill(); });
-        return [this, x=std::move(item)](ECSManager& ecs)
-            noexcept { run(ecs); };
+        return [this, x=std::move(item)]()
+            noexcept { run(); };
     }
 };
 
@@ -329,13 +329,13 @@ TEST_CASE("ECSManager - system lifecycle", "[unit][ecs]") {
         trompeloeil::sequence seq;
         REQUIRE_CALL(loop2, kill()).IN_SEQUENCE(seq);
         REQUIRE_CALL(loop1, kill()).IN_SEQUENCE(seq);
-        REQUIRE_CALL(head1, run(_)).WITH(&_1 == ecsPtr).IN_SEQUENCE(seq);
+        REQUIRE_CALL(head1, run()).IN_SEQUENCE(seq);
         REQUIRE_CALL(head1, kill()).IN_SEQUENCE(seq);
-        REQUIRE_CALL(head2, run(_)).WITH(&_1 == ecsPtr).IN_SEQUENCE(seq);
+        REQUIRE_CALL(head2, run()).IN_SEQUENCE(seq);
         REQUIRE_CALL(head2, kill()).IN_SEQUENCE(seq);
-        REQUIRE_CALL(tail2, run(_)).WITH(&_1 == ecsPtr).IN_SEQUENCE(seq);
+        REQUIRE_CALL(tail2, run()).IN_SEQUENCE(seq);
         REQUIRE_CALL(tail2, kill()).IN_SEQUENCE(seq);
-        REQUIRE_CALL(tail1, run(_)).WITH(&_1 == ecsPtr).IN_SEQUENCE(seq);
+        REQUIRE_CALL(tail1, run()).IN_SEQUENCE(seq);
         REQUIRE_CALL(tail1, kill()).IN_SEQUENCE(seq);
         REQUIRE_CALL(comp, kill()).IN_SEQUENCE(seq);
         ecs.reset();
@@ -359,79 +359,79 @@ TEST_CASE("ECSManager - loop", "[unit][ecs]") {
 
     for (size_t i = 0; i < 3; ++ i) {
         trompeloeil::sequence seq;
-        REQUIRE_CALL(loop1, run(_)).WITH(&_1 == ecsPtr).IN_SEQUENCE(seq);
-        REQUIRE_CALL(loop2, run(_)).WITH(&_1 == ecsPtr).IN_SEQUENCE(seq)
+        REQUIRE_CALL(loop1, run()).IN_SEQUENCE(seq);
+        REQUIRE_CALL(loop2, run()).IN_SEQUENCE(seq)
             .LR_SIDE_EFFECT([&]() {
-                FORBID_CALL(loop1, run(_));
-                FORBID_CALL(loop2, run(_));
-                FORBID_CALL(loop3, run(_));
+                FORBID_CALL(loop1, run());
+                FORBID_CALL(loop2, run());
+                FORBID_CALL(loop3, run());
                 ecs->iterate();
             });
-        REQUIRE_CALL(loop3, run(_)).WITH(&_1 == ecsPtr).IN_SEQUENCE(seq);
+        REQUIRE_CALL(loop3, run()).IN_SEQUENCE(seq);
         ecs->iterate();
     }
 
     {
-        FORBID_CALL(loop1, run(_));
-        FORBID_CALL(loop2, run(_));
-        FORBID_CALL(loop3, run(_));
+        FORBID_CALL(loop1, run());
+        FORBID_CALL(loop2, run());
+        FORBID_CALL(loop3, run());
         ecs->pass();
     }
 
     {
         trompeloeil::sequence seq;
-        REQUIRE_CALL(loop1, run(_)).WITH(&_1 == ecsPtr).IN_SEQUENCE(seq)
+        REQUIRE_CALL(loop1, run()).IN_SEQUENCE(seq)
             .LR_SIDE_EFFECT([&]() {
                 trompeloeil::sequence seq1;
-                REQUIRE_CALL(loop2, run(_)).WITH(&_1 == ecsPtr)
+                REQUIRE_CALL(loop2, run())
                     .IN_SEQUENCE(seq1)
                     .LR_SIDE_EFFECT([&]() {
-                        FORBID_CALL(loop1, run(_));
-                        FORBID_CALL(loop2, run(_));
-                        FORBID_CALL(loop3, run(_));
+                        FORBID_CALL(loop1, run());
+                        FORBID_CALL(loop2, run());
+                        FORBID_CALL(loop3, run());
                         ecs->pass();
                     });
-                REQUIRE_CALL(loop3, run(_)).WITH(&_1 == ecsPtr)
+                REQUIRE_CALL(loop3, run())
                     .IN_SEQUENCE(seq1);
                 ecs->pass();
             });
-        REQUIRE_CALL(loop2, run(_)).WITH(&_1 == ecsPtr).IN_SEQUENCE(seq);
-        REQUIRE_CALL(loop3, run(_)).WITH(&_1 == ecsPtr).IN_SEQUENCE(seq);
+        REQUIRE_CALL(loop2, run()).IN_SEQUENCE(seq);
+        REQUIRE_CALL(loop3, run()).IN_SEQUENCE(seq);
         ecs->iterate();
     }
 
     {
         trompeloeil::sequence seq;
-        REQUIRE_CALL(loop1, run(_)).WITH(&_1 == ecsPtr).IN_SEQUENCE(seq);
-        REQUIRE_CALL(loop2, run(_)).WITH(&_1 == ecsPtr).IN_SEQUENCE(seq)
+        REQUIRE_CALL(loop1, run()).IN_SEQUENCE(seq);
+        REQUIRE_CALL(loop2, run()).IN_SEQUENCE(seq)
             .LR_SIDE_EFFECT([&]() {
                 trompeloeil::sequence seq1;
-                REQUIRE_CALL(loop3, run(_)).WITH(&_1 == ecsPtr)
+                REQUIRE_CALL(loop3, run())
                     .IN_SEQUENCE(seq1)
                     .LR_SIDE_EFFECT([&]() {
-                        FORBID_CALL(loop1, run(_));
-                        FORBID_CALL(loop2, run(_));
-                        FORBID_CALL(loop3, run(_));
+                        FORBID_CALL(loop1, run());
+                        FORBID_CALL(loop2, run());
+                        FORBID_CALL(loop3, run());
                         ecs->iterate();
                     });
-                REQUIRE_CALL(loop1, run(_)).WITH(&_1 == ecsPtr)
+                REQUIRE_CALL(loop1, run())
                     .IN_SEQUENCE(seq1);
                 ecs->pass();
             });
-        REQUIRE_CALL(loop3, run(_)).WITH(&_1 == ecsPtr).IN_SEQUENCE(seq);
+        REQUIRE_CALL(loop3, run()).IN_SEQUENCE(seq);
         ecs->iterate();
     }
 
     {
         trompeloeil::sequence seq;
-        REQUIRE_CALL(loop1, run(_)).WITH(&_1 == ecsPtr).IN_SEQUENCE(seq);
-        REQUIRE_CALL(loop2, run(_)).WITH(&_1 == ecsPtr).IN_SEQUENCE(seq);
-        REQUIRE_CALL(loop3, run(_)).WITH(&_1 == ecsPtr).IN_SEQUENCE(seq)
+        REQUIRE_CALL(loop1, run()).IN_SEQUENCE(seq);
+        REQUIRE_CALL(loop2, run()).IN_SEQUENCE(seq);
+        REQUIRE_CALL(loop3, run()).IN_SEQUENCE(seq)
             .LR_SIDE_EFFECT([&]() {
                 trompeloeil::sequence seq1;
-                REQUIRE_CALL(loop1, run(_)).WITH(&_1 == ecsPtr)
+                REQUIRE_CALL(loop1, run())
                     .IN_SEQUENCE(seq1);
-                REQUIRE_CALL(loop2, run(_)).WITH(&_1 == ecsPtr)
+                REQUIRE_CALL(loop2, run())
                     .IN_SEQUENCE(seq1);
                 ecs->pass();
             });

@@ -13,9 +13,7 @@ namespace Istok::GUI::WinAPI {
 namespace {
 
 void messageLoopIteration(
-    WinAPIDelegate& winapi,
-    ECS::Entity master,
-    ECS::ECSManager& ecs
+    ECS::ECSManager& ecs, ECS::Entity master, WinAPIDelegate& winapi
 ) noexcept {
     WITH_LOGGER_PREFIX("Istok.GUI.WinAPI.MessageLoop", "WinAPI: ");
     MSG msg = winapi.getMessage();
@@ -35,8 +33,8 @@ bool setupMessageLoop(ECS::ECSManager& ecs) {
         ecs,
         [](ECS::ECSManager& ecs, ECS::Entity master, WinAPIDelegate& winapi) {
             ecs.addLoopSystem(
-                [&winapi, master](ECS::ECSManager& ecs) noexcept {
-                    messageLoopIteration(winapi, master, ecs); });
+                [&ecs, master, &winapi]() noexcept {
+                    messageLoopIteration(ecs, master, winapi); });
             return true;
         });
 }

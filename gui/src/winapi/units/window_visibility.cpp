@@ -13,7 +13,7 @@ namespace Istok::GUI::WinAPI {
 
 namespace {
 
-void showWindows(WinAPIDelegate& winapi, ECS::ECSManager& ecs) noexcept {
+void showWindows(ECS::ECSManager& ecs, WinAPIDelegate& winapi) noexcept {
     WITH_LOGGER_PREFIX("Istok.GUI.WinAPI", "WinAPI: ");
     for (auto entity : ecs.view<ShowWindowMarker, Window>()) {
         LOG_DEBUG("Showing window {}", entity);
@@ -31,8 +31,8 @@ bool setupWindowVisibility(ECS::ECSManager& ecs) {
         ecs,
         [](ECS::ECSManager& ecs, WinAPIDelegate& winapi) {
             ecs.addLoopSystem(
-                ECS::System{[&winapi](ECS::ECSManager& ecs) noexcept {
-                    showWindows(winapi, ecs); }});
+                ECS::System{[&ecs, &winapi]() noexcept {
+                    showWindows(ecs, winapi); }});
             return true;
         });
 }
