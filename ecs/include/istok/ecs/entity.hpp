@@ -14,6 +14,7 @@ namespace Istok::ECS {
 
 namespace Internal {
     class EntityManager;
+    struct EntityEntry;
 }
 
 
@@ -32,6 +33,7 @@ struct Entity final {
 
 private:
     friend class Internal::EntityManager;
+    friend struct Internal::EntityEntry;
 
     int32_t index_;
     int32_t generation_;
@@ -43,6 +45,43 @@ private:
 
 namespace Internal {
 
+struct EntityEntry {
+public:
+    EntityEntry(size_t index) : index_(index), generation_(0) {}
+
+    bool isLink() const noexcept {
+        return index_ < 0;
+    }
+
+    Entity entity() const noexcept {
+        assert(!isLink());
+        return Entity{index_, generation_};
+    }
+
+    size_t link() const noexcept {
+        assert(isLink());
+        return -index_ - 1;
+    }
+
+    void setLink(size_t target) noexcept {
+        index_ = -static_cast<int32_t>(target) - 1;
+    }
+
+    void setEntity(size_t index) noexcept {
+        index_ = static_cast<int32_t>(index);
+        ++generation_;
+    }
+
+    bool operator==(const Entity& other) const noexcept {
+        return index_ == other.index_ && generation_ == other.generation_;
+    }
+
+private:
+    int32_t index_;
+    int32_t generation_;
+};
+
+
 class EntityManager final {
 public:
     EntityManager() = default;
@@ -53,92 +92,37 @@ public:
     EntityManager(EntityManager&&) = default;
     EntityManager& operator=(EntityManager&&) = default;
 
-    bool isValidEntity(Entity entity) const noexcept {
+    bool isValid(Entity entity) const noexcept {
         return entity.index_ < entities_.size()
-            && std::bit_cast<Entity>(entities_[entity.index_]) == entity;
+            && entities_[entity.index_] == entity;
     }
 
-    bool isValidIndex(size_t index) const noexcept {
-        return index < entities_.size() && !isLink(index);
+    Entity get(size_t index) const noexcept {
+        assert(index < entities_.size());
+        assert(!entities_[index].isLink());
+        return entities_[index].entity();
     }
 
-    size_t size() const noexcept {
-        return size_;
-    }
-
-    Entity createEntity() noexcept {
-        ++size_;
+    Entity create() noexcept {
         if (freeIndex_ == entities_.size()) {
-            entities_.push_back(Entity(freeIndex_, 0));
-            return getEntity(freeIndex_++);
+            entities_.emplace_back(freeIndex_);
+            return entities_[freeIndex_++].entity();
         }
         auto index = freeIndex_;
-        freeIndex_ = getLink(freeIndex_);
-        reviveEntity(index);
-        return getEntity(index);
+        freeIndex_ = entities_[index].link();
+        entities_[index].setEntity(index);
+        return entities_[index].entity();
     }
 
-    Entity entityFromIndex(size_t index) const noexcept {
-        assert(isValidIndex(index));
-        return getEntity(index);
-    }
-
-    void deleteEntity(Entity entity) noexcept {
-        assert(isValidEntity(entity));
-        --size_;
-        setLink(entity.index_, freeIndex_);
+    void remove(Entity entity) noexcept {
+        assert(isValid(entity));
+        entities_[entity.index_].setLink(freeIndex_);
         freeIndex_ = entity.index_;
     }
 
-    // Delete all entities and consider them invalid in future.
-    void clear() noexcept {
-        freeIndex_ = 0;
-        size_ = 0;
-        for (size_t i = 0; i < entities_.size(); ++i) {
-            setLink(i, i + 1);
-        }
-    }
-
 private:
-    std::vector<Entity> entities_;
+    std::vector<EntityEntry> entities_;
     size_t freeIndex_ = 0;
-    size_t size_ = 0;
-
-    bool isLink(size_t index) const noexcept {
-        assert(index >= 0);
-        assert(index < entities_.size());
-        return entities_[index].index_ < 0;
-    }
-
-    Entity getEntity(size_t index) const noexcept {
-        assert(index >= 0);
-        assert(index < entities_.size());
-        assert(!isLink(index));
-        return entities_[index];
-    }
-
-    size_t getLink(size_t index) const noexcept {
-        assert(index >= 0);
-        assert(index < entities_.size());
-        assert(isLink(index));
-        return -entities_[index].index_ - 1;
-    }
-
-    void setLink(size_t index, size_t target) noexcept {
-        assert(index >= 0);
-        assert(index < entities_.size());
-        assert(target >= 0);
-        assert(target <= entities_.size());
-        entities_[index].index_ = -target - 1;
-    }
-
-    void reviveEntity(size_t index) noexcept {
-        assert(index >= 0);
-        assert(index < entities_.size());
-        assert(isLink(index));
-        entities_[index].index_ = index;
-        ++entities_[index].generation_;
-    }
 };
 
 }  // namespace Internal

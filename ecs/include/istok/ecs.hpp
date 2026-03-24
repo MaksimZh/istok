@@ -29,7 +29,7 @@ public:
         : entityManager_(&entityManager), index_(index) {}
 
         Entity operator*() const noexcept {
-            return entityManager_->entityFromIndex(*index_);
+            return entityManager_->get(*index_);
         }
 
         Iterator& operator++() noexcept {
@@ -114,21 +114,17 @@ public:
     ECSManager& operator=(ECSManager&&) = default;
 
     bool isValidEntity(Entity entity) const noexcept {
-        return entityManager_.isValidEntity(entity);
+        return entityManager_.isValid(entity);
     }
 
     Entity createEntity() noexcept {
-        return entityManager_.createEntity();
+        return entityManager_.create();
     }
 
     void deleteEntity(Entity entity) noexcept {
         assert(isValidEntity(entity));
         componentManager_.clearIndex(entity.index());
-        entityManager_.deleteEntity(entity);
-    }
-
-    size_t countEntities() const noexcept {
-        return entityManager_.size();
+        entityManager_.remove(entity);
     }
 
     template <typename Component>

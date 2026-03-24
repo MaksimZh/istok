@@ -3,105 +3,75 @@
 
 #include <catch.hpp>
 
-#include <set>
-
 using namespace Istok::ECS;
 using namespace Istok::ECS::Internal;
 
 TEST_CASE("EntityManager - basics", "[unit][ecs]") {
     EntityManager em;
-    REQUIRE(em.size() == 0);
-    Entity a = em.createEntity();
-    REQUIRE(em.size() == 1);
-    Entity b = em.createEntity();
-    REQUIRE(em.size() == 2);
-    Entity c = em.createEntity();
-    REQUIRE(em.size() == 3);
+    Entity a = em.create();
+    Entity b = em.create();
+    Entity c = em.create();
 
-    SECTION("index values") {
-        REQUIRE(a.index() == 0);
-        REQUIRE(b.index() == 1);
-        REQUIRE(c.index() == 2);
-    }
+    REQUIRE(a.index() == 0);
+    REQUIRE(b.index() == 1);
+    REQUIRE(c.index() == 2);
 
-    SECTION("entity validity") {
-        REQUIRE(em.isValidEntity(a));
-        REQUIRE(em.isValidEntity(b));
-        REQUIRE(em.isValidEntity(c));
-    }
+    REQUIRE(em.isValid(a));
+    REQUIRE(em.isValid(b));
+    REQUIRE(em.isValid(c));
 
-    SECTION("index validity") {
-        REQUIRE(em.isValidIndex(0));
-        REQUIRE(em.isValidIndex(1));
-        REQUIRE(em.isValidIndex(2));
-        REQUIRE(!em.isValidIndex(3));
-    }
+    REQUIRE(a != b);
+    REQUIRE(b != c);
+    REQUIRE(c != a);
 
-    SECTION("entity uniqueness") {
-        REQUIRE(a != b);
-        REQUIRE(b != c);
-        REQUIRE(c != a);
-    }
+    REQUIRE(em.get(0) == a);
+    REQUIRE(em.get(1) == b);
+    REQUIRE(em.get(2) == c);
 
-    SECTION("entity from index") {
-        REQUIRE(em.entityFromIndex(0) == a);
-        REQUIRE(em.entityFromIndex(1) == b);
-        REQUIRE(em.entityFromIndex(2) == c);
-    }
+    em.remove(b);
+    REQUIRE(em.isValid(a));
+    REQUIRE(!em.isValid(b));
+    REQUIRE(em.isValid(c));
 
-    SECTION("invalidate on deletion") {
-        em.deleteEntity(b);
-        REQUIRE(em.size() == 2);
-        REQUIRE(em.isValidEntity(a));
-        REQUIRE(!em.isValidEntity(b));
-        REQUIRE(em.isValidEntity(c));
-    }
-
-    SECTION("reuse after deletion") {
-        em.deleteEntity(b);
-        Entity d = em.createEntity();
-        REQUIRE(em.size() == 3);
-        REQUIRE(em.isValidEntity(a));
-        REQUIRE(!em.isValidEntity(b));
-        REQUIRE(em.isValidEntity(c));
-        REQUIRE(em.isValidEntity(d));
-        REQUIRE(d != a);
-        REQUIRE(d != b);
-        REQUIRE(d != c);
-        REQUIRE(d.index() == b.index());
-    }
+    Entity d = em.create();
+    REQUIRE(d.index() == b.index());
+    REQUIRE(!em.isValid(b));
+    REQUIRE(em.isValid(d));
+    REQUIRE(d != a);
+    REQUIRE(d != b);
+    REQUIRE(d != c);
 }
 
 
 TEST_CASE("EntityManager - mass index reuse", "[unit][ecs]") {
     EntityManager em;
-    Entity a = em.createEntity();
-    Entity b = em.createEntity();
-    Entity c = em.createEntity();
-    em.deleteEntity(a);
-    em.deleteEntity(b);
-    em.deleteEntity(c);
-    Entity d = em.createEntity();
-    Entity e = em.createEntity();
-    Entity f = em.createEntity();
-    em.deleteEntity(d);
-    em.deleteEntity(e);
-    em.deleteEntity(f);
-    Entity g = em.createEntity();
-    Entity h = em.createEntity();
-    Entity i = em.createEntity();
-    REQUIRE(!em.isValidEntity(a));
-    REQUIRE(!em.isValidEntity(b));
-    REQUIRE(!em.isValidEntity(c));
-    REQUIRE(!em.isValidEntity(d));
-    REQUIRE(!em.isValidEntity(e));
-    REQUIRE(!em.isValidEntity(f));
-    REQUIRE(em.isValidEntity(g));
-    REQUIRE(em.isValidEntity(h));
-    REQUIRE(em.isValidEntity(i));
-    REQUIRE(em.entityFromIndex(0) == g);
-    REQUIRE(em.entityFromIndex(1) == h);
-    REQUIRE(em.entityFromIndex(2) == i);
+    Entity a = em.create();
+    Entity b = em.create();
+    Entity c = em.create();
+    em.remove(a);
+    em.remove(b);
+    em.remove(c);
+    Entity d = em.create();
+    Entity e = em.create();
+    Entity f = em.create();
+    em.remove(d);
+    em.remove(e);
+    em.remove(f);
+    Entity g = em.create();
+    Entity h = em.create();
+    Entity i = em.create();
+    REQUIRE(!em.isValid(a));
+    REQUIRE(!em.isValid(b));
+    REQUIRE(!em.isValid(c));
+    REQUIRE(!em.isValid(d));
+    REQUIRE(!em.isValid(e));
+    REQUIRE(!em.isValid(f));
+    REQUIRE(em.isValid(g));
+    REQUIRE(em.isValid(h));
+    REQUIRE(em.isValid(i));
+    REQUIRE(em.get(0) == g);
+    REQUIRE(em.get(1) == h);
+    REQUIRE(em.get(2) == i);
     std::set<size_t> s = {0, 1, 2};
     std::set<size_t> x = {a.index(), b.index(), c.index()};
     std::set<size_t> y = {d.index(), e.index(), f.index()};
@@ -109,25 +79,4 @@ TEST_CASE("EntityManager - mass index reuse", "[unit][ecs]") {
     REQUIRE(x == s);
     REQUIRE(y == s);
     REQUIRE(z == s);
-}
-
-
-TEST_CASE("EntityManager - clear", "[unit][ecs]") {
-    EntityManager em;
-    Entity a = em.createEntity();
-    Entity b = em.createEntity();
-    Entity c = em.createEntity();
-    em.clear();
-    REQUIRE(!em.isValidEntity(a));
-    REQUIRE(!em.isValidEntity(b));
-    REQUIRE(!em.isValidEntity(c));
-    Entity d = em.createEntity();
-    Entity e = em.createEntity();
-    Entity f = em.createEntity();
-    REQUIRE(!em.isValidEntity(a));
-    REQUIRE(!em.isValidEntity(b));
-    REQUIRE(!em.isValidEntity(c));
-    REQUIRE(em.isValidEntity(d));
-    REQUIRE(em.isValidEntity(e));
-    REQUIRE(em.isValidEntity(f));
 }
