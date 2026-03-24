@@ -101,7 +101,7 @@ TEST_CASE("ComponentStorage - basics", "[unit][ecs]") {
 }
 
 
-TEST_CASE("ComponentStorage - ensureHasNot", "[unit][ecs]") {
+TEST_CASE("ComponentStorage - removeIfHas", "[unit][ecs]") {
     ComponentStorage<int> cs;
     cs.insert(0, 40);
     cs.insert(1, 41);
@@ -109,22 +109,22 @@ TEST_CASE("ComponentStorage - ensureHasNot", "[unit][ecs]") {
     cs.insert(3, 43);
 
     SECTION("first") {
-        cs.ensureHasNot(0);
+        cs.removeIfHas(0);
         REQUIRE(indexSet(cs) == std::set<size_t>{1, 2, 3});
     }
 
     SECTION("middle") {
-        cs.ensureHasNot(1);
+        cs.removeIfHas(1);
         REQUIRE(indexSet(cs) == std::set<size_t>{0, 2, 3});
     }
 
     SECTION("last") {
-        cs.ensureHasNot(3);
+        cs.removeIfHas(3);
         REQUIRE(indexSet(cs) == std::set<size_t>{0, 1, 2});
     }
 
     SECTION("none") {
-        cs.ensureHasNot(4);
+        cs.removeIfHas(4);
         REQUIRE(indexSet(cs) == std::set<size_t>{0, 1, 2, 3});
     }
 }
@@ -375,7 +375,7 @@ TEST_CASE("ComponentManager - basic", "[unit][ecs]") {
 namespace {
 
 template <typename T>
-std::set<size_t> toSet(const T& x) {
+std::set<size_t> toSet(T x) {
     return std::set<size_t>(x.begin(), x.end());
 }
 
@@ -421,25 +421,4 @@ TEST_CASE("ComponentManager - empty view", "[unit][ecs]") {
     cm.insert(3, B{23});
 
     REQUIRE(toSet(cm.view<A, B>()) == std::set<size_t>{});
-}
-
-
-TEST_CASE("ComponentManager - clear", "[unit][ecs]") {
-    ComponentManager cm;
-    cm.insert(0, A{0});
-    cm.insert(1, A{0});
-    cm.insert(2, A{0});
-    cm.insert(3, A{0});
-    cm.insert(2, B{0});
-    cm.insert(3, B{0});
-    cm.insert(4, B{0});
-    cm.insert(5, B{0});
-    cm.insert(0, C{0});
-    cm.insert(2, C{0});
-    cm.insert(4, C{0});
-    cm.insert(6, C{0});
-    cm.clear();
-    REQUIRE(cm.count<A>() == 0);
-    REQUIRE(cm.count<B>() == 0);
-    REQUIRE(cm.count<C>() == 0);
 }

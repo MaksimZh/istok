@@ -164,7 +164,7 @@ namespace {
 using EntitySet = std::unordered_set<Entity, Entity::Hasher>;
 
 template <typename T>
-EntitySet toEntitySet(const T& x) {
+EntitySet toEntitySet(T x) {
     return EntitySet(x.begin(), x.end());
 }
 

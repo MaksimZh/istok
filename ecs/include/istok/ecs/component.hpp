@@ -8,6 +8,7 @@
 #include <unordered_map>
 #include <typeindex>
 #include <memory>
+#include <ranges>
 #include <utility>
 
 namespace Istok::ECS::Internal {
@@ -15,7 +16,7 @@ namespace Istok::ECS::Internal {
 class AbstractComponentStorage {
 public:
     virtual ~AbstractComponentStorage() = default;
-    virtual void ensureHasNot(size_t index) noexcept = 0;
+    virtual void removeIfHas(size_t index) noexcept = 0;
 };
 
 template <typename T>
@@ -75,7 +76,7 @@ public:
         componentToIndex_.clear();
     }
 
-    void ensureHasNot(size_t index) noexcept override {
+    void removeIfHas(size_t index) noexcept override {
         if (has(index)) {
             remove(index);
         }
@@ -95,16 +96,16 @@ private:
 
 
 template<typename... Storages>
-class PosComponentFilter {
+class ComponentFilter {
 public:
-    PosComponentFilter(const Storages*... storages) : storages_(storages...) {
+    ComponentFilter(const Storages*... storages) : storages_(storages...) {
         assert(true);
     }
 
-    PosComponentFilter(const PosComponentFilter&) = default;
-    PosComponentFilter& operator=(const PosComponentFilter&) = default;
-    PosComponentFilter(PosComponentFilter&&) = default;
-    PosComponentFilter& operator=(PosComponentFilter&&) = default;
+    ComponentFilter(const ComponentFilter&) = default;
+    ComponentFilter& operator=(const ComponentFilter&) = default;
+    ComponentFilter(ComponentFilter&&) = default;
+    ComponentFilter& operator=(ComponentFilter&&) = default;
 
     bool check(size_t index) const noexcept {
         return (std::get<const Storages*>(storages_)->has(index) && ...);
@@ -114,109 +115,6 @@ private:
     std::tuple<const Storages*...> storages_;
 };
 
-template<typename... Components>
-class NegComponentFilter {};
-
-
-template<typename Master, typename PosFilter, typename NegFilter>
-class ComponentView {
-public:
-    class Iterator {
-    public:
-        using element_type = size_t;
-        using difference_type = ptrdiff_t;
-
-        Iterator(
-            std::span<const size_t>::iterator current,
-            std::span<const size_t>::iterator sentinel,
-            const PosFilter& pos
-        ) : current_(current), sentinel_(sentinel), pos_(&pos) {
-            assert(current_ <= sentinel_);
-            seek();
-        }
-
-        size_t operator*() const noexcept {
-            assert(current_ < sentinel_);
-            return *current_;
-        }
-
-        Iterator& operator++() noexcept {
-            ++current_;
-            seek();
-            return *this;
-        }
-
-        Iterator operator++(int) noexcept {
-            auto tmp = *this;
-            ++(*this);
-            return tmp;
-        }
-
-        bool operator==(const Iterator& other) const noexcept {
-            assert(sentinel_ == other.sentinel_);
-            assert(pos_ == other.pos_);
-            return current_ == other.current_;
-        }
-
-    private:
-        std::span<const size_t>::iterator current_;
-        std::span<const size_t>::iterator sentinel_;
-        const PosFilter* pos_;
-
-        void seek() {
-            while (current_ < sentinel_ && !pos_->check(*current_)) {
-                current_++;
-            }
-        }
-    };
-
-    using iterator = Iterator;
-
-    iterator begin() noexcept {
-        return Iterator(
-            master_->indices().begin(),
-            master_->indices().end(),
-            pos_);
-    }
-
-    iterator end() noexcept {
-        return Iterator(
-            master_->indices().end(),
-            master_->indices().end(),
-            pos_);
-    }
-
-    using const_iterator = Iterator;
-
-    const_iterator begin() const noexcept {
-        return Iterator(
-            master_->indices().begin(),
-            master_->indices().end(),
-            pos_);
-    }
-
-    const_iterator end() const noexcept {
-        return Iterator(
-            master_->indices().end(),
-            master_->indices().end(),
-            pos_);
-    }
-
-    ComponentView(
-        const Master& master,
-        const PosFilter& pos,
-        const NegFilter& neg
-    ) : master_(&master), pos_(pos) {}
-
-    ComponentView(const ComponentView&) = default;
-    ComponentView& operator=(const ComponentView&) = default;
-    ComponentView(ComponentView&&) = default;
-    ComponentView& operator=(ComponentView&&) = default;
-
-private:
-    const Master* master_;
-    PosFilter pos_;
-};
 
 class ComponentManager {
 public:
@@ -268,21 +166,19 @@ public:
 
     void clearIndex(size_t index) noexcept {
         for (auto& it : storages_) {
-            it.second->ensureHasNot(index);
+            it.second->removeIfHas(index);
         }
-    }
-
-    void clear() noexcept {
-        storages_.clear();
     }
 
     template<typename Master, typename... Pos>
     auto view() noexcept {
-        return ComponentView(
-            ensureStorage<Master>(),
-            PosComponentFilter(&ensureStorage<Pos>()...),
-            NegComponentFilter<>()
-        );
+        return ensureStorage<Master>().indices()
+            | std::ranges::views::filter(
+                [filter=ComponentFilter(&ensureStorage<Pos>()...)](
+                    size_t index
+                ) {
+                    return filter.check(index);
+                });
     }
 
 private:
