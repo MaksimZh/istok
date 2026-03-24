@@ -360,9 +360,22 @@ TEST_CASE("ECSManager - loop", "[unit][ecs]") {
     for (size_t i = 0; i < 3; ++ i) {
         trompeloeil::sequence seq;
         REQUIRE_CALL(loop1, run(_)).WITH(&_1 == ecsPtr).IN_SEQUENCE(seq);
-        REQUIRE_CALL(loop2, run(_)).WITH(&_1 == ecsPtr).IN_SEQUENCE(seq);
+        REQUIRE_CALL(loop2, run(_)).WITH(&_1 == ecsPtr).IN_SEQUENCE(seq)
+            .LR_SIDE_EFFECT([&]() {
+                FORBID_CALL(loop1, run(_));
+                FORBID_CALL(loop2, run(_));
+                FORBID_CALL(loop3, run(_));
+                ecs->iterate();
+            });
         REQUIRE_CALL(loop3, run(_)).WITH(&_1 == ecsPtr).IN_SEQUENCE(seq);
         ecs->iterate();
+    }
+
+    {
+        FORBID_CALL(loop1, run(_));
+        FORBID_CALL(loop2, run(_));
+        FORBID_CALL(loop3, run(_));
+        ecs->pass();
     }
 
     {
@@ -371,10 +384,16 @@ TEST_CASE("ECSManager - loop", "[unit][ecs]") {
             .LR_SIDE_EFFECT([&]() {
                 trompeloeil::sequence seq1;
                 REQUIRE_CALL(loop2, run(_)).WITH(&_1 == ecsPtr)
-                    .IN_SEQUENCE(seq1);
+                    .IN_SEQUENCE(seq1)
+                    .LR_SIDE_EFFECT([&]() {
+                        FORBID_CALL(loop1, run(_));
+                        FORBID_CALL(loop2, run(_));
+                        FORBID_CALL(loop3, run(_));
+                        ecs->pass();
+                    });
                 REQUIRE_CALL(loop3, run(_)).WITH(&_1 == ecsPtr)
                     .IN_SEQUENCE(seq1);
-                ecs->iterate();
+                ecs->pass();
             });
         REQUIRE_CALL(loop2, run(_)).WITH(&_1 == ecsPtr).IN_SEQUENCE(seq);
         REQUIRE_CALL(loop3, run(_)).WITH(&_1 == ecsPtr).IN_SEQUENCE(seq);
@@ -388,10 +407,16 @@ TEST_CASE("ECSManager - loop", "[unit][ecs]") {
             .LR_SIDE_EFFECT([&]() {
                 trompeloeil::sequence seq1;
                 REQUIRE_CALL(loop3, run(_)).WITH(&_1 == ecsPtr)
-                    .IN_SEQUENCE(seq1);
+                    .IN_SEQUENCE(seq1)
+                    .LR_SIDE_EFFECT([&]() {
+                        FORBID_CALL(loop1, run(_));
+                        FORBID_CALL(loop2, run(_));
+                        FORBID_CALL(loop3, run(_));
+                        ecs->iterate();
+                    });
                 REQUIRE_CALL(loop1, run(_)).WITH(&_1 == ecsPtr)
                     .IN_SEQUENCE(seq1);
-                ecs->iterate();
+                ecs->pass();
             });
         REQUIRE_CALL(loop3, run(_)).WITH(&_1 == ecsPtr).IN_SEQUENCE(seq);
         ecs->iterate();
@@ -408,7 +433,7 @@ TEST_CASE("ECSManager - loop", "[unit][ecs]") {
                     .IN_SEQUENCE(seq1);
                 REQUIRE_CALL(loop2, run(_)).WITH(&_1 == ecsPtr)
                     .IN_SEQUENCE(seq1);
-                ecs->iterate();
+                ecs->pass();
             });
         ecs->iterate();
     }

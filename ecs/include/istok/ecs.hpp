@@ -99,7 +99,6 @@ public:
 
     void addLoopSystem(System&& system) noexcept {
         loopSystems_.push_back(std::move(system));
-        loopRunFlags_.push_back(false);
     }
 
     void addHeadCleanupSystem(System&& system) noexcept {
@@ -110,47 +109,44 @@ public:
         tailCleanupSystems_.push(std::move(system));
     }
 
-    // Run all loop systems in order.
-    // If called from a loop system, run all loop systems in order except the
-    // current one making closed loop starting right after the current one.
-    // Iterations can be nested until all loop systems exhausted.
     void iterate() noexcept {
-        int sentinel = currentLoopSystem_;
-        for (
-            currentLoopSystem_ = sentinel + 1;
-            currentLoopSystem_ < loopSystems_.size();
-            ++currentLoopSystem_
-        ) {
-            if (loopRunFlags_[currentLoopSystem_]) {
-                continue;
-            }
-            loopRunFlags_[currentLoopSystem_] = true;
-            loopSystems_[currentLoopSystem_](*this);
-            loopRunFlags_[currentLoopSystem_] = false;
+        if (currentLoopSystem_ != kIdleFlag) {
+            return;
         }
         for (
             currentLoopSystem_ = 0;
-            currentLoopSystem_ < sentinel;
+            currentLoopSystem_ < loopSystems_.size();
             ++currentLoopSystem_
         ) {
-            if (loopRunFlags_[currentLoopSystem_]) {
-                continue;
-            }
-            loopRunFlags_[currentLoopSystem_] = true;
             loopSystems_[currentLoopSystem_](*this);
-            loopRunFlags_[currentLoopSystem_] = false;
+        }
+        currentLoopSystem_ = -1;
+    }
+
+    void pass() noexcept {
+        if (currentLoopSystem_ < 0) {
+            return;
+        }
+        size_t sentinel = currentLoopSystem_;
+        currentLoopSystem_ = kPassFlag;
+        for (size_t i = sentinel + 1; i < loopSystems_.size(); ++i) {
+            loopSystems_[i](*this);
+        }
+        for (size_t i = 0; i < sentinel; ++i) {
+            loopSystems_[i](*this);
         }
         currentLoopSystem_ = sentinel;
     }
 
 private:
+    constexpr static int kIdleFlag = -1;
+    constexpr static int kPassFlag = -2;
     Internal::EntityManager entityManager_;
     Internal::ComponentManager componentManager_;
     std::vector<System> loopSystems_;
     std::queue<System> headCleanupSystems_;
     std::stack<System> tailCleanupSystems_;
-    std::vector<bool> loopRunFlags_;
-    int currentLoopSystem_ = -1;
+    int currentLoopSystem_ = kIdleFlag;
 };
 
 }  // namespace Istok::ECS
