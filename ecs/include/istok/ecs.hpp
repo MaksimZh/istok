@@ -8,8 +8,9 @@
 #include <stack>
 #include <vector>
 
-#include "ecs/entity.hpp"
 #include "ecs/component.hpp"
+#include "ecs/entity.hpp"
+#include "ecs/system.hpp"
 
 namespace Istok::ECS {
 
@@ -18,12 +19,11 @@ using System = std::move_only_function<void() noexcept>;
 
 class ECSManager {
 public:
-    ECSManager() = default;
+    ECSManager() noexcept
+    : loopSystems_(std::make_unique<Internal::ClosureLoop>()) {};
 
     ~ECSManager() {
-        while (!loopSystems_.empty()) {
-            loopSystems_.pop_back();
-        }
+        loopSystems_.reset();
         while (!headCleanupSystems_.empty()) {
             headCleanupSystems_.front()();
             headCleanupSystems_.pop();
@@ -47,6 +47,7 @@ public:
         return entityManager_.create();
     }
 
+    // TODO: removeEntity
     void deleteEntity(Entity entity) noexcept {
         assert(isValidEntity(entity));
         componentManager_.clearIndex(entity.index());
@@ -98,7 +99,7 @@ public:
     }
 
     void addLoopSystem(System&& system) noexcept {
-        loopSystems_.push_back(std::move(system));
+        loopSystems_->add(std::move(system));
     }
 
     void addHeadCleanupSystem(System&& system) noexcept {
@@ -110,43 +111,21 @@ public:
     }
 
     void iterate() noexcept {
-        if (currentLoopSystem_ != kIdleFlag) {
-            return;
-        }
-        for (
-            currentLoopSystem_ = 0;
-            currentLoopSystem_ < loopSystems_.size();
-            ++currentLoopSystem_
-        ) {
-            loopSystems_[currentLoopSystem_]();
-        }
-        currentLoopSystem_ = -1;
+        loopSystems_->iterate();
     }
 
     void pass() noexcept {
-        if (currentLoopSystem_ < 0) {
-            return;
-        }
-        size_t sentinel = currentLoopSystem_;
-        currentLoopSystem_ = kPassFlag;
-        for (size_t i = sentinel + 1; i < loopSystems_.size(); ++i) {
-            loopSystems_[i]();
-        }
-        for (size_t i = 0; i < sentinel; ++i) {
-            loopSystems_[i]();
-        }
-        currentLoopSystem_ = sentinel;
+        loopSystems_->pass();
     }
 
 private:
-    constexpr static int kIdleFlag = -1;
-    constexpr static int kPassFlag = -2;
     Internal::EntityManager entityManager_;
     Internal::ComponentManager componentManager_;
-    std::vector<System> loopSystems_;
-    std::queue<System> headCleanupSystems_;
-    std::stack<System> tailCleanupSystems_;
-    int currentLoopSystem_ = kIdleFlag;
+
+    // TODO: Extract into SystemManager class
+    std::unique_ptr<Internal::ClosureLoop> loopSystems_;
+    std::queue<System> headCleanupSystems_;  // TODO: Extract into CleanupQueue class
+    std::stack<System> tailCleanupSystems_;  // TODO: Extract into CleanupStack class
 };
 
 }  // namespace Istok::ECS

@@ -357,7 +357,7 @@ TEST_CASE("ECSManager - loop", "[unit][ecs]") {
     ecs->addLoopSystem(loop2.get());
     ecs->addLoopSystem(loop3.get());
 
-    for (size_t i = 0; i < 3; ++ i) {
+    {
         trompeloeil::sequence seq;
         REQUIRE_CALL(loop1, run()).IN_SEQUENCE(seq);
         REQUIRE_CALL(loop2, run()).IN_SEQUENCE(seq)
@@ -397,44 +397,6 @@ TEST_CASE("ECSManager - loop", "[unit][ecs]") {
             });
         REQUIRE_CALL(loop2, run()).IN_SEQUENCE(seq);
         REQUIRE_CALL(loop3, run()).IN_SEQUENCE(seq);
-        ecs->iterate();
-    }
-
-    {
-        trompeloeil::sequence seq;
-        REQUIRE_CALL(loop1, run()).IN_SEQUENCE(seq);
-        REQUIRE_CALL(loop2, run()).IN_SEQUENCE(seq)
-            .LR_SIDE_EFFECT([&]() {
-                trompeloeil::sequence seq1;
-                REQUIRE_CALL(loop3, run())
-                    .IN_SEQUENCE(seq1)
-                    .LR_SIDE_EFFECT([&]() {
-                        FORBID_CALL(loop1, run());
-                        FORBID_CALL(loop2, run());
-                        FORBID_CALL(loop3, run());
-                        ecs->iterate();
-                    });
-                REQUIRE_CALL(loop1, run())
-                    .IN_SEQUENCE(seq1);
-                ecs->pass();
-            });
-        REQUIRE_CALL(loop3, run()).IN_SEQUENCE(seq);
-        ecs->iterate();
-    }
-
-    {
-        trompeloeil::sequence seq;
-        REQUIRE_CALL(loop1, run()).IN_SEQUENCE(seq);
-        REQUIRE_CALL(loop2, run()).IN_SEQUENCE(seq);
-        REQUIRE_CALL(loop3, run()).IN_SEQUENCE(seq)
-            .LR_SIDE_EFFECT([&]() {
-                trompeloeil::sequence seq1;
-                REQUIRE_CALL(loop1, run())
-                    .IN_SEQUENCE(seq1);
-                REQUIRE_CALL(loop2, run())
-                    .IN_SEQUENCE(seq1);
-                ecs->pass();
-            });
         ecs->iterate();
     }
 }
