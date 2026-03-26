@@ -362,6 +362,22 @@ TEST_CASE("ComponentManager - basic", "[unit][ecs]") {
         REQUIRE(cm.get<B>(1) == B{201});
     }
 
+    SECTION("clear") {
+        cm.insert(0, A{100});
+        cm.insert(1, A{101});
+        cm.insert(0, B{200});
+        cm.insert(1, B{201});
+        REQUIRE(cm.count<A>() == 2);
+        REQUIRE(cm.count<B>() == 2);
+        cm.clear();
+        REQUIRE(cm.count<A>() == 0);
+        REQUIRE(cm.count<B>() == 0);
+        REQUIRE(!cm.has<A>(0));
+        REQUIRE(!cm.has<A>(1));
+        REQUIRE(!cm.has<B>(0));
+        REQUIRE(!cm.has<B>(1));
+    }
+
     SECTION("modify") {
         cm.insert(0, A{100});
         cm.get<A>(0) = A{101};

@@ -280,7 +280,6 @@ TEST_CASE("ECSManager - systems", "[unit][ecs]") {
     MockValue comp;
 
     auto ecs = std::make_unique<ECSManager>();
-    auto* ecsPtr = ecs.get();
     Entity a = ecs->createEntity();
     Entity b = ecs->createEntity();
     ecs->insert(a, A{100});

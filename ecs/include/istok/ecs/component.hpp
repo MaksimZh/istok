@@ -170,6 +170,10 @@ public:
         }
     }
 
+    void clear() noexcept {
+        storages_.clear();
+    }
+
     template<typename Master, typename... Pos>
     auto view() noexcept {
         return ensureStorage<Master>().indices()

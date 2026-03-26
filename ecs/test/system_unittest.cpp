@@ -159,3 +159,73 @@ TEST_CASE("System - ClosureStack", "[unit][ecs]") {
         cs.launch();
     }
 }
+
+
+TEST_CASE("System - manager", "[unit][ecs]") {
+    MockClosure loop1;
+    MockClosure loop2;
+    MockClosure head1;
+    MockClosure head2;
+    MockClosure tail1;
+    MockClosure tail2;
+    MockValue comp;
+
+    SystemManager sm;
+    sm.addLoop(loop1.get());
+    sm.addLoop(loop2.get());
+    sm.addHead(head1.get());
+    sm.addHead(head2.get());
+    sm.addTail(tail1.get());
+    sm.addTail(tail2.get());
+
+    {
+        trompeloeil::sequence seq;
+        REQUIRE_CALL(loop1, run()).IN_SEQUENCE(seq);
+        REQUIRE_CALL(loop2, run()).IN_SEQUENCE(seq)
+            .LR_SIDE_EFFECT([&]() {
+                FORBID_CALL(loop1, run());
+                FORBID_CALL(loop2, run());
+                sm.iterate();
+            });
+        sm.iterate();
+    }
+
+    {
+        FORBID_CALL(loop1, run());
+        FORBID_CALL(loop2, run());
+        sm.pass();
+    }
+
+    {
+        trompeloeil::sequence seq;
+        REQUIRE_CALL(loop1, run()).IN_SEQUENCE(seq)
+            .LR_SIDE_EFFECT([&]() {
+                trompeloeil::sequence seq1;
+                REQUIRE_CALL(loop2, run())
+                    .IN_SEQUENCE(seq1)
+                    .LR_SIDE_EFFECT([&]() {
+                        FORBID_CALL(loop1, run());
+                        FORBID_CALL(loop2, run());
+                        sm.pass();
+                    });
+                sm.pass();
+            });
+        REQUIRE_CALL(loop2, run()).IN_SEQUENCE(seq);
+        sm.iterate();
+    }
+
+    {
+        trompeloeil::sequence seq;
+        REQUIRE_CALL(loop2, kill()).IN_SEQUENCE(seq);
+        REQUIRE_CALL(loop1, kill()).IN_SEQUENCE(seq);
+        REQUIRE_CALL(head1, run()).IN_SEQUENCE(seq);
+        REQUIRE_CALL(head1, kill()).IN_SEQUENCE(seq);
+        REQUIRE_CALL(head2, run()).IN_SEQUENCE(seq);
+        REQUIRE_CALL(head2, kill()).IN_SEQUENCE(seq);
+        REQUIRE_CALL(tail2, run()).IN_SEQUENCE(seq);
+        REQUIRE_CALL(tail2, kill()).IN_SEQUENCE(seq);
+        REQUIRE_CALL(tail1, run()).IN_SEQUENCE(seq);
+        REQUIRE_CALL(tail1, kill()).IN_SEQUENCE(seq);
+        sm.clear();
+    }
+}

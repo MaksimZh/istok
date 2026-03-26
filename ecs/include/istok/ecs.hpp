@@ -2,7 +2,6 @@
 #pragma once
 
 #include <cassert>
-#include <functional>
 #include <ranges>
 
 #include "ecs/component.hpp"
@@ -11,17 +10,13 @@
 
 namespace Istok::ECS {
 
-class ECSManager;
-using System = std::move_only_function<void() noexcept>;
-
 class ECSManager {
 public:
     ECSManager() = default;
 
     ~ECSManager() {
-        loopSystems_.clear();
-        headCleanupSystems_.launch();
-        tailCleanupSystems_.launch();
+        systemManager_.clear();
+        componentManager_.clear();
     }
 
     ECSManager(const ECSManager&) = delete;
@@ -88,34 +83,30 @@ public:
                 [em=&entityManager_](size_t index) { return em->get(index); });
     }
 
-    void addLoopSystem(System&& system) noexcept {
-        loopSystems_.add(std::move(system));
+    void addLoopSystem(Closure&& system) noexcept {
+        systemManager_.addLoop(std::move(system));
     }
 
-    void addHeadCleanupSystem(System&& system) noexcept {
-        headCleanupSystems_.add(std::move(system));
+    void addHeadCleanupSystem(Closure&& system) noexcept {
+        systemManager_.addHead(std::move(system));
     }
 
-    void addTailCleanupSystem(System&& system) noexcept {
-        tailCleanupSystems_.add(std::move(system));
+    void addTailCleanupSystem(Closure&& system) noexcept {
+        systemManager_.addTail(std::move(system));
     }
 
     void iterate() noexcept {
-        loopSystems_.iterate();
+        systemManager_.iterate();
     }
 
     void pass() noexcept {
-        loopSystems_.pass();
+        systemManager_.pass();
     }
 
 private:
     Internal::EntityManager entityManager_;
     Internal::ComponentManager componentManager_;
-
-    // TODO: Extract into SystemManager class
-    Internal::ClosureLoop loopSystems_;
-    Internal::ClosureQueue headCleanupSystems_;
-    Internal::ClosureStack tailCleanupSystems_;
+    Internal::SystemManager systemManager_;
 };
 
 }  // namespace Istok::ECS

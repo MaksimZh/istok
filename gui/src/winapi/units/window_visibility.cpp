@@ -31,8 +31,7 @@ bool setupWindowVisibility(ECS::ECSManager& ecs) {
         ecs,
         [](ECS::ECSManager& ecs, WinAPIDelegate& winapi) {
             ecs.addLoopSystem(
-                ECS::System{[&ecs, &winapi]() noexcept {
-                    showWindows(ecs, winapi); }});
+                [&ecs, &winapi]() noexcept {showWindows(ecs, winapi); });
             return true;
         });
 }
