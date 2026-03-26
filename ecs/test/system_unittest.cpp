@@ -10,7 +10,7 @@ using namespace Istok::ECS;
 using namespace Istok::ECS::Internal;
 
 
-TEST_CASE("System - loop", "[unit][ecs]") {
+TEST_CASE("System - ClosureLoop", "[unit][ecs]") {
     MockClosure c1;
     MockClosure c2;
     MockClosure c3;
@@ -111,5 +111,51 @@ TEST_CASE("System - loop", "[unit][ecs]") {
         REQUIRE_CALL(c2, kill()).IN_SEQUENCE(seq);
         REQUIRE_CALL(c1, kill()).IN_SEQUENCE(seq);
         loop.clear();
+    }
+}
+
+
+TEST_CASE("System - ClosureQueue", "[unit][ecs]") {
+    MockClosure c1;
+    MockClosure c2;
+    MockClosure c3;
+
+    ClosureQueue cq;
+    cq.add(c1.get());
+    cq.add(c2.get());
+    cq.add(c3.get());
+
+    {
+        trompeloeil::sequence seq;
+        REQUIRE_CALL(c1, run()).IN_SEQUENCE(seq);
+        REQUIRE_CALL(c1, kill()).IN_SEQUENCE(seq);
+        REQUIRE_CALL(c2, run()).IN_SEQUENCE(seq);
+        REQUIRE_CALL(c2, kill()).IN_SEQUENCE(seq);
+        REQUIRE_CALL(c3, run()).IN_SEQUENCE(seq);
+        REQUIRE_CALL(c3, kill()).IN_SEQUENCE(seq);
+        cq.launch();
+    }
+}
+
+
+TEST_CASE("System - ClosureStack", "[unit][ecs]") {
+    MockClosure c1;
+    MockClosure c2;
+    MockClosure c3;
+
+    ClosureStack cs;
+    cs.add(c1.get());
+    cs.add(c2.get());
+    cs.add(c3.get());
+
+    {
+        trompeloeil::sequence seq;
+        REQUIRE_CALL(c3, run()).IN_SEQUENCE(seq);
+        REQUIRE_CALL(c3, kill()).IN_SEQUENCE(seq);
+        REQUIRE_CALL(c2, run()).IN_SEQUENCE(seq);
+        REQUIRE_CALL(c2, kill()).IN_SEQUENCE(seq);
+        REQUIRE_CALL(c1, run()).IN_SEQUENCE(seq);
+        REQUIRE_CALL(c1, kill()).IN_SEQUENCE(seq);
+        cs.launch();
     }
 }

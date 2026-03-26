@@ -3,10 +3,7 @@
 
 #include <cassert>
 #include <functional>
-#include <queue>
 #include <ranges>
-#include <stack>
-#include <vector>
 
 #include "ecs/component.hpp"
 #include "ecs/entity.hpp"
@@ -23,14 +20,8 @@ public:
 
     ~ECSManager() {
         loopSystems_.clear();
-        while (!headCleanupSystems_.empty()) {
-            headCleanupSystems_.front()();
-            headCleanupSystems_.pop();
-        }
-        while (!tailCleanupSystems_.empty()) {
-            tailCleanupSystems_.top()();
-            tailCleanupSystems_.pop();
-        }
+        headCleanupSystems_.launch();
+        tailCleanupSystems_.launch();
     }
 
     ECSManager(const ECSManager&) = delete;
@@ -102,11 +93,11 @@ public:
     }
 
     void addHeadCleanupSystem(System&& system) noexcept {
-        headCleanupSystems_.push(std::move(system));
+        headCleanupSystems_.add(std::move(system));
     }
 
     void addTailCleanupSystem(System&& system) noexcept {
-        tailCleanupSystems_.push(std::move(system));
+        tailCleanupSystems_.add(std::move(system));
     }
 
     void iterate() noexcept {
@@ -123,8 +114,8 @@ private:
 
     // TODO: Extract into SystemManager class
     Internal::ClosureLoop loopSystems_;
-    std::queue<System> headCleanupSystems_;  // TODO: Extract into CleanupQueue class
-    std::stack<System> tailCleanupSystems_;  // TODO: Extract into CleanupStack class
+    Internal::ClosureQueue headCleanupSystems_;
+    Internal::ClosureStack tailCleanupSystems_;
 };
 
 }  // namespace Istok::ECS

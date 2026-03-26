@@ -2,6 +2,9 @@
 #pragma once
 
 #include <functional>
+#include <queue>
+#include <stack>
+#include <vector>
 
 
 namespace Istok::ECS {
@@ -63,6 +66,64 @@ private:
     constexpr static int kPassState = -2;
     std::vector<Closure> closures_;
     int state_ = kIdleState;
+};
+
+
+class ClosureQueue {
+public:
+    ClosureQueue() = default;
+
+    ~ClosureQueue() {
+        launch();
+    }
+
+    ClosureQueue(const ClosureQueue&) = delete;
+    ClosureQueue& operator=(const ClosureQueue&) = delete;
+    ClosureQueue(ClosureQueue&&) = default;
+    ClosureQueue& operator=(ClosureQueue&&) = default;
+
+    void add(Closure&& closure) noexcept {
+        closures_.push(std::move(closure));
+    }
+
+    void launch() noexcept {
+        while (!closures_.empty()) {
+            closures_.front()();
+            closures_.pop();
+        }
+    }
+
+private:
+    std::queue<Closure> closures_;
+};
+
+
+class ClosureStack {
+public:
+    ClosureStack() = default;
+
+    ~ClosureStack() {
+        launch();
+    }
+
+    ClosureStack(const ClosureStack&) = delete;
+    ClosureStack& operator=(const ClosureStack&) = delete;
+    ClosureStack(ClosureStack&&) = default;
+    ClosureStack& operator=(ClosureStack&&) = default;
+
+    void add(Closure&& closure) noexcept {
+        closures_.push(std::move(closure));
+    }
+
+    void launch() noexcept {
+        while (!closures_.empty()) {
+            closures_.top()();
+            closures_.pop();
+        }
+    }
+
+private:
+    std::stack<Closure> closures_;
 };
 
 }  // namespace Internal
