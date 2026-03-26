@@ -4,6 +4,7 @@ target_sources(gui PRIVATE
     setup.cpp
     setup.hpp
 )
+target_link_libraries(gui PRIVATE dwmapi)
 
 add_executable(winapi_unittest)
 target_include_directories(winapi_unittest PRIVATE ${ISTOK_GUI_DIR}/include)

@@ -1,8 +1,7 @@
 // Copyright 2026 Maksim Sergeevich Zholudev. All rights reserved
 #include "real_winapi.hpp"
 
-#include <set>
-
+#include <dwmapi.h>
 #include <windows.h>
 
 #include <istok/logging.hpp>
@@ -78,6 +77,54 @@ private:
     LPCWSTR name = nullptr;
 };
 
+bool enableTransparency(HWND hWnd) noexcept {
+    WITH_LOGGER_PREFIX("Windows", "WinAPI: ");
+    DWM_BLURBEHIND bb = { 0 };
+    HRGN hRgn = CreateRectRgn(0, 0, -1, -1);
+    bb.dwFlags = DWM_BB_ENABLE | DWM_BB_BLURREGION;
+    bb.hRgnBlur = hRgn;
+    bb.fEnable = TRUE;
+    if (DwmEnableBlurBehindWindow(hWnd, &bb) != S_OK) {
+        LOG_ERROR("DwmEnableBlurBehindWindow failed for window {}.", hWnd);
+        return false;
+    }
+    return true;
+}
+
+bool setPixelFormatForGL(HWND hWnd) noexcept {
+    WITH_LOGGER_PREFIX("Windows", "WinAPI: ");
+    HDC hDC = GetDC(hWnd);
+    if (!hDC) {
+        LOG_ERROR("GetDC failed for window {}.", hWnd);
+        return false;
+    }
+    PIXELFORMATDESCRIPTOR pfd = {};
+    pfd.nSize = sizeof(PIXELFORMATDESCRIPTOR);
+    pfd.nVersion = 1;
+    pfd.dwFlags =
+        PFD_DRAW_TO_WINDOW |
+        PFD_SUPPORT_OPENGL |
+        PFD_DOUBLEBUFFER |
+        PFD_SUPPORT_COMPOSITION;
+    pfd.iPixelType = PFD_TYPE_RGBA;
+    pfd.cColorBits = 32;
+    pfd.cAlphaBits = 8;
+    pfd.cDepthBits = 24;
+    pfd.cStencilBits = 8;
+    pfd.iLayerType = PFD_MAIN_PLANE;
+
+    int pfi = ChoosePixelFormat(hDC, &pfd);
+    if (!pfi) {
+        LOG_ERROR("ChoosePixelFormat failed for window {}.", hWnd);
+        return false;
+    }
+    if (!SetPixelFormat(hDC, pfi, &pfd)) {
+        LOG_ERROR("SetPixelFormat failed for window {}.", hWnd);
+        return false;
+    }
+    return true;
+}
+
 }  // namespace
 
 
@@ -85,7 +132,8 @@ HWND RealWinAPI::createWindow(const Rect<int>& location) noexcept {
     static WinAPI::WindowClass windowClass(
         windowProc,
         L"Istok");
-    return CreateWindowEx(
+    WITH_LOGGER_PREFIX("Windows", "WinAPI: ");
+    HWND hWnd = CreateWindowEx(
         NULL,
         windowClass.get(),
         L"Istok",
@@ -95,6 +143,13 @@ HWND RealWinAPI::createWindow(const Rect<int>& location) noexcept {
         location.right - location.left,
         location.bottom - location.top,
         NULL, NULL, WinAPI::getHInstance(), nullptr);
+    if (!hWnd) {
+        LOG_ERROR("Failed to create window.");
+        return nullptr;
+    }
+    enableTransparency(hWnd);
+    setPixelFormatForGL(hWnd);
+    return hWnd;
 }
 
 void RealWinAPI::destroyWindow(HWND hWnd) noexcept {
