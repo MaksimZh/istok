@@ -1,3 +1,14 @@
+target_sources(gui2 PRIVATE
+    dispatcher2.cpp
+    dispatcher2.hpp
+    message.cpp
+    message.hpp
+)
+
+target_sources(winapi_unittest2 PRIVATE
+    dispatcher2_unittest.cpp
+)
+
 target_sources(gui PRIVATE
     dispatcher.cpp
     dispatcher.hpp

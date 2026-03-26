@@ -4,6 +4,12 @@ enable_testing()
 find_package(Catch2 REQUIRED)
 find_package(Trompeloeil REQUIRED)
 
+add_library(gui2 STATIC)
+target_include_directories(gui2 PUBLIC ./include)
+target_include_directories(gui2 PRIVATE ./src)
+target_link_libraries(gui2 PUBLIC ecs)
+target_link_libraries(gui2 PUBLIC logging)
+
 add_library(gui STATIC)
 target_include_directories(gui PUBLIC ./include)
 target_include_directories(gui PRIVATE ./src)

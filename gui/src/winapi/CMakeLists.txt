@@ -6,6 +6,13 @@ target_sources(gui PRIVATE
 )
 target_link_libraries(gui PRIVATE dwmapi)
 
+add_executable(winapi_unittest2)
+target_include_directories(winapi_unittest2 PRIVATE ${ISTOK_GUI_DIR}/include)
+target_include_directories(winapi_unittest2 PRIVATE ${ISTOK_GUI_DIR}/src)
+target_link_libraries(winapi_unittest2 PRIVATE
+    gui2 Catch2::Catch2WithMain)
+add_test(NAME winapi_unittest2 COMMAND winapi_unittest2)
+
 add_executable(winapi_unittest)
 target_include_directories(winapi_unittest PRIVATE ${ISTOK_GUI_DIR}/include)
 target_include_directories(winapi_unittest PRIVATE ${ISTOK_GUI_DIR}/src)
