@@ -6,6 +6,7 @@
 #include <catch.hpp>
 #include <catch2/trompeloeil.hpp>
 
+#include "test_utils.hpp"
 
 using namespace Istok::ECS;
 using trompeloeil::_;
@@ -225,42 +226,8 @@ TEST_CASE("ECSManager - empty view", "[unit][ecs]") {
 }
 
 
-namespace {
-
-struct Component {
-    using Func = std::move_only_function<void() noexcept>;
-    Func func_;
-    Component(Func&& func) : func_(std::move(func)) {}
-    ~Component() { func_(); }
-};
-
-struct MockComponent {
-    using Type = std::unique_ptr<Component>;
-
-    MAKE_MOCK0(kill, void(), noexcept);
-
-    std::unique_ptr<Component> get() {
-        return std::make_unique<Component>([this]() noexcept { kill(); });
-    }
-};
-
-struct MockSystem {
-    MAKE_MOCK0(run, void(), noexcept);
-    MAKE_MOCK0(kill, void(), noexcept);
-
-    System get() {
-        auto item = std::make_unique<Component>(
-            [this]() noexcept { kill(); });
-        return [this, x=std::move(item)]()
-            noexcept { run(); };
-    }
-};
-
-}  // namespace
-
-
 TEST_CASE("ECSManager - component lifecycle", "[unit][ecs]") {
-    MockComponent ca, cb;
+    MockValue ca, cb;
     auto ecs = std::make_unique<ECSManager>();
     auto a = ecs->createEntity();
     auto b = ecs->createEntity();
@@ -270,11 +237,11 @@ TEST_CASE("ECSManager - component lifecycle", "[unit][ecs]") {
     SECTION("remove component") {
         {
             REQUIRE_CALL(ca, kill());
-            ecs->remove<MockComponent::Type>(a);
+            ecs->remove<MockValue::Type>(a);
         }
         {
             REQUIRE_CALL(cb, kill());
-            ecs->remove<MockComponent::Type>(b);
+            ecs->remove<MockValue::Type>(b);
         }
     }
 
@@ -292,7 +259,7 @@ TEST_CASE("ECSManager - component lifecycle", "[unit][ecs]") {
     SECTION("remove all") {
         REQUIRE_CALL(ca, kill());
         REQUIRE_CALL(cb, kill());
-        ecs->removeAll<MockComponent::Type>();
+        ecs->removeAll<MockValue::Type>();
     }
 
     SECTION("destroy") {
@@ -303,14 +270,14 @@ TEST_CASE("ECSManager - component lifecycle", "[unit][ecs]") {
 }
 
 
-TEST_CASE("ECSManager - system lifecycle", "[unit][ecs]") {
-    MockSystem loop1;
-    MockSystem loop2;
-    MockSystem head1;
-    MockSystem head2;
-    MockSystem tail1;
-    MockSystem tail2;
-    MockComponent comp;
+TEST_CASE("ECSManager - systems", "[unit][ecs]") {
+    MockClosure loop1;
+    MockClosure loop2;
+    MockClosure head1;
+    MockClosure head2;
+    MockClosure tail1;
+    MockClosure tail2;
+    MockValue comp;
 
     auto ecs = std::make_unique<ECSManager>();
     auto* ecsPtr = ecs.get();
@@ -327,54 +294,19 @@ TEST_CASE("ECSManager - system lifecycle", "[unit][ecs]") {
 
     {
         trompeloeil::sequence seq;
-        REQUIRE_CALL(loop2, kill()).IN_SEQUENCE(seq);
-        REQUIRE_CALL(loop1, kill()).IN_SEQUENCE(seq);
-        REQUIRE_CALL(head1, run()).IN_SEQUENCE(seq);
-        REQUIRE_CALL(head1, kill()).IN_SEQUENCE(seq);
-        REQUIRE_CALL(head2, run()).IN_SEQUENCE(seq);
-        REQUIRE_CALL(head2, kill()).IN_SEQUENCE(seq);
-        REQUIRE_CALL(tail2, run()).IN_SEQUENCE(seq);
-        REQUIRE_CALL(tail2, kill()).IN_SEQUENCE(seq);
-        REQUIRE_CALL(tail1, run()).IN_SEQUENCE(seq);
-        REQUIRE_CALL(tail1, kill()).IN_SEQUENCE(seq);
-        REQUIRE_CALL(comp, kill()).IN_SEQUENCE(seq);
-        ecs.reset();
-    }
-}
-
-
-TEST_CASE("ECSManager - loop", "[unit][ecs]") {
-    MockSystem loop1;
-    MockSystem loop2;
-    MockSystem loop3;
-    ALLOW_CALL(loop1, kill());
-    ALLOW_CALL(loop2, kill());
-    ALLOW_CALL(loop3, kill());
-
-    auto ecs = std::make_unique<ECSManager>();
-    auto* ecsPtr = ecs.get();
-    ecs->addLoopSystem(loop1.get());
-    ecs->addLoopSystem(loop2.get());
-    ecs->addLoopSystem(loop3.get());
-
-    {
-        trompeloeil::sequence seq;
         REQUIRE_CALL(loop1, run()).IN_SEQUENCE(seq);
         REQUIRE_CALL(loop2, run()).IN_SEQUENCE(seq)
             .LR_SIDE_EFFECT([&]() {
                 FORBID_CALL(loop1, run());
                 FORBID_CALL(loop2, run());
-                FORBID_CALL(loop3, run());
                 ecs->iterate();
             });
-        REQUIRE_CALL(loop3, run()).IN_SEQUENCE(seq);
         ecs->iterate();
     }
 
     {
         FORBID_CALL(loop1, run());
         FORBID_CALL(loop2, run());
-        FORBID_CALL(loop3, run());
         ecs->pass();
     }
 
@@ -388,15 +320,27 @@ TEST_CASE("ECSManager - loop", "[unit][ecs]") {
                     .LR_SIDE_EFFECT([&]() {
                         FORBID_CALL(loop1, run());
                         FORBID_CALL(loop2, run());
-                        FORBID_CALL(loop3, run());
                         ecs->pass();
                     });
-                REQUIRE_CALL(loop3, run())
-                    .IN_SEQUENCE(seq1);
                 ecs->pass();
             });
         REQUIRE_CALL(loop2, run()).IN_SEQUENCE(seq);
-        REQUIRE_CALL(loop3, run()).IN_SEQUENCE(seq);
         ecs->iterate();
+    }
+
+    {
+        trompeloeil::sequence seq;
+        REQUIRE_CALL(loop2, kill()).IN_SEQUENCE(seq);
+        REQUIRE_CALL(loop1, kill()).IN_SEQUENCE(seq);
+        REQUIRE_CALL(head1, run()).IN_SEQUENCE(seq);
+        REQUIRE_CALL(head1, kill()).IN_SEQUENCE(seq);
+        REQUIRE_CALL(head2, run()).IN_SEQUENCE(seq);
+        REQUIRE_CALL(head2, kill()).IN_SEQUENCE(seq);
+        REQUIRE_CALL(tail2, run()).IN_SEQUENCE(seq);
+        REQUIRE_CALL(tail2, kill()).IN_SEQUENCE(seq);
+        REQUIRE_CALL(tail1, run()).IN_SEQUENCE(seq);
+        REQUIRE_CALL(tail1, kill()).IN_SEQUENCE(seq);
+        REQUIRE_CALL(comp, kill()).IN_SEQUENCE(seq);
+        ecs.reset();
     }
 }

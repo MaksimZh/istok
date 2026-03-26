@@ -19,11 +19,10 @@ using System = std::move_only_function<void() noexcept>;
 
 class ECSManager {
 public:
-    ECSManager() noexcept
-    : loopSystems_(std::make_unique<Internal::ClosureLoop>()) {};
+    ECSManager() = default;
 
     ~ECSManager() {
-        loopSystems_.reset();
+        loopSystems_.clear();
         while (!headCleanupSystems_.empty()) {
             headCleanupSystems_.front()();
             headCleanupSystems_.pop();
@@ -99,7 +98,7 @@ public:
     }
 
     void addLoopSystem(System&& system) noexcept {
-        loopSystems_->add(std::move(system));
+        loopSystems_.add(std::move(system));
     }
 
     void addHeadCleanupSystem(System&& system) noexcept {
@@ -111,11 +110,11 @@ public:
     }
 
     void iterate() noexcept {
-        loopSystems_->iterate();
+        loopSystems_.iterate();
     }
 
     void pass() noexcept {
-        loopSystems_->pass();
+        loopSystems_.pass();
     }
 
 private:
@@ -123,7 +122,7 @@ private:
     Internal::ComponentManager componentManager_;
 
     // TODO: Extract into SystemManager class
-    std::unique_ptr<Internal::ClosureLoop> loopSystems_;
+    Internal::ClosureLoop loopSystems_;
     std::queue<System> headCleanupSystems_;  // TODO: Extract into CleanupQueue class
     std::stack<System> tailCleanupSystems_;  // TODO: Extract into CleanupStack class
 };

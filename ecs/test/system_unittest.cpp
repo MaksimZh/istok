@@ -4,29 +4,10 @@
 #include <catch.hpp>
 #include <catch2/trompeloeil.hpp>
 
+#include "test_utils.hpp"
+
 using namespace Istok::ECS;
 using namespace Istok::ECS::Internal;
-
-
-namespace {
-
-struct DeathWatch {
-    Closure callback_;
-    DeathWatch(Closure&& callback) : callback_(std::move(callback)) {}
-    ~DeathWatch() { callback_(); }
-};
-
-struct MockClosure {
-    MAKE_MOCK0(run, void(), noexcept);
-    MAKE_MOCK0(kill, void(), noexcept);
-
-    Closure get() {
-        auto dw = std::make_unique<DeathWatch>([this]() noexcept { kill(); });
-        return [this, x=std::move(dw)]() noexcept { run(); };
-    }
-};
-
-};
 
 
 TEST_CASE("System - loop", "[unit][ecs]") {
@@ -34,10 +15,10 @@ TEST_CASE("System - loop", "[unit][ecs]") {
     MockClosure c2;
     MockClosure c3;
 
-    auto loop = std::make_unique<ClosureLoop>();
-    loop->add(c1.get());
-    loop->add(c2.get());
-    loop->add(c3.get());
+    ClosureLoop loop;
+    loop.add(c1.get());
+    loop.add(c2.get());
+    loop.add(c3.get());
 
     for (size_t i = 0; i < 3; ++ i) {
         trompeloeil::sequence seq;
@@ -48,10 +29,10 @@ TEST_CASE("System - loop", "[unit][ecs]") {
                 FORBID_CALL(c1, run());
                 FORBID_CALL(c2, run());
                 FORBID_CALL(c3, run());
-                loop->iterate();
+                loop.iterate();
             });
         REQUIRE_CALL(c3, run()).IN_SEQUENCE(seq);
-        loop->iterate();
+        loop.iterate();
     }
 
     {
@@ -59,7 +40,7 @@ TEST_CASE("System - loop", "[unit][ecs]") {
         FORBID_CALL(c1, run());
         FORBID_CALL(c2, run());
         FORBID_CALL(c3, run());
-        loop->pass();
+        loop.pass();
     }
 
     {
@@ -74,15 +55,15 @@ TEST_CASE("System - loop", "[unit][ecs]") {
                         FORBID_CALL(c1, run());
                         FORBID_CALL(c2, run());
                         FORBID_CALL(c3, run());
-                        loop->pass();
+                        loop.pass();
                     });
                 REQUIRE_CALL(c3, run())
                     .IN_SEQUENCE(seq1);
-                loop->pass();
+                loop.pass();
             });
         REQUIRE_CALL(c2, run()).IN_SEQUENCE(seq);
         REQUIRE_CALL(c3, run()).IN_SEQUENCE(seq);
-        loop->iterate();
+        loop.iterate();
     }
 
     {
@@ -98,14 +79,14 @@ TEST_CASE("System - loop", "[unit][ecs]") {
                         FORBID_CALL(c1, run());
                         FORBID_CALL(c2, run());
                         FORBID_CALL(c3, run());
-                        loop->iterate();
+                        loop.iterate();
                     });
                 REQUIRE_CALL(c1, run())
                     .IN_SEQUENCE(seq1);
-                loop->pass();
+                loop.pass();
             });
         REQUIRE_CALL(c3, run()).IN_SEQUENCE(seq);
-        loop->iterate();
+        loop.iterate();
     }
 
     {
@@ -119,9 +100,9 @@ TEST_CASE("System - loop", "[unit][ecs]") {
                     .IN_SEQUENCE(seq1);
                 REQUIRE_CALL(c2, run())
                     .IN_SEQUENCE(seq1);
-                loop->pass();
+                loop.pass();
             });
-        loop->iterate();
+        loop.iterate();
     }
 
     {
@@ -129,6 +110,6 @@ TEST_CASE("System - loop", "[unit][ecs]") {
         REQUIRE_CALL(c3, kill()).IN_SEQUENCE(seq);
         REQUIRE_CALL(c2, kill()).IN_SEQUENCE(seq);
         REQUIRE_CALL(c1, kill()).IN_SEQUENCE(seq);
-        loop.reset();
+        loop.clear();
     }
 }

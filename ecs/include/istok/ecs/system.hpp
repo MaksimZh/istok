@@ -15,9 +15,7 @@ public:
     ClosureLoop() = default;
 
     ~ClosureLoop() {
-        while (!closures_.empty()) {
-            closures_.pop_back();
-        }
+        clear();
     }
 
     ClosureLoop(const ClosureLoop&) = delete;
@@ -52,6 +50,12 @@ public:
             closures_[i]();
         }
         state_ = sentinel;
+    }
+
+    void clear() noexcept {
+        while (!closures_.empty()) {
+            closures_.pop_back();
+        }
     }
 
 private:

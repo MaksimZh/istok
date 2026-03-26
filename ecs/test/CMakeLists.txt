@@ -7,6 +7,8 @@ add_executable(ecs_unittest
     ecs_unittest.cpp
     entity_unittest.cpp
     system_unittest.cpp
+    test_utils.cpp
+    test_utils.hpp
 )
 target_link_libraries(ecs_unittest PRIVATE ecs Catch2::Catch2WithMain)
 add_test(NAME ecs_unittest COMMAND ecs_unittest)
