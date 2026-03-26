@@ -4,6 +4,8 @@
 #include <windows.h>
 
 #include <istok/ecs.hpp>
+#include <istok/logging.hpp>
+
 #include "winapi/base/message.hpp"
 
 namespace Istok::GUI::WinAPI {

@@ -4,6 +4,7 @@ target_sources(gui PRIVATE
     setup.cpp
     setup.hpp
 )
+target_link_libraries(gui2 PRIVATE dwmapi)
 target_link_libraries(gui PRIVATE dwmapi)
 
 add_executable(winapi_unittest2)
