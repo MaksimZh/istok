@@ -32,8 +32,7 @@ public:
         return entityManager_.create();
     }
 
-    // TODO: removeEntity
-    void deleteEntity(Entity entity) noexcept {
+    void removeEntity(Entity entity) noexcept {
         assert(isValidEntity(entity));
         componentManager_.clearIndex(entity.index());
         entityManager_.remove(entity);

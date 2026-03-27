@@ -31,7 +31,7 @@ TEST_CASE("ECSManager - entities", "[unit][ecs]") {
     }
 
     SECTION("invalidate on deletion") {
-        ecs.deleteEntity(b);
+        ecs.removeEntity(b);
         REQUIRE(ecs.isValidEntity(a));
         REQUIRE(!ecs.isValidEntity(b));
         REQUIRE(ecs.isValidEntity(c));
@@ -248,11 +248,11 @@ TEST_CASE("ECSManager - component lifecycle", "[unit][ecs]") {
     SECTION("delete entity") {
         {
             REQUIRE_CALL(ca, kill());
-            ecs->deleteEntity(a);
+            ecs->removeEntity(a);
         }
         {
             REQUIRE_CALL(cb, kill());
-            ecs->deleteEntity(b);
+            ecs->removeEntity(b);
         }
     }
 
