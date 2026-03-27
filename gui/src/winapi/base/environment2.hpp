@@ -5,6 +5,14 @@
 #include "winapi/base/dispatcher2.hpp"
 
 
+// TODO:
+// Add WindowManager interface.
+// Make it master marker instead of Dispatcher2.
+// Move all low-level dispatcher handler setup to WindowManager as they are
+//  not plugins but rather parts of monolith logic (extendible though).
+// Add FakeWindowManager that creates no real windows.
+// Add painting processing and Renderer as injected dependency.
+
 namespace Istok::GUI::WinAPI {
 
 bool runInEnvironment(
