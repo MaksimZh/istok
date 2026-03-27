@@ -45,6 +45,7 @@ Unittests are located in `src` directory nearby tested component.
 
 
 ## CMake
+Always use Ninja backend for configuration.
 Each subproject has its own `CMakeLists.txt` file defining the target for the subproject.
 The subdirectories (except located inside `include`) recursively have their own `CMakeLists.txt` files adding source files to the targets defined in the upper `CMakeLists.txt`.
 Each subdirectory `CMakeLists.txt` adds sources with `target_sources` and subdirectories with `add_subdirectory`.
