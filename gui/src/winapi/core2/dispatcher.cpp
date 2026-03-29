@@ -1,16 +1,16 @@
 // Copyright 2026 Maksim Sergeevich Zholudev. All rights reserved
-#include "dispatcher2.hpp"
+#include "dispatcher.hpp"
 
 #include <windows.h>
 
 #include <istok/ecs.hpp>
 #include <istok/logging.hpp>
 
-#include "winapi/base/message.hpp"
+#include "winapi/core2/message.hpp"
 
 namespace Istok::GUI::WinAPI {
 
-LRESULT Dispatcher2::handleMessage(
+LRESULT Dispatcher::handleMessage(
     ECS::Entity entity, const WindowMessage& message
 ) noexcept {
     auto it = handlers_.find(message.msg);
@@ -21,7 +21,7 @@ LRESULT Dispatcher2::handleMessage(
     return it->second(entity, message);
 }
 
-void Dispatcher2::setHandler(UINT msg, Handler&& func) noexcept {
+void Dispatcher::setHandler(UINT msg, Handler&& func) noexcept {
     handlers_[msg] = std::move(func);
 }
 

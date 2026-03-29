@@ -1,12 +1,12 @@
 // Copyright 2026 Maksim Sergeevich Zholudev. All rights reserved
-#include "window2.hpp"
+#include "window.hpp"
 
 #include <memory>
 
 #include <windows.h>
 #include <dwmapi.h>
 
-#include "winapi/base/message.hpp"
+#include "winapi/core2/message.hpp"
 
 
 namespace Istok::GUI::WinAPI {
@@ -129,7 +129,7 @@ bool setPixelFormatForGL(HWND hWnd) noexcept {
 }  // namespace
 
 
-Window2::Window2(Rect<int> location, WindowMessageHandler&& handler) noexcept {
+Window::Window(Rect<int> location, WindowMessageHandler&& handler) noexcept {
     static WinAPI::WindowClass windowClass(
         windowProc,
         L"Istok");
@@ -157,15 +157,15 @@ Window2::Window2(Rect<int> location, WindowMessageHandler&& handler) noexcept {
         reinterpret_cast<LONG_PTR>(handler_.get()));
 }
 
-Window2::~Window2() {
+Window::~Window() {
     clear();
 }
 
-Window2::Window2(Window2&& source) {
+Window::Window(Window&& source) {
     takeFrom(source);
 }
 
-Window2& Window2::operator=(Window2&& source) {
+Window& Window::operator=(Window&& source) {
     if (&source != this) {
         clear();
         takeFrom(source);
@@ -173,13 +173,13 @@ Window2& Window2::operator=(Window2&& source) {
     return *this;
 }
 
-void Window2::takeFrom(Window2& source) {
+void Window::takeFrom(Window& source) {
     hWnd_ = source.hWnd_;
     handler_ = std::move(source.handler_);
     source.hWnd_ = nullptr;
 }
 
-void Window2::clear() {
+void Window::clear() {
     if (!hWnd_) {
         return;
     }

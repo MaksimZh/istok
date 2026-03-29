@@ -1,6 +1,6 @@
 // Copyright 2026 Maksim Sergeevich Zholudev. All rights reserved
 #define NOMINMAX
-#include "winapi/base/window2.hpp"
+#include "winapi/core2/window.hpp"
 
 #include <functional>
 #include <memory>
@@ -11,7 +11,6 @@
 #include <windows.h>
 
 #include "istok/gui/base.hpp"
-#include "winapi/base/test_utils.hpp"
 
 using namespace Istok::GUI;
 using namespace Istok::GUI::WinAPI;
@@ -48,7 +47,7 @@ struct MockHandler {
 
 
 TEST_CASE("Window - empty", "[unit][winapi]") {
-    Window2 window;
+    Window window;
     REQUIRE_FALSE(window.getHWnd());
 }
 
@@ -57,7 +56,7 @@ TEST_CASE("Window - real", "[unit][winapi]") {
     const Rect<int> location{1, 2, 301, 302};
     MockHandler handler;
 
-    auto window = std::make_unique<Window2>(location, handler.get());
+    auto window = std::make_unique<Window>(location, handler.get());
     HWND hWnd = window->getHWnd();
     REQUIRE(hWnd);
     REQUIRE(IsWindow(hWnd));

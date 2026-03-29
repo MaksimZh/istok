@@ -23,4 +23,5 @@ add_test(NAME winapi_unittest COMMAND winapi_unittest)
 
 add_subdirectory(base)
 add_subdirectory(core)
+add_subdirectory(core2)
 add_subdirectory(units)

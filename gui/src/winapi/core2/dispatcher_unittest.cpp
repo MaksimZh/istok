@@ -1,6 +1,6 @@
 // Copyright 2026 Maksim Sergeevich Zholudev. All rights reserved
 #define NOMINMAX
-#include "winapi/base/dispatcher2.hpp"
+#include "winapi/core2/dispatcher.hpp"
 
 #include <catch.hpp>
 #include <catch2/trompeloeil.hpp>
@@ -8,8 +8,8 @@
 
 #include <istok/ecs.hpp>
 
-#include "winapi/base/message.hpp"
-#include "winapi/base/test_utils.hpp"
+#include "winapi/core2/dispatcher.hpp"
+#include "winapi/core2/message.hpp"
 
 using namespace Istok;
 using namespace Istok::GUI::WinAPI;
@@ -21,7 +21,7 @@ namespace {
 struct MockHandler {
     MAKE_MOCK2(run, LRESULT(ECS::Entity, const WindowMessage&), noexcept);
 
-    Dispatcher2::Handler get() noexcept {
+    Dispatcher::Handler get() noexcept {
         return [this](
             ECS::Entity entity, const WindowMessage& message
         ) noexcept -> LRESULT {
@@ -42,7 +42,7 @@ TEST_CASE("Dispatcher - handlers", "[unit][winapi]") {
         2, MAKELPARAM(HTCLIENT, WM_MOUSEMOVE)};
 
     MockHandler defaultHandler;
-    Dispatcher2 dispatcher(defaultHandler.get());
+    Dispatcher dispatcher(defaultHandler.get());
 
     ECS::ECSManager ecs;
     const ECS::Entity a = ecs.createEntity();

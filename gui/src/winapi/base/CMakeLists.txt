@@ -1,20 +1,3 @@
-target_sources(gui2 PRIVATE
-    dispatcher2.cpp
-    dispatcher2.hpp
-    environment2.cpp
-    environment2.hpp
-    message.cpp
-    message.hpp
-    window2.cpp
-    window2.hpp
-)
-
-target_sources(winapi_unittest2 PRIVATE
-    dispatcher2_unittest.cpp
-    environment2_unittest.cpp
-    window2_unittest.cpp
-)
-
 target_sources(gui PRIVATE
     dispatcher.cpp
     dispatcher.hpp

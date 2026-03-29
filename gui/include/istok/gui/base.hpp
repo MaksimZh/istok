@@ -14,6 +14,8 @@ struct Rect {
     T top;
     T right;
     T bottom;
+
+    bool operator==(const Rect& other) const = default;
 };
 
 struct WindowLocation {
