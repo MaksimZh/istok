@@ -1,6 +1,6 @@
 // Copyright 2026 Maksim Sergeevich Zholudev. All rights reserved
 #define NOMINMAX
-#include "winapi/core2/window.hpp"
+#include "winapi/core2/base/window.hpp"
 
 #include <functional>
 #include <memory>

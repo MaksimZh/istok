@@ -6,7 +6,7 @@
 #include <istok/ecs.hpp>
 #include <istok/logging.hpp>
 
-#include "winapi/core2/message.hpp"
+#include "winapi/core2/base/message.hpp"
 
 namespace Istok::GUI::WinAPI {
 

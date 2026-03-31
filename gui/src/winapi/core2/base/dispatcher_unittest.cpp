@@ -1,6 +1,6 @@
 // Copyright 2026 Maksim Sergeevich Zholudev. All rights reserved
 #define NOMINMAX
-#include "winapi/core2/dispatcher.hpp"
+#include "winapi/core2/base/dispatcher.hpp"
 
 #include <catch.hpp>
 #include <catch2/trompeloeil.hpp>
@@ -8,8 +8,8 @@
 
 #include <istok/ecs.hpp>
 
-#include "winapi/core2/dispatcher.hpp"
-#include "winapi/core2/message.hpp"
+#include "winapi/core2/base/dispatcher.hpp"
+#include "winapi/core2/base/message.hpp"
 
 using namespace Istok;
 using namespace Istok::GUI::WinAPI;

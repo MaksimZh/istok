@@ -6,7 +6,7 @@
 #include <windows.h>
 #include <dwmapi.h>
 
-#include "winapi/core2/message.hpp"
+#include "winapi/core2/base/message.hpp"
 
 
 namespace Istok::GUI::WinAPI {
